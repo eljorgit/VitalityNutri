@@ -108,7 +108,18 @@ jobs:
         with:
           authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
 
-      # 2. Ejecutar los comandos SSH (ahora viaja de forma segura por la VPN)
+      # 2. Copiar el archivo docker-compose.yml al servidor
+      - name: Copy docker-compose.yml to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          source: "docker-compose.yml"
+          target: "/opt/apps/malvioapps/vitalitynutri"
+
+      # 3. Ejecutar los comandos SSH (ahora viaja de forma segura por la VPN)
       - name: Executing remote SSH commands to deploy
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -119,10 +130,6 @@ jobs:
           script: |
             # Entrar al directorio de la app en el servidor
             cd /opt/apps/malvioapps/vitalitynutri
-
-            # Sincronizar el repositorio con la última versión de GitHub
-            git fetch origin
-            git reset --hard origin/main
 
             # Autenticar temporalmente en GHCR
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin

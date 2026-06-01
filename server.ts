@@ -98,9 +98,20 @@ async function processPDFWithGemini(filePath: string): Promise<MealPlan> {
     throw new Error("La API de Gemini no está configurada.");
   }
 
+  if (!fs.existsSync(filePath)) {
+    throw new Error(`El archivo no existe en la ruta del servidor: ${filePath}`);
+  }
+
+  // Read file as Buffer and construct a Blob to avoid path resolution bugs in the SDK
+  const fileBuffer = fs.readFileSync(filePath);
+  const fileBlob = new Blob([fileBuffer], { type: "application/pdf" });
+
   // Upload file to Google Gemini File API
   const fileRef = await ai.files.upload({
-    file: filePath,
+    file: fileBlob,
+    config: {
+      mimeType: "application/pdf"
+    }
   });
 
   const optimizedPrompt = getOptimizedPrompt();
@@ -233,7 +244,12 @@ app.post("/api/upload", async (req, res) => {
     if (!fs.existsSync(uploadsDir)) {
       fs.mkdirSync(uploadsDir, { recursive: true });
     }
-    savedFileName = `${Date.now()}_${fileName}`;
+    // Sanitize filename to remove spaces, accents, and special characters
+    const sanitizedName = fileName
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-zA-Z0-9.-]/g, "_");
+    savedFileName = `${Date.now()}_${sanitizedName}`;
     const savedFilePath = path.join(uploadsDir, savedFileName);
     fs.writeFileSync(savedFilePath, Buffer.from(fileData, "base64"));
 
