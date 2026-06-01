@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Build artifacts (regenerated inside Docker)
+dist/
+build/
+
+# Local environment files (secrets are injected via CI/CD)
+.env
+.env.local
+.env.*.local
+
+# SQLite database and uploaded files
+data/
+
+# Git
+.git/
+.gitignore
+
+# Editor / OS
+.DS_Store
+*.log
+.vscode/
+.idea/
+
+# Docker itself
+Dockerfile
+.dockerignore
+docker-compose*.yml

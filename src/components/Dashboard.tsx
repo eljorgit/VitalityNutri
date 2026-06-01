@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { PlanMetadata, MealPlan } from "../types";
 
 interface DashboardProps {
@@ -20,16 +20,193 @@ export default function Dashboard({
   const [loadingStep, setLoadingStep] = useState(0);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const isDev = (import.meta as any).env?.DEV || (typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"));
 
   // Reassuring messages during compilation/analysis by Gemini
   const loadingSteps = [
-    "Leyendo archivo PDF...",
-    "Conectando de forma segura con la IA de Gemini 3.5...",
-    "Analizando estructura de días, raciones y comidas...",
-    "Calculando macros e ingredientes para cada receta...",
-    "Sincronizando el plan globalmente...",
-    "¡Todo listo! Recetas optimizadas generadas con éxito."
+    "Preparando archivo y conectando con el servidor...", // 0% - 15%
+    "Conectando de forma segura con la IA de Gemini...",   // 15% - 35%
+    "Analizando estructura del plan de alimentación...",   // 35% - 55%
+    "Calculando raciones, ingredientes y macronutrientes...", // 55% - 75%
+    "Estructurando recetas y pasos de preparación...",     // 75% - 90%
+    "Sincronizando y guardando plan en la base de datos...", // 90% - 99%
+    "¡Todo listo! Recetas optimizadas generadas con éxito."   // 100%
   ];
+
+  const [history, setHistory] = useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [elapsedTime, setElapsedTime] = useState(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    let intervalId: any;
+    if (isProcessing) {
+      const startTime = Date.now();
+      setElapsedTime(0);
+      intervalId = setInterval(() => {
+        setElapsedTime((Date.now() - startTime) / 1000);
+      }, 100);
+    } else {
+      setElapsedTime(0);
+    }
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [isProcessing]);
+
+  const fetchHistory = async () => {
+    setLoadingHistory(true);
+    try {
+      const response = await fetch("/api/history");
+      if (response.ok) {
+        const data = await response.json();
+        setHistory(data);
+      }
+    } catch (err) {
+      console.error("Error loading history:", err);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchHistory();
+  }, [metadata]);
+
+  const handleCancel = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setIsProcessing(false);
+    setProgress(0);
+  };
+
+  const handleReprocess = async () => {
+    if (!metadata || !metadata.savedFileName) return;
+
+    setIsProcessing(true);
+    setProgress(0);
+    setLoadingStep(0);
+    setErrorMsg(null);
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    let currentProgress = 0;
+    const progressInterval = setInterval(() => {
+      // Smooth asymptotic progress towards 99%
+      currentProgress += (99 - currentProgress) * 0.015;
+      const rounded = Math.min(currentProgress, 99);
+      setProgress(rounded);
+
+      if (rounded < 15) {
+        setLoadingStep(0);
+      } else if (rounded < 35) {
+        setLoadingStep(1);
+      } else if (rounded < 55) {
+        setLoadingStep(2);
+      } else if (rounded < 75) {
+        setLoadingStep(3);
+      } else if (rounded < 90) {
+        setLoadingStep(4);
+      } else {
+        setLoadingStep(5);
+      }
+    }, 200);
+
+    try {
+      const response = await fetch("/api/reprocess", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        signal: controller.signal
+      });
+
+      if (!response.ok) {
+        let errMsg = "Ocurrió un error al reprocesar el plan con IA.";
+        try {
+          const errorData = await response.json();
+          errMsg = errorData.error || errMsg;
+        } catch (_) {}
+        throw new Error(errMsg);
+      }
+
+      const data = await response.json();
+      clearInterval(progressInterval);
+      setProgress(100);
+      setLoadingStep(6);
+
+      setTimeout(() => {
+        onPlanProcessed(data.plan, data.metadata);
+        fetchHistory();
+      }, 600);
+
+    } catch (err: any) {
+      clearInterval(progressInterval);
+      if (err.name === "AbortError") {
+        console.log("Reprocesamiento cancelado por el usuario.");
+        return;
+      }
+      console.error(err);
+      setErrorMsg(err.message || "No se pudo conectar con el servidor o reprocesar el archivo.");
+    } finally {
+      abortControllerRef.current = null;
+      setIsProcessing(false);
+    }
+  };
+
+  const handleRestoreHistory = async (id: number) => {
+    setIsProcessing(true);
+    setLoadingStep(4);
+    setErrorMsg(null);
+    try {
+      const response = await fetch(`/api/history/restore/${id}`, {
+        method: "POST"
+      });
+
+      if (!response.ok) {
+        throw new Error("No se pudo restaurar el plan seleccionado.");
+      }
+
+      const data = await response.json();
+      onPlanProcessed(data.plan, data.metadata);
+      fetchHistory();
+    } catch (err: any) {
+      console.error(err);
+      setErrorMsg(err.message || "Error de red al intentar restaurar el plan.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleDeleteHistory = async (id: number, name: string) => {
+    if (!window.confirm(`¿Seguro que deseas eliminar "${name}" del historial? Esta acción borrará permanentemente el PDF y la planificación de la base de datos.`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/history/${id}`, {
+        method: "DELETE"
+      });
+
+      if (!response.ok) {
+        throw new Error("No se pudo eliminar el plan.");
+      }
+
+      if (metadata && metadata.id === id) {
+        onResetPlan();
+      } else {
+        fetchHistory();
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || "Error al intentar eliminar el plan del historial.");
+    }
+  };
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -73,13 +250,34 @@ export default function Dashboard({
     if (!selectedFile) return;
 
     setIsProcessing(true);
+    setProgress(0);
     setLoadingStep(0);
     setErrorMsg(null);
 
-    // Rotate loading text every 2.5 seconds
-    const interval = setInterval(() => {
-      setLoadingStep((prev) => (prev < loadingSteps.length - 1 ? prev + 1 : prev));
-    }, 2800);
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    let currentProgress = 0;
+    const progressInterval = setInterval(() => {
+      // Smooth asymptotic progress towards 99%
+      currentProgress += (99 - currentProgress) * 0.015;
+      const rounded = Math.min(currentProgress, 99);
+      setProgress(rounded);
+
+      if (rounded < 15) {
+        setLoadingStep(0);
+      } else if (rounded < 35) {
+        setLoadingStep(1);
+      } else if (rounded < 55) {
+        setLoadingStep(2);
+      } else if (rounded < 75) {
+        setLoadingStep(3);
+      } else if (rounded < 90) {
+        setLoadingStep(4);
+      } else {
+        setLoadingStep(5);
+      }
+    }, 200);
 
     try {
       const reader = new FileReader();
@@ -88,7 +286,6 @@ export default function Dashboard({
       const base64Promise = new Promise<string>((resolve, reject) => {
         reader.onload = () => {
           const result = reader.result as string;
-          // Extract base64 part
           const base64Data = result.split(",")[1];
           resolve(base64Data);
         };
@@ -106,7 +303,8 @@ export default function Dashboard({
         body: JSON.stringify({
           fileName: selectedFile.name,
           fileData: fileData
-        })
+        }),
+        signal: controller.signal
       });
 
       if (!response.ok) {
@@ -127,14 +325,25 @@ export default function Dashboard({
 
       const data = await response.json();
 
-      clearInterval(interval);
-      onPlanProcessed(data.plan, data.metadata);
-      setActiveTab("calendar");
+      clearInterval(progressInterval);
+      setProgress(100);
+      setLoadingStep(6);
+
+      setTimeout(() => {
+        onPlanProcessed(data.plan, data.metadata);
+        setActiveTab("calendar");
+      }, 600);
+
     } catch (err: any) {
-      clearInterval(interval);
+      clearInterval(progressInterval);
+      if (err.name === "AbortError") {
+        console.log("Carga cancelada por el usuario.");
+        return;
+      }
       console.error(err);
       setErrorMsg(err.message || "No se pudo conectar con el servidor o procesar el archivo.");
     } finally {
+      abortControllerRef.current = null;
       setIsProcessing(false);
     }
   };
@@ -173,7 +382,7 @@ export default function Dashboard({
           {/* File Upload card component */}
           <div className="lg:col-span-8 bg-white dark:bg-zinc-900 rounded-2xl p-6 md:p-8 border border-[#bfc9c1]/40 dark:border-zinc-800 shadow-sm relative">
             <div className="flex items-center gap-3 mb-6">
-              <div className="bg-emerald-100 dark:bg-zinc-800 text-[#0f5238] dark:text-emerald-400 p-2.5 rounded-xl">
+              <div className="bg-emerald-100 dark:bg-zinc-800 text-[#0f5238] dark:text-emerald-450 p-2.5 rounded-xl">
                 <span className="material-symbols-outlined block">description</span>
               </div>
               <div>
@@ -190,7 +399,7 @@ export default function Dashboard({
               onDragLeave={handleDrag}
               onDrop={handleDrop}
               onClick={handleSelectClick}
-              className={`relative border-2 border-dashed rounded-2xl p-8 md:p-12 flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-300 group ${
+              className={`relative border-2 border-dashed rounded-2xl p-8 md:p-16 min-h-[400px] flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-300 group ${
                 dragActive 
                   ? "border-emerald-600 bg-emerald-50/50 dark:bg-emerald-950/20" 
                   : "border-emerald-200 dark:border-zinc-800 bg-[#f6f9ff]/50 dark:bg-zinc-950/20 hover:border-emerald-600 hover:bg-[#f6f9ff] dark:hover:bg-zinc-950/40"
@@ -305,23 +514,57 @@ export default function Dashboard({
               )}
             </div>
 
-            {/* Modal loading overlay during AI compile process */}
+            {/* Full screen loading overlay during AI compile process */}
             {isProcessing && (
-              <div className="absolute inset-0 bg-white/95 dark:bg-zinc-900/95 rounded-2xl flex flex-col items-center justify-center p-6 text-center z-20">
-                <div className="relative mb-6">
-                  {/* Glowing spinner */}
-                  <div className="w-16 h-16 rounded-full border-4 border-emerald-100 dark:border-zinc-800 border-t-emerald-600 dark:border-t-emerald-400 animate-spin"></div>
-                  <div className="absolute inset-0 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-                    <span className="material-symbols-outlined animate-pulse">auto_awesome</span>
+              <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center z-[9999] animate-fade-in no-print">
+                <div className="bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 rounded-3xl p-8 max-w-md w-full shadow-2xl flex flex-col items-center gap-6">
+                  <div className="relative">
+                    {/* Glowing spinner */}
+                    <div className="w-20 h-20 rounded-full border-4 border-emerald-100 dark:border-zinc-850 border-t-emerald-600 dark:border-t-emerald-450 animate-spin"></div>
+                    <div className="absolute inset-0 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                      <span className="material-symbols-outlined text-2xl animate-pulse">auto_awesome</span>
+                    </div>
                   </div>
-                </div>
-                <h3 className="text-xl font-bold text-[#0f5238] dark:text-emerald-400 mb-2 animate-pulse">Analizando tu Plan Nutricional</h3>
-                <p className="text-sm text-[#404943] dark:text-zinc-300 max-w-sm mb-4">
-                  Nuestra red neuronal de Gemini 3.5 Flash está procesando el PDF para extraer macronutrientes, crear el calendario de comidas y calcular la lista de ingredientes...
-                </p>
-                <div className="bg-emerald-50 dark:bg-zinc-800 px-4 py-2.5 rounded-full text-xs font-semibold text-emerald-700 dark:text-emerald-400 inline-flex items-center gap-2">
-                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-600 dark:bg-emerald-400 animate-ping"></span>
-                  {loadingSteps[loadingStep]}
+
+                  <div>
+                    <h3 className="text-xl font-bold text-[#0f5238] dark:text-emerald-450 mb-2 animate-pulse">Procesando Plan Nutricional</h3>
+                    <p className="text-xs text-gray-550 dark:text-zinc-400 leading-relaxed">
+                      Nuestra red neuronal está extrayendo y estructurando las comidas, ingredientes y pasos secuenciales del plan.
+                    </p>
+                  </div>
+
+                  {/* Progress Bar Container */}
+                  <div className="w-full flex flex-col gap-2">
+                    <div className="flex justify-between items-center text-xs font-bold">
+                      <span className="text-emerald-700 dark:text-emerald-400">
+                        {loadingSteps[loadingStep]}
+                      </span>
+                      <span className="text-gray-400 dark:text-zinc-500">{Math.round(progress)}%</span>
+                    </div>
+                    <div className="w-full h-2.5 bg-gray-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-emerald-600 dark:bg-emerald-450 transition-all duration-300 ease-out rounded-full" 
+                        style={{ width: `${progress}%` }}
+                      ></div>
+                    </div>
+                  </div>
+
+                  {isDev && (
+                    <div className="w-full text-xs font-mono font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 rounded-xl p-2.5 flex items-center justify-center gap-1.5 animate-pulse select-none">
+                      <span className="material-symbols-outlined text-[16px]">timer</span>
+                      [Entorno de Desarrollo] Tiempo transcurrido: {elapsedTime.toFixed(1)}s
+                    </div>
+                  )}
+
+                  {/* Cancel Button */}
+                  <button
+                    type="button"
+                    onClick={handleCancel}
+                    className="mt-2 px-6 py-2.5 bg-red-50 dark:bg-red-950/30 text-red-750 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-950 transition-colors cursor-pointer flex items-center justify-center gap-1.5 border border-red-100 dark:border-red-900/30 font-bold text-xs rounded-xl"
+                  >
+                    <span className="material-symbols-outlined text-[15px]">cancel</span>
+                    Cancelar Proceso
+                  </button>
                 </div>
               </div>
             )}
@@ -367,14 +610,14 @@ export default function Dashboard({
 
             {/* Active Plan / Reset widget */}
             {metadata && (
-              <div className="bg-white dark:bg-zinc-900 rounded-2xl p-5 border border-gray-150 dark:border-zinc-800/80 shadow-sm relative">
-                <div className="flex items-center justify-between mb-3 text-xs tracking-wider text-gray-400 dark:text-zinc-500 font-bold uppercase">
+              <div className="bg-white dark:bg-zinc-900 rounded-2xl p-5 border border-gray-150 dark:border-zinc-800/80 shadow-sm relative flex flex-col gap-3">
+                <div className="flex items-center justify-between text-xs tracking-wider text-gray-400 dark:text-zinc-500 font-bold uppercase">
                   <span>Plan de Alimentación Activo</span>
-                  <span className="text-[#0f5238] dark:text-emerald-400 flex items-center gap-0.5 font-bold">
+                  <span className="text-[#0f5238] dark:text-emerald-450 flex items-center gap-0.5 font-bold">
                     <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> COMPARTIDO
                   </span>
                 </div>
-                <div className="flex items-start gap-3 p-3 bg-[#f8f9fa] dark:bg-zinc-950/40 rounded-xl border border-gray-50 dark:border-zinc-800 mb-4">
+                <div className="flex items-start gap-3 p-3 bg-[#f8f9fa] dark:bg-zinc-950/40 rounded-xl border border-gray-50 dark:border-zinc-800">
                   <span className="material-symbols-outlined text-emerald-700 dark:text-emerald-400 text-3xl font-light">task</span>
                   <div className="text-left select-text">
                     <p className="text-sm font-semibold text-gray-900 dark:text-white truncate max-w-[200px]" title={metadata.fileName}>
@@ -385,22 +628,59 @@ export default function Dashboard({
                     </p>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-2">
+                  <div className="grid grid-cols-2 gap-3">
+                    <button 
+                      type="button"
+                      onClick={() => setActiveTab("calendar")}
+                      className="py-2.5 px-4 bg-emerald-50 dark:bg-emerald-950/30 text-[#0f5238] dark:text-emerald-450 font-bold text-xs rounded-xl hover:bg-emerald-100 dark:hover:bg-emerald-950 transition-colors cursor-pointer flex items-center justify-center gap-1"
+                    >
+                      <span className="material-symbols-outlined text-[14px]">calendar_month</span> Ver Calendario
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={onResetPlan}
+                      className="py-2.5 px-4 bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 font-bold text-xs rounded-xl hover:bg-red-100 dark:hover:bg-red-950 transition-colors cursor-pointer flex items-center justify-center gap-1"
+                    >
+                      <span className="material-symbols-outlined text-[14px]">delete</span> Eliminar Plan
+                    </button>
+                  </div>
+                  {metadata.savedFileName && (
+                    <button 
+                      type="button"
+                      onClick={handleReprocess}
+                      className="w-full py-2.5 px-4 bg-amber-50 dark:bg-amber-950/30 hover:bg-amber-100 dark:hover:bg-amber-900/40 text-amber-800 dark:text-amber-300 font-bold text-xs rounded-xl border border-amber-200 dark:border-amber-900/50 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">refresh</span>
+                      Reprocesar Plan
+                    </button>
+                  )}
                   <button 
                     type="button"
-                    onClick={() => setActiveTab("calendar")}
-                    className="py-2.5 px-4 bg-emerald-50 dark:bg-emerald-950/30 text-[#0f5238] dark:text-emerald-400 font-bold text-xs rounded-xl hover:bg-emerald-100 dark:hover:bg-emerald-950 transition-colors cursor-pointer"
+                    onClick={() => setShowHistoryModal(true)}
+                    className="w-full py-2.5 px-4 bg-[#f1f5f9] dark:bg-zinc-800 hover:bg-[#e2e8f0] dark:hover:bg-zinc-750 text-slate-700 dark:text-zinc-300 font-bold text-xs rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5 border border-[#e2e8f0] dark:border-zinc-700/60"
                   >
-                    Ver Calendario
-                  </button>
-                  <button 
-                    type="button"
-                    onClick={onResetPlan}
-                    className="py-2.5 px-4 bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 font-bold text-xs rounded-xl hover:bg-red-100 dark:hover:bg-red-950 transition-colors cursor-pointer"
-                  >
-                    Eliminar Plan
+                    <span className="material-symbols-outlined text-[16px]">history</span>
+                    Ver Historial de Planes
                   </button>
                 </div>
+              </div>
+            )}
+
+            {/* Inactive Plan / History access widget */}
+            {!metadata && (
+              <div className="bg-white dark:bg-zinc-900 rounded-2xl p-5 border border-gray-150 dark:border-zinc-800/80 shadow-sm flex flex-col gap-3">
+                <div className="flex items-center justify-between text-xs tracking-wider text-gray-400 dark:text-zinc-500 font-bold uppercase">
+                  <span>Planes Anteriores</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowHistoryModal(true)}
+                  className="w-full py-2.5 px-4 bg-emerald-50 dark:bg-emerald-950/30 hover:bg-emerald-100 dark:hover:bg-emerald-950 text-[#0f5238] dark:text-emerald-450 font-bold text-xs rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5 border border-emerald-100 dark:border-emerald-900/40"
+                >
+                  <span className="material-symbols-outlined text-[16px]">history</span>
+                  Ver Historial de Planes
+                </button>
               </div>
             )}
           </div>
@@ -439,6 +719,113 @@ export default function Dashboard({
           </p>
         </div>
       </section>
+
+      {/* History Modal overlay */}
+      {showHistoryModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in no-print">
+          <div className="bg-white dark:bg-zinc-900 rounded-3xl w-full max-w-lg border border-gray-100 dark:border-zinc-800 shadow-2xl flex flex-col max-h-[80vh] overflow-hidden">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-zinc-800/85 bg-gray-50/50 dark:bg-zinc-950/20">
+              <h3 className="text-lg font-bold text-[#0f5238] dark:text-emerald-450 flex items-center gap-2">
+                <span className="material-symbols-outlined text-[22px]">history</span> Historial de Planes
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowHistoryModal(false)}
+                className="p-1.5 text-gray-400 hover:text-gray-650 dark:hover:text-zinc-200 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-xl transition-colors cursor-pointer flex items-center justify-center"
+              >
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto flex-grow flex flex-col gap-4">
+              {loadingHistory ? (
+                <div className="py-12 text-center text-sm text-gray-400 dark:text-zinc-500">
+                  <span className="animate-spin inline-block material-symbols-outlined text-[20px] mr-2 align-middle font-bold">sync</span>
+                  Cargando historial...
+                </div>
+              ) : history.length === 0 ? (
+                <div className="py-16 text-center text-sm text-gray-400 dark:text-zinc-500 flex flex-col items-center gap-3">
+                  <span className="material-symbols-outlined text-4xl font-light text-gray-300 dark:text-zinc-700">folder_open</span>
+                  <p className="font-semibold text-gray-700 dark:text-zinc-300">No hay planes en el historial.</p>
+                  <p className="text-xs text-gray-400 dark:text-zinc-500 max-w-xs leading-relaxed">Sube tu primer plan de alimentación en PDF para comenzar a registrar tu historial.</p>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3.5 pr-1">
+                  {history.map((item) => (
+                    <div 
+                      key={item.id} 
+                      className={`p-4 rounded-2xl border transition-all duration-200 flex flex-col gap-3.5 ${
+                        item.isActive 
+                          ? "bg-emerald-50/45 dark:bg-emerald-950/10 border-emerald-250 dark:border-emerald-900/40" 
+                          : "bg-[#f8f9fa] dark:bg-zinc-950/20 border-gray-100 dark:border-zinc-800/60 hover:border-gray-200 dark:hover:border-zinc-700"
+                      }`}
+                    >
+                      <div className="flex justify-between items-start gap-3">
+                        <div className="text-left min-w-0 flex-1">
+                          <p 
+                            className={`text-sm font-bold truncate ${
+                              item.isActive ? "text-emerald-800 dark:text-emerald-400" : "text-gray-800 dark:text-zinc-200"
+                            }`} 
+                            title={item.fileName}
+                          >
+                            {item.fileName}
+                          </p>
+                          <p className="text-[11px] text-gray-400 dark:text-zinc-500 mt-1 flex items-center gap-1 font-medium">
+                            <span className="material-symbols-outlined text-[13px]">calendar_month</span>
+                            {new Date(item.createdAt).toLocaleDateString("es-ES")} {new Date(item.createdAt).toLocaleTimeString("es-ES", { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                        </div>
+                        {item.isActive && (
+                          <span className="text-[10px] bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-350 font-bold px-2.5 py-0.5 rounded-full select-none shrink-0 flex items-center gap-1 border border-emerald-250 dark:border-emerald-800">
+                            <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Activo
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex justify-end gap-2 border-t border-gray-100/60 dark:border-zinc-850/50 pt-3 mt-0.5">
+                        {!item.isActive && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleRestoreHistory(item.id);
+                              setShowHistoryModal(false);
+                            }}
+                            className="py-1.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-colors cursor-pointer flex items-center gap-1"
+                            title="Restaurar este plan como el plan activo"
+                          >
+                            <span className="material-symbols-outlined text-[14px]">restore</span> Restaurar
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteHistory(item.id, item.fileName)}
+                          className="py-1.5 px-3 bg-red-50 dark:bg-red-950/30 text-red-750 dark:text-red-400 font-bold text-xs rounded-xl hover:bg-red-100 dark:hover:bg-red-950 transition-colors cursor-pointer flex items-center gap-1"
+                          title="Eliminar del historial"
+                        >
+                          <span className="material-symbols-outlined text-[14px]">delete</span> Eliminar
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 border-t border-gray-100 dark:border-zinc-800/80 flex justify-end bg-gray-50/20 dark:bg-zinc-950/10">
+              <button
+                type="button"
+                onClick={() => setShowHistoryModal(false)}
+                className="px-5 py-2.5 bg-gray-100 dark:bg-zinc-800 hover:bg-gray-200 dark:hover:bg-zinc-750 text-gray-700 dark:text-zinc-350 font-bold text-xs rounded-xl transition-colors cursor-pointer"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

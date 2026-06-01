@@ -224,7 +224,7 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab }: Cal
                                   {mealLabels[meal]}
                                 </span>
                                 {isFocused && (
-                                  <span className="bg-red-520 text-white font-black text-[9px] px-1.5 py-0.5 rounded-full select-none animate-bounce shadow">
+                                  <span className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-extrabold text-[9px] px-2 py-0.5 rounded-full select-none animate-pulse shadow-sm">
                                     PRÓXIMA
                                   </span>
                                 )}

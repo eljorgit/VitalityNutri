@@ -37,6 +37,95 @@ export default function App() {
     recipe: Recipe;
   } | null>(null);
 
+  const [pendingRecipe, setPendingRecipe] = useState<{ day: DayType; meal: MealType } | null>(null);
+
+  // Sync state from URL pathname
+  const syncStateFromUrl = (urlPath: string) => {
+    const qIndex = urlPath.indexOf("?");
+    const pathname = qIndex === -1 ? urlPath : urlPath.slice(0, qIndex);
+    
+    if (!pathname || pathname === "/" || pathname.startsWith("/dashboard")) {
+      setActiveTab("dashboard");
+      setSelectedRecipeDetail(null);
+    } else if (pathname.startsWith("/calendar")) {
+      setActiveTab("calendar");
+      setSelectedRecipeDetail(null);
+    } else if (pathname.startsWith("/grocery")) {
+      setActiveTab("grocery");
+      setSelectedRecipeDetail(null);
+    } else if (pathname.startsWith("/recipe/")) {
+      const parts = pathname.split("/");
+      if (parts.length >= 4) {
+        const day = parts[2] as DayType;
+        const meal = parts[3] as MealType;
+        
+        if (plan) {
+          const recipe = plan.days[day]?.[meal];
+          if (recipe) {
+            setSelectedRecipeDetail({ day, meal, recipe });
+            setActiveTab("recipe-detail");
+          } else {
+            setActiveTab("calendar");
+            setSelectedRecipeDetail(null);
+          }
+        } else {
+          setPendingRecipe({ day, meal });
+        }
+      }
+    }
+  };
+
+  useEffect(() => {
+    const handlePopState = () => {
+      if (window.location.hash.startsWith("#/")) {
+        const cleanPath = window.location.hash.slice(1);
+        window.history.replaceState(null, "", cleanPath);
+        syncStateFromUrl(cleanPath);
+      } else {
+        syncStateFromUrl(window.location.pathname + window.location.search);
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+
+    // Initial check on mount
+    if (window.location.hash.startsWith("#/")) {
+      const cleanPath = window.location.hash.slice(1);
+      window.history.replaceState(null, "", cleanPath);
+      syncStateFromUrl(cleanPath);
+    } else {
+      syncStateFromUrl(window.location.pathname + window.location.search);
+    }
+
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [plan]);
+
+  // Handle pending recipe navigation once plan is loaded
+  useEffect(() => {
+    if (plan && pendingRecipe) {
+      const { day, meal } = pendingRecipe;
+      const recipe = plan.days[day]?.[meal];
+      if (recipe) {
+        setSelectedRecipeDetail({ day, meal, recipe });
+        setActiveTab("recipe-detail");
+      }
+      setPendingRecipe(null);
+    }
+  }, [plan, pendingRecipe]);
+
+  const navigate = (path: string) => {
+    window.history.pushState(null, "", path);
+    syncStateFromUrl(path);
+  };
+
+  const handleSetActiveTab = (tab: string) => {
+    navigate(`/${tab}`);
+  };
+
+  const handleSelectRecipe = (day: DayType, meal: MealType, recipe: Recipe) => {
+    navigate(`/recipe/${day}/${meal}`);
+  };
+
   // Fetch the current globally stored plan from the Express backend on mount
   const fetchGlobalPlan = async () => {
     setIsLoading(true);
@@ -64,7 +153,7 @@ export default function App() {
   const handlePlanProcessed = (newPlan: MealPlan, newMetadata: PlanMetadata) => {
     setPlan(newPlan);
     setMetadata(newMetadata);
-    setActiveTab("calendar");
+    navigate("/calendar");
   };
 
   const handleResetPlan = async () => {
@@ -79,17 +168,12 @@ export default function App() {
       setPlan(data.plan);
       setMetadata(data.metadata);
       setSelectedRecipeDetail(null);
-      setActiveTab("dashboard");
+      navigate("/dashboard");
     } catch {
       alert("No se pudo eliminar el plan.");
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleSelectRecipe = (day: DayType, meal: MealType, recipe: Recipe) => {
-    setSelectedRecipeDetail({ day, meal, recipe });
-    setActiveTab("recipe-detail");
   };
 
   return (
@@ -104,8 +188,7 @@ export default function App() {
             <button 
               type="button" 
               onClick={() => {
-                setSelectedRecipeDetail(null);
-                setActiveTab("dashboard");
+                navigate("/dashboard");
               }}
               className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-450 tracking-tight hover:opacity-85 select-none text-left cursor-pointer transition-opacity"
             >
@@ -116,8 +199,7 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => {
-                  setSelectedRecipeDetail(null);
-                  setActiveTab("dashboard");
+                  navigate("/dashboard");
                 }}
                 className={`text-xs font-black px-3.5 py-2 rounded-xl transition duration-150 cursor-pointer ${
                   activeTab === "dashboard"
@@ -130,8 +212,7 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => {
-                  setSelectedRecipeDetail(null);
-                  setActiveTab("calendar");
+                  navigate("/calendar");
                 }}
                 className={`text-xs font-black px-3.5 py-2 rounded-xl transition duration-150 cursor-pointer ${
                   activeTab === "calendar"
@@ -146,7 +227,27 @@ export default function App() {
                 disabled={!plan}
                 onClick={() => {
                   if (plan) {
-                    handleSelectRecipe("lunes", "almuerzo", plan.days.lunes.almuerzo!);
+                    if (selectedRecipeDetail) {
+                      navigate(`/recipe/${selectedRecipeDetail.day}/${selectedRecipeDetail.meal}`);
+                    } else {
+                      const weekdays = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"];
+                      const meals = ["desayuno", "almuerzo", "merienda", "cena"];
+                      let found = false;
+                      for (const d of weekdays) {
+                        for (const m of meals) {
+                          const r = plan.days[d as DayType]?.[m as MealType];
+                          if (r) {
+                            navigate(`/recipe/${d}/${m}`);
+                            found = true;
+                            break;
+                          }
+                        }
+                        if (found) break;
+                      }
+                      if (!found) {
+                        navigate("/recipe/lunes/almuerzo");
+                      }
+                    }
                   }
                 }}
                 className={`text-xs font-black px-3.5 py-2 rounded-xl transition duration-150 cursor-pointer ${
@@ -160,8 +261,7 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => {
-                  setSelectedRecipeDetail(null);
-                  setActiveTab("grocery");
+                  navigate("/grocery");
                 }}
                 className={`text-xs font-black px-3.5 py-2 rounded-xl transition duration-150 cursor-pointer ${
                   activeTab === "grocery"
@@ -215,7 +315,7 @@ export default function App() {
               <Dashboard 
                 metadata={metadata} 
                 onPlanProcessed={handlePlanProcessed} 
-                setActiveTab={setActiveTab}
+                setActiveTab={handleSetActiveTab}
                 onResetPlan={handleResetPlan}
               />
             )}
@@ -224,7 +324,7 @@ export default function App() {
               <CalendarGrid 
                 plan={plan} 
                 onSelectRecipe={handleSelectRecipe} 
-                setActiveTab={setActiveTab}
+                setActiveTab={handleSetActiveTab}
               />
             )}
 
@@ -236,8 +336,7 @@ export default function App() {
                 plan={plan}
                 onNavigate={handleSelectRecipe}
                 onGoBack={() => {
-                  setSelectedRecipeDetail(null);
-                  setActiveTab("calendar");
+                  navigate("/calendar");
                 }}
               />
             )}
