@@ -289,6 +289,15 @@ app.post("/api/upload", async (req, res) => {
     let rawError = "";
     if (error && typeof error === "object") {
       rawError = error.message || JSON.stringify(error);
+      if (error.cause) {
+        let causeMsg = "";
+        if (error.cause && typeof error.cause === "object") {
+          causeMsg = (error.cause as any).message || (error.cause as any).code || JSON.stringify(error.cause);
+        } else {
+          causeMsg = String(error.cause);
+        }
+        rawError += ` (Causa: ${causeMsg})`;
+      }
     } else {
       rawError = String(error);
     }
@@ -414,8 +423,23 @@ app.post("/api/reprocess", async (req, res) => {
     });
   } catch (error: any) {
     console.error("Error al reprocesar PDF con Gemini:", error);
+    let rawError = "";
+    if (error && typeof error === "object") {
+      rawError = error.message || String(error);
+      if (error.cause) {
+        let causeMsg = "";
+        if (error.cause && typeof error.cause === "object") {
+          causeMsg = (error.cause as any).message || (error.cause as any).code || JSON.stringify(error.cause);
+        } else {
+          causeMsg = String(error.cause);
+        }
+        rawError += ` (Causa: ${causeMsg})`;
+      }
+    } else {
+      rawError = String(error);
+    }
     res.status(500).json({
-      error: "Ocurrió un error al reprocesar el PDF. Detalles: " + (error.message || String(error))
+      error: "Ocurrió un error al reprocesar el PDF. Detalles: " + rawError
     });
   }
 });
