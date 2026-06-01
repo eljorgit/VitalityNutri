@@ -118,6 +118,7 @@ jobs:
           port: ${{ secrets.SSH_PORT || 22 }}
           source: "docker-compose.yml"
           target: "/opt/apps/malvioapps/vitalitynutri"
+          overwrite: true
 
       # 3. Ejecutar los comandos SSH (ahora viaja de forma segura por la VPN)
       - name: Executing remote SSH commands to deploy
