@@ -111,7 +111,7 @@ Para levantar el servidor Express y el servidor de desarrollo de Vite de forma c
 ```bash
 npm run dev
 ```
-La aplicación estará disponible en: **http://localhost:3000**
+La aplicación estará disponible en: **http://localhost:5027**
 
 ---
 
@@ -126,7 +126,7 @@ docker build -t vitality-nutri .
 
 ### Ejecutar el contenedor:
 ```bash
-docker run -d -p 3000:3000 --env GEMINI_API_KEY="tu_api_key_aqui" -v vitality_data:/app/data vitality-nutri
+docker run -d -p 5027:5027 --env GEMINI_API_KEY="tu_api_key_aqui" -v vitality_data:/app/data vitality-nutri
 ```
 > [!TIP]
 > Se recomienda usar un volumen (`-v vitality_data:/app/data`) para asegurar que la base de datos SQLite y los archivos PDF subidos persistan si el contenedor se reinicia o se actualiza.

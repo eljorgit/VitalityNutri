@@ -41,7 +41,7 @@ COPY promt.md ./promt.md
 RUN mkdir -p data/uploads
 
 # Expose the port used by Express
-EXPOSE 3000
+EXPOSE 5027
 
 # Set production environment
 ENV NODE_ENV=production
