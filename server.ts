@@ -13,11 +13,11 @@ import { getPlan, savePlan, resetPlan, updateRecipe, getHistory, restorePlanFrom
 dotenv.config();
 
 // Globally increase Node fetch timeouts (built-in undici client) to 5 minutes to prevent random AbortError
-setGlobalDispatcher(new Agent({
-  headersTimeout: 300000,
-  bodyTimeout: 300000,
-  connectTimeout: 300000,
-}));
+// setGlobalDispatcher(new Agent({
+//   headersTimeout: 300000,
+//   bodyTimeout: 300000,
+//   connectTimeout: 300000,
+// }));
 
 const app = express();
 const PORT = 5027;
@@ -102,17 +102,8 @@ async function processPDFWithGemini(filePath: string): Promise<MealPlan> {
     throw new Error(`El archivo no existe en la ruta del servidor: ${filePath}`);
   }
 
-  // Read file as Buffer and construct a Blob to avoid path resolution bugs in the SDK
-  const fileBuffer = fs.readFileSync(filePath);
-  const fileBlob = new Blob([fileBuffer], { type: "application/pdf" });
-
-  // Upload file to Google Gemini File API
-  const fileRef = await ai.files.upload({
-    file: fileBlob,
-    config: {
-      mimeType: "application/pdf"
-    }
-  });
+  // Read local file as base64 and send it inline to avoid File API upload issues
+  const base64Data = fs.readFileSync(filePath).toString("base64");
 
   const optimizedPrompt = getOptimizedPrompt();
 
@@ -120,9 +111,9 @@ async function processPDFWithGemini(filePath: string): Promise<MealPlan> {
     model: "gemini-3.5-flash",
     contents: [
       {
-        fileData: {
-          fileUri: fileRef.uri,
-          mimeType: fileRef.mimeType
+        inlineData: {
+          mimeType: "application/pdf",
+          data: base64Data
         }
       },
       optimizedPrompt
