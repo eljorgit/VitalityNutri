@@ -23,6 +23,9 @@ RUN npm run build
 # ─────────────────────────────────────────────
 FROM node:22-alpine AS production
 
+# Install ca-certificates to allow secure HTTPS requests (such as calling Google Gemini API)
+RUN apk add --no-cache ca-certificates && update-ca-certificates
+
 WORKDIR /app
 
 # Copy package files
