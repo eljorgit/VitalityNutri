@@ -1,0 +1,6 @@
+{
+  "name": "VitalityNutri",
+  "description": "Weekly meal planner and nutrition dashboard synced with AI analysis of your meal plans.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
