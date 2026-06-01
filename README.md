@@ -49,7 +49,7 @@ La aplicación utiliza el modelo **Gemini 3.5 Flash** de Google mediante el nuev
 La aplicación está diseñada bajo una arquitectura moderna monorepo que integra un cliente en React y un servidor en Express/TypeScript:
 
 ```
-VitalityNutry/
+vitalitynutri/
 ├── data/                 # Directorio de persistencia (SQLite DB y cargas de PDF)
 ├── src/                  # Código fuente del Frontend (React + TS)
 │   ├── components/       # Componentes de la interfaz de usuario
@@ -96,7 +96,7 @@ VitalityNutry/
 
 ### 1. Clonar el repositorio e instalar dependencias
 ```bash
-cd VitalityNutry
+cd vitalitynutri
 npm install
 ```
 

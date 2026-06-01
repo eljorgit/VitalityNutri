@@ -118,7 +118,7 @@ jobs:
           port: ${{ secrets.SSH_PORT || 22 }}
           script: |
             # Entrar al directorio de la app en el servidor
-            cd /opt/apps/malvioapps/vitalitynutry
+            cd /opt/apps/malvioapps/vitalitynutri
 
             # Autenticar temporalmente en GHCR
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
