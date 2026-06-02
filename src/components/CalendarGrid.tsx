@@ -11,6 +11,12 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab }: Cal
   const daysKeys: DayType[] = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"];
   const mealsKeys: MealType[] = ["desayuno", "almuerzo", "merienda", "cena"];
 
+  // Mobile day selection state (defaults to today, fallback to "lunes")
+  const todayNameMap = ["domingo", "lunes", "martes", "miercoles", "jueves", "viernes", "sabado"];
+  const currentDayOfWeekName = todayNameMap[new Date().getDay()];
+  const initialMobileDay = daysKeys.includes(currentDayOfWeekName as DayType) ? (currentDayOfWeekName as DayType) : "lunes";
+  const [activeMobileDay, setActiveMobileDay] = React.useState<DayType>(initialMobileDay);
+
   // Dynamic calculation of current week dates
   const getCurrentWeekDates = () => {
     const today = new Date();
@@ -150,12 +156,10 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab }: Cal
           <h1 className="text-3xl font-bold text-gray-950 dark:text-white tracking-tight font-sans animate-fade-in">Planificador Semanal de Comidas</h1>
           <p className="text-sm text-gray-550 dark:text-zinc-400">Visualiza, edita y organiza tu pauta nutricional compartida para todos.</p>
         </div>
-      </div>
-
-      {plan ? (
+      </div>      {plan ? (
         <>
-          {/* Main Desktop Grid Scrollable with deeper zinc/near-black theme */}
-          <div className="bg-white dark:bg-zinc-900 rounded-3xl p-6 border border-slate-100 dark:border-zinc-800 shadow-sm overflow-x-auto print-area-container">
+          {/* Main Desktop Grid Scrollable - Hidden on mobile, shown on desktop/print */}
+          <div className="hidden md:block print:block bg-white dark:bg-zinc-900 rounded-3xl p-6 border border-slate-100 dark:border-zinc-800 shadow-sm overflow-x-auto print-area-container">
             <div className="min-w-[1000px] grid grid-cols-[135px_repeat(7,1fr)] gap-4">
               
               {/* Desktop Row Title Headers */}
@@ -212,7 +216,7 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab }: Cal
                             onClick={() => onSelectRecipe(day, meal, recipe)}
                             className={`group h-28 p-3 rounded-xl transition-all duration-300 cursor-pointer flex flex-col justify-between text-left relative ${
                               isFocused
-                                ? "bg-emerald-50/90 dark:bg-emerald-950/40 border-2 border-emerald-500 shadow-md ring-2 ring-emerald-200 dark:ring-emerald-900/60 ring-offset-2 dark:ring-offset-zinc-950 scale-[1.03] z-10"
+                                ? "bg-emerald-50/90 dark:bg-emerald-950/40 border-2 border-emerald-500 shadow-md ring-2 ring-emerald-250 dark:ring-emerald-900/60 ring-offset-2 dark:ring-offset-zinc-950 scale-[1.03] z-10"
                                 : "bg-white dark:bg-zinc-900 border border-slate-200/60 dark:border-zinc-800/80 shadow-sm hover:shadow-md hover:border-slate-350 dark:hover:border-zinc-700 text-slate-800 dark:text-zinc-100"
                             } ${mealBorders[meal]}`}
                           >
@@ -230,7 +234,7 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab }: Cal
                                 )}
                               </div>
                               <h3 className={`font-bold text-[11px] md:text-xs group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors leading-snug line-clamp-2 ${
-                                isFocused ? "text-emerald-950 dark:text-emerald-100 font-black" : "text-slate-700 dark:text-slate-200"
+                                  isFocused ? "text-emerald-950 dark:text-emerald-100 font-black" : "text-slate-700 dark:text-slate-200"
                               }`} title={recipe.recipeName}>
                                 {recipe.recipeName}
                               </h3>
@@ -277,6 +281,126 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab }: Cal
                 );
               })}
 
+            </div>
+          </div>
+
+          {/* Main Mobile Day Tabs View - Shown on mobile, hidden on desktop/print */}
+          <div className="md:hidden print:hidden space-y-5">
+            {/* Horizontal Scrolling Day Selector */}
+            <div className="flex gap-2 overflow-x-auto pb-2 select-none justify-between border-b border-gray-150 dark:border-zinc-800/60 pr-1">
+              {daysKeys.map((day) => {
+                const label = datesMap[day];
+                const isSelected = activeMobileDay === day;
+                const isToday = label.isToday;
+
+                return (
+                  <button
+                    key={day}
+                    type="button"
+                    onClick={() => setActiveMobileDay(day)}
+                    className={`flex flex-col items-center justify-center flex-1 min-w-[42px] py-2.5 rounded-xl border transition-all duration-150 cursor-pointer ${
+                      isSelected
+                        ? "bg-[#0f5238] border-[#0f5238] text-white shadow-sm font-bold scale-[1.02]"
+                        : isToday
+                          ? "bg-emerald-50/70 dark:bg-emerald-950/20 border-emerald-350 dark:border-emerald-900 text-emerald-800 dark:text-emerald-300 font-bold"
+                          : "bg-white dark:bg-zinc-900 border-slate-100 dark:border-zinc-800/80 text-slate-500 dark:text-zinc-400"
+                    }`}
+                  >
+                    <span className="text-[8px] font-black uppercase tracking-wider">
+                      {label.short.slice(0, 2)}
+                    </span>
+                    <span className="text-sm font-black mt-0.5">
+                      {label.num}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Selected Day Meals Vertical Stack */}
+            <div className="space-y-3.5">
+              {mealsKeys.map((meal) => {
+                const recipe = plan.days[activeMobileDay]?.[meal];
+                
+                const mealBorders: Record<MealType, string> = {
+                  desayuno: "border-l-4 border-l-amber-450 dark:border-l-amber-500",
+                  almuerzo: "border-l-4 border-l-emerald-450 dark:border-l-emerald-500",
+                  merienda: "border-l-4 border-l-blue-450 dark:border-l-blue-500",
+                  cena: "border-l-4 border-l-indigo-450 dark:border-l-indigo-500",
+                };
+
+                const mealLabelColors: Record<MealType, string> = {
+                  desayuno: "text-amber-600 dark:text-amber-450",
+                  almuerzo: "text-emerald-600 dark:text-emerald-450",
+                  merienda: "text-blue-600 dark:text-blue-450",
+                  cena: "text-indigo-600 dark:text-indigo-450",
+                };
+
+                const isFocused = activeMobileDay === nextMeal.day && meal === nextMeal.meal;
+
+                if (recipe) {
+                  return (
+                    <div
+                      key={meal}
+                      onClick={() => onSelectRecipe(activeMobileDay, meal, recipe)}
+                      className={`group p-4 rounded-2xl transition-all duration-200 cursor-pointer flex items-center justify-between gap-4 border text-left ${
+                        isFocused
+                          ? "bg-emerald-50/90 dark:bg-emerald-950/40 border-emerald-500 shadow-md ring-2 ring-emerald-250 dark:ring-emerald-900/40"
+                          : "bg-white dark:bg-zinc-900 border-slate-200/80 dark:border-zinc-800/80 hover:border-slate-350 dark:hover:border-zinc-700"
+                      } ${mealBorders[meal]}`}
+                    >
+                      <div className="flex-grow min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={`text-[10px] font-black uppercase tracking-wider ${
+                            isFocused ? "text-emerald-800 dark:text-emerald-300" : mealLabelColors[meal]
+                          }`}>
+                            {mealLabels[meal]}
+                          </span>
+                          {isFocused && (
+                            <span className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-extrabold text-[8px] px-2 py-0.5 rounded-full select-none animate-pulse shadow-sm">
+                              PRÓXIMA
+                            </span>
+                          )}
+                        </div>
+                        <h3 className={`font-bold text-sm leading-snug line-clamp-2 ${
+                          isFocused ? "text-emerald-950 dark:text-emerald-100 font-black" : "text-slate-700 dark:text-zinc-200"
+                        }`}>
+                          {recipe.recipeName}
+                        </h3>
+                        <div className="flex items-center gap-2 mt-2 select-none">
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                            isFocused ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-350" : "bg-slate-50 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400"
+                          }`}>
+                            {recipe.calories} kcal
+                          </span>
+                        </div>
+                      </div>
+                      <span className="material-symbols-outlined text-slate-450 dark:text-zinc-500 group-hover:text-emerald-600 transition shrink-0 select-none">
+                        arrow_forward
+                      </span>
+                    </div>
+                  );
+                } else {
+                  return (
+                    <div
+                      key={meal}
+                      className="bg-slate-50/40 dark:bg-zinc-950/20 border border-dashed border-slate-200 dark:border-zinc-800/60 rounded-2xl p-4 flex items-center justify-between gap-4 text-left"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="material-symbols-outlined text-slate-350 dark:text-zinc-650 select-none">
+                          add_circle
+                        </span>
+                        <div className="text-left">
+                          <span className={`text-[10px] font-black uppercase tracking-wider block ${mealLabelColors[meal]}`}>
+                            {mealLabels[meal]}
+                          </span>
+                          <span className="text-xs text-slate-400 dark:text-zinc-500 font-bold">Sin Pautar</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+              })}
             </div>
           </div>
 

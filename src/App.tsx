@@ -287,14 +287,12 @@ export default function App() {
           </div>
 
         </div>
-      </header>
-
-      {/* 2. Main Content Frame */}
-      <main className="flex-grow w-full max-w-container-max mx-auto px-6 py-8 md:py-12">
+      </header>      {/* 2. Main Content Frame */}
+      <main className="flex-grow w-full max-w-container-max mx-auto px-6 pt-6 pb-24 md:py-12">
         {isLoading ? (
           <div className="py-24 text-center">
             <div className="w-12 h-12 rounded-full border-4 border-emerald-100 dark:border-zinc-850 border-t-emerald-600 dark:border-t-emerald-450 animate-spin mx-auto mb-4"></div>
-            <p className="text-sm font-semibold text-gray-500 dark:text-zinc-400">Descargando base de pautas compartidas...</p>
+            <p className="text-sm font-semibold text-gray-550 dark:text-zinc-400">Descargando base de pautas compartidas...</p>
           </div>
         ) : errorMsg ? (
           <div className="bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-950/40 rounded-3xl p-8 text-center max-w-md mx-auto">
@@ -350,10 +348,10 @@ export default function App() {
 
       {/* 3. Footer */}
       <footer className="w-full mt-auto bg-white dark:bg-zinc-900 border-t border-gray-100 dark:border-zinc-800 select-none no-print transition-colors">
-        <div className="flex flex-col md:flex-row justify-between items-center w-full px-6 py-8 max-w-container-max mx-auto gap-6">
+        <div className="flex flex-col md:flex-row justify-between items-center w-full px-6 pt-8 pb-24 md:py-8 max-w-container-max mx-auto gap-6">
           <div className="flex flex-col items-center md:items-start gap-1">
             <span className="font-extrabold text-emerald-600 text-lg">VitalityNutri</span>
-            <p className="text-xs text-gray-400 dark:text-zinc-500">© 2026 VitalityNutri. Alimentación consciente, viva y pautada.</p>
+            <p className="text-xs text-gray-450 dark:text-zinc-550">© 2026 VitalityNutri. Alimentación consciente, viva y pautada.</p>
           </div>
           <div className="flex flex-wrap justify-center gap-6 text-xs font-semibold text-gray-500 dark:text-zinc-400">
             <button type="button" onClick={() => alert("Políticas de Privacidad:")} className="hover:text-emerald-800 dark:hover:text-emerald-400 transition duration-150 cursor-pointer">Política de Privacidad</button>
@@ -363,6 +361,83 @@ export default function App() {
           </div>
         </div>
       </footer>
+
+      {/* 4. Mobile Bottom Navigation Bar */}
+      <nav className="fixed bottom-0 left-0 right-0 h-16 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border-t border-gray-100 dark:border-zinc-800/80 flex justify-around items-center z-50 md:hidden pb-safe shadow-lg no-print transition-colors">
+        <button
+          type="button"
+          onClick={() => handleSetActiveTab("dashboard")}
+          className={`flex flex-col items-center justify-center flex-1 h-full transition-colors cursor-pointer ${
+            activeTab === "dashboard"
+              ? "text-emerald-600 dark:text-emerald-400 font-extrabold"
+              : "text-slate-400 hover:text-emerald-600 dark:text-zinc-500 dark:hover:text-emerald-400"
+          }`}
+        >
+          <span className="material-symbols-outlined text-[22px]">explore</span>
+          <span className="text-[10px] tracking-tight mt-0.5 font-bold">Dashboard</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => handleSetActiveTab("calendar")}
+          className={`flex flex-col items-center justify-center flex-1 h-full transition-colors cursor-pointer ${
+            activeTab === "calendar"
+              ? "text-emerald-600 dark:text-emerald-400 font-extrabold"
+              : "text-slate-400 hover:text-emerald-600 dark:text-zinc-500 dark:hover:text-emerald-400"
+          }`}
+        >
+          <span className="material-symbols-outlined text-[22px]">calendar_month</span>
+          <span className="text-[10px] tracking-tight mt-0.5 font-bold">Calendario</span>
+        </button>
+        <button
+          type="button"
+          disabled={!plan}
+          onClick={() => {
+            if (plan) {
+              if (selectedRecipeDetail) {
+                handleSetActiveTab(`recipe/${selectedRecipeDetail.day}/${selectedRecipeDetail.meal}`);
+              } else {
+                const weekdays = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"];
+                const meals = ["desayuno", "almuerzo", "merienda", "cena"];
+                let found = false;
+                for (const d of weekdays) {
+                  for (const m of meals) {
+                    const r = plan.days[d as DayType]?.[m as MealType];
+                    if (r) {
+                      handleSelectRecipe(d as DayType, m as MealType, r);
+                      found = true;
+                      break;
+                    }
+                  }
+                  if (found) break;
+                }
+                if (!found) {
+                  handleSetActiveTab("recipe/lunes/almuerzo");
+                }
+              }
+            }
+          }}
+          className={`flex flex-col items-center justify-center flex-1 h-full transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+            activeTab === "recipes" || activeTab === "recipe-detail"
+              ? "text-emerald-600 dark:text-emerald-400 font-extrabold"
+              : "text-slate-400 hover:text-emerald-600 dark:text-zinc-500 dark:hover:text-emerald-400"
+          }`}
+        >
+          <span className="material-symbols-outlined text-[22px]">restaurant_menu</span>
+          <span className="text-[10px] tracking-tight mt-0.5 font-bold">Recetas</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => handleSetActiveTab("grocery")}
+          className={`flex flex-col items-center justify-center flex-1 h-full transition-colors cursor-pointer ${
+            activeTab === "grocery"
+              ? "text-emerald-600 dark:text-emerald-400 font-extrabold"
+              : "text-slate-400 hover:text-emerald-600 dark:text-zinc-500 dark:hover:text-emerald-400"
+          }`}
+        >
+          <span className="material-symbols-outlined text-[22px]">shopping_basket</span>
+          <span className="text-[10px] tracking-tight mt-0.5 font-bold">Lista Compra</span>
+        </button>
+      </nav>
 
     </div>
   );

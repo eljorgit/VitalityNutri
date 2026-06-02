@@ -50,37 +50,156 @@ Para acelerar el tiempo de procesamiento y no exceder los límites de tiempo de 
 2. **Nombres de recetas (\`recipeName\`):** Máximo 2-3 palabras simples y descriptivas.
 3. **Nombres de ingredientes (\`name\`):** Nombre directo y ultra-corto de 1-2 palabras (ej: "Zanahoria" en vez de "Zanahoria fresca mediana", "Huevo" en vez de "Huevo cocido o duro").
 4. **Pasos de preparación (\`steps\`):**
-   - Concéntrate en la brevedad absoluta. Máximo 2 pasos por plato/receta.
-   - Cada paso debe tener como máximo 5-7 palabras (ej: "Hervir patata." o "Cocinar pollo plancha.").
+   - Sigue estrictamente las reglas de pasos detallados (mínimo de 3-4 pasos específicos para platos sencillos y entre 5 y 8 pasos secuenciales detallados para recetas elaboradas).
+   - No resumas los pasos ni uses una brevedad extrema que omita los tiempos o instrucciones críticas.
 5. **Consejos (\`tips\`):** Máximo 5 palabras simples (ej: "Usar aceite crudo.").
-6. Evita palabras innecesarias, descripciones o conectores largos.
+6. Evita palabras innecesarias, descripciones o conectores largos en los otros campos.
 `;
 }
 
 /**
  * Helper to fill default values (images, calories, time, tags, tips) for recipes if missing.
  */
+/**
+ * Helper to get a verified Unsplash food image URL based on recipe name keywords.
+ */
+function getVerifiedImageForRecipe(recipeName: string, mealType: string): string {
+  const nameLower = recipeName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+  const mapping = [
+    {
+      keywords: ["avena", "porridge", "gachas", "oatmeal", "muesli", "granola"],
+      url: "https://images.unsplash.com/photo-1517881917430-e70dfb3610aa?q=80&w=1000&auto=format&fit=crop"
+    },
+    {
+      keywords: ["ensalada", "salad", "cesar", "césar"],
+      url: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?q=80&w=1000&auto=format&fit=crop"
+    },
+    {
+      keywords: ["salmon"],
+      url: "https://images.unsplash.com/photo-1467003909585-2f8a72700288?q=80&w=1000&auto=format&fit=crop"
+    },
+    {
+      keywords: ["pescado", "merluza", "bacalao", "lenguado", "lubina", "atun", "bonito", "emperador", "dorada", "trucha", "marisco", "pulpo", "gambas", "langostinos"],
+      url: "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?q=80&w=1000&auto=format&fit=crop"
+    },
+    {
+      keywords: ["pollo", "pavo", "pechuga", "alitas", "muslo", "ave"],
+      url: "https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?q=80&w=1000&auto=format&fit=crop"
+    },
+    {
+      keywords: ["carne", "ternera", "cerdo", "bistec", "filete", "lomo", "entrecot", "solomillo", "hamburguesa", "albondigas"],
+      url: "https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=1000&auto=format&fit=crop"
+    },
+    {
+      keywords: ["aguacate", "avocado", "guacamole"],
+      url: "https://images.unsplash.com/photo-1541532713592-79a0317b6b77?q=80&w=1000&auto=format&fit=crop"
+    },
+    {
+      keywords: ["tostada", "pan", "sandwich", "bocadillo", "tosta"],
+      url: "https://images.unsplash.com/photo-1509440159596-0249088772ff?q=80&w=1000&auto=format&fit=crop"
+    },
+    {
+      keywords: ["huevo", "huevos", "tortilla", "revuelto", "poche", "pocha", "escalfado", "frito", "fritos"],
+      url: "https://images.unsplash.com/photo-1525351484163-7529414344d8?q=80&w=1000&auto=format&fit=crop"
+    },
+    {
+      keywords: ["pasta", "espagueti", "espaguetis", "macarrones", "tallarines", "lasana", "lasagna", "ravioles", "noodles"],
+      url: "https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?q=80&w=1000&auto=format&fit=crop"
+    },
+    {
+      keywords: ["arroz", "paella", "risotto"],
+      url: "https://images.unsplash.com/photo-1534080564583-6be75777b70a?q=80&w=1000&auto=format&fit=crop"
+    },
+    {
+      keywords: ["lentejas", "garbanzos", "alubias", "judias", "legumbres", "habas"],
+      url: "https://images.unsplash.com/photo-1547592180-85f173990554?q=80&w=1000&auto=format&fit=crop"
+    },
+    {
+      keywords: ["sopa", "crema", "caldo", "gazpacho", "salmorejo", "pure"],
+      url: "https://images.unsplash.com/photo-1547592165-e1d17fed6005?q=80&w=1000&auto=format&fit=crop"
+    },
+    {
+      keywords: ["yogur", "yogurt", "kefir", "cuajada"],
+      url: "https://images.unsplash.com/photo-1488477181946-6428a0291777?q=80&w=1000&auto=format&fit=crop"
+    },
+    {
+      keywords: ["batido", "smoothie", "licuado", "shake"],
+      url: "https://images.unsplash.com/photo-1553530666-ba11a7da3888?q=80&w=1000&auto=format&fit=crop"
+    },
+    {
+      keywords: ["fruta", "fresas", "fresa", "platano", "manzana", "pera", "naranja", "kiwi", "uvas", "melocoton", "bayas", "arandanos", "frutas"],
+      url: "https://images.unsplash.com/photo-1619546813926-a78fa6372cd2?q=80&w=1000&auto=format&fit=crop"
+    },
+    {
+      keywords: ["frutos secos", "nueces", "almendras", "avellanas", "cacahuetes", "pistachos", "semillas", "chia", "pipas"],
+      url: "https://images.unsplash.com/photo-1596701062351-df5f8a42f3c5?q=80&w=1000&auto=format&fit=crop"
+    },
+    {
+      keywords: ["hummus", "dip", "pate"],
+      url: "https://images.unsplash.com/photo-1541518763669-27fef04b14ea?q=80&w=1000&auto=format&fit=crop"
+    },
+    {
+      keywords: ["pizza", "focaccia"],
+      url: "https://images.unsplash.com/photo-1513104890138-7c749659a591?q=80&w=1000&auto=format&fit=crop"
+    },
+    {
+      keywords: ["wrap", "taco", "tacos", "burrito", "fajita", "fajitas", "quesadilla"],
+      url: "https://images.unsplash.com/photo-1626700051175-6518c4793f73?q=80&w=1000&auto=format&fit=crop"
+    },
+    {
+      keywords: ["cafe", "te", "infusion", "manzanilla", "poleo"],
+      url: "https://images.unsplash.com/photo-1541167760496-1628856ab772?q=80&w=1000&auto=format&fit=crop"
+    },
+    {
+      keywords: ["tortitas", "pancakes", "crepes", "gofres", "waffles"],
+      url: "https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?q=80&w=1000&auto=format&fit=crop"
+    },
+    {
+      keywords: ["queso", "cottage", "requeson", "burgos", "mozzarella", "feta"],
+      url: "https://images.unsplash.com/photo-1486887396153-fa416525c108?q=80&w=1000&auto=format&fit=crop"
+    },
+    {
+      keywords: ["verduras", "verdura", "vegetales", "espinacas", "espinaca", "brocoli", "calabacin", "berenjena", "pimiento", "zanahoria", "champinones", "champinon", "setas", "puerro", "apio", "esparragos"],
+      url: "https://images.unsplash.com/photo-1490645935967-10de6ba17061?q=80&w=1000&auto=format&fit=crop"
+    }
+  ];
+
+  for (const entry of mapping) {
+    if (entry.keywords.some(kw => nameLower.includes(kw))) {
+      return entry.url;
+    }
+  }
+
+  // Fallbacks based on meal type if no keyword matches
+  switch (mealType.toLowerCase()) {
+    case "desayuno":
+      return "https://images.unsplash.com/photo-1496042399014-dc73c4f2bde1?q=80&w=1000&auto=format&fit=crop";
+    case "almuerzo":
+      return "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=1000&auto=format&fit=crop";
+    case "merienda":
+      return "https://images.unsplash.com/photo-1488477181946-6428a0291777?q=80&w=1000&auto=format&fit=crop";
+    case "cena":
+      return "https://images.unsplash.com/photo-1498837167922-ddd27525d352?q=80&w=1000&auto=format&fit=crop";
+    default:
+      return "https://images.unsplash.com/photo-1490645935967-10de6ba17061?q=80&w=1000&auto=format&fit=crop";
+  }
+}
+
+/**
+ * Helper to fill default values (images, calories, time, tags, tips) for recipes.
+ */
 function fillDefaultRecipeValues(mealPlan: MealPlan): void {
   const daysKeys = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"] as const;
   const mealsKeys = ["desayuno", "almuerzo", "merienda", "cena"] as const;
 
-  const defaultImages = [
-    "https://images.unsplash.com/photo-1498837167922-ddd27525d352?q=80&w=1000&auto=format&fit=crop",
-    "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=1000&auto=format&fit=crop",
-    "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?q=80&w=1000&auto=format&fit=crop",
-    "https://images.unsplash.com/photo-1490645935967-10de6ba17061?q=80&w=1000&auto=format&fit=crop",
-    "https://images.unsplash.com/photo-1484723091739-30a097e8f929?q=80&w=1000&auto=format&fit=crop"
-  ];
-
-  let imageIdx = 0;
   for (const d of daysKeys) {
     for (const m of mealsKeys) {
       const recipe = mealPlan.days[d][m];
       if (recipe) {
-        if (!recipe.image) {
-          recipe.image = defaultImages[imageIdx % defaultImages.length];
-          imageIdx++;
-        }
+        // Always overwrite or fill the image based on our verified Unsplash mapping
+        recipe.image = getVerifiedImageForRecipe(recipe.recipeName, m);
+
         if (!recipe.calories) recipe.calories = 380;
         if (!recipe.time) recipe.time = "20 min";
         if (!recipe.tag) recipe.tag = "Nutritivo";

@@ -21,7 +21,7 @@ Debes separar los ingredientes y los pasos de preparación según el tipo de pla
 2. **Desayunos y Meriendas (Sin Tipo):** Al no tener una división por platos o cursos, está prohibido usar las claves de platos. En su lugar, introduce todos los ingredientes y pasos directamente dentro de la clave `general`.
 3. **Platos Únicos:** Si un Almuerzo o Cena consta de un solo plato principal unificado sin postre ni divisiones, utiliza también la clave `general`.
 4. **Título de la Receta (recipeName):** El título de la comida (`recipeName`) puede combinar el primer y segundo plato (ej: 'Crema de verduras y Pollo al horno'), pero **nunca** debe incluir el postre en el título (ej: no uses 'Pollo al horno y manzana' si la manzana es el postre).
-5. **Imágenes de la Receta (image):** Busca y proporciona una URL de imagen real y de alta calidad de Unsplash en el campo `image` que concuerde con la receta o su título (ej: una foto de salmón, ensalada, avena, etc., utilizando identificadores conocidos de fotos de comida de Unsplash como `https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=1000&auto=format&fit=crop`).
+5. **Imágenes de la Receta (image):** Escribe una cadena de texto vacía `""` en el campo `image`. El backend se encargará de asignar automáticamente la URL de la imagen real y verificada de alta calidad según el nombre de la receta.
 
 ---
 
@@ -41,6 +41,18 @@ Para evitar ingredientes repetidos con ligeras variaciones y asegurar una lista 
    - `"despensa y condimentos"` (ej: aceite de oliva virgen extra, sal, pimienta, orégano, miel, etc.)
    - `"otros"` (usar solo como último recurso para ingredientes que no encajen en absoluto en las anteriores). Omitir "otros ingredientes" tanto como sea posible.
 6. **Campo `preparation` Opcional:** Si el ingrediente requiere una preparación previa (ej: hervido, en tacos, en rodajas, picado, rallado, etc.), especifícalo en minúsculas en el campo `preparation`. Si no requiere preparación previa, omite esta clave o ponla como `undefined`.
+
+---
+
+# REGLAS ESTRICTAS PARA LOS PASOS DE PREPARACIÓN (STEPS)
+Para asegurar que las recetas sean fáciles de seguir y tengan calidad culinaria profesional, los pasos de preparación en el JSON (`steps`) deben seguir estrictamente estas pautas:
+1. **Detalle Exhaustivo y Desglosado:** Está prohibido resumir la preparación en 3 o 4 pasos genéricos o escuetos. Cada fase de la preparación debe explicarse detalladamente.
+2. **Estructura Paso a Paso:** Cada paso debe describir una única acción principal de manera clara, indicando tiempos de cocción, temperaturas aproximadas (fuego medio, alto, etc.), utensilios a usar y cambios de estado visuales del alimento (ej. "hasta que esté dorado", "hasta que reduzca a la mitad").
+3. **Cantidad de Pasos:** 
+   - Para **recetas elaboradas** (ej: guisos, pescados/carnes al horno, platos de legumbres/quinoa), se deben generar obligatoriamente **entre 5 y 8 pasos detallados** que cubran desde el precalentamiento, lavado y corte preliminar, hasta el emplatado final.
+   - Para **platos simples o ensamblados** (ej: ensaladas sencillas, tostadas, batidos, yogur con frutas), desglosa el proceso de forma clara en **al menos 3 o 4 pasos específicos** (ej. 1. Lavar y secar los ingredientes; 2. Cortar/rebanar adecuadamente; 3. Ensamblar y aliñar de forma homogénea; 4. Decorar y servir).
+4. **Claridad y Coherencia:** Redacta en lenguaje claro, profesional y utilizando un tiempo verbal consistente (preferiblemente infinitivo, ej. "Lavar...", "Picar...", "Cocinar...").
+5. **Independencia Cronológica:** No agrupes múltiples acciones complejas en un único párrafo largo. Si se requieren varias tareas secuenciales, divídelas en pasos numerados distintos dentro del array de strings.
 
 ---
 
@@ -85,7 +97,7 @@ interface Recipe {
   calories: number;       // Número entero estimado extraído de la tabla por porción
   time: string;           // Tiempo de preparación extraído o estimado (ej: "15 min", "1 hora")
   tag: string;            // Etiqueta nutricional corta (ej: "Alto en Proteína", "Bajo en Grasas")
-  image: string;          // URL de imagen real de Unsplash específica que represente el plato principal o sus ingredientes principales (ej: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=1000&auto=format&fit=crop")
+  image: string;          // Cadena de texto vacía (ej: "") que será rellenada automáticamente por el backend.
   ingredients: CategorizedIngredients; // Objeto con ingredientes separados por tipo
   steps: CategorizedSteps;             // Objeto con pasos separados por tipo
   tips: string;           // Una recomendación técnica del chef o nutricionista

@@ -915,10 +915,10 @@ export default function GroceryList({ plan }: GroceryListProps) {
                       return (
                         <div
                           key={dayKey}
-                          className="grid grid-cols-4 sm:grid-cols-[165px_1fr_1fr_1fr_1fr] gap-3 items-center p-3.5 bg-slate-50/50 dark:bg-zinc-950/20 rounded-2xl border border-slate-100 dark:border-zinc-800/40"
+                          className="grid grid-cols-2 sm:grid-cols-[165px_1fr_1fr_1fr_1fr] gap-3 items-center p-3.5 bg-slate-50/50 dark:bg-zinc-950/20 rounded-2xl border border-slate-100 dark:border-zinc-800/40"
                         >
                           {/* Celda del Día + Multiplicador del Día */}
-                          <div className="col-span-4 sm:col-span-1 flex flex-row sm:flex-col justify-between items-center sm:items-start gap-1.5 p-1">
+                          <div className="col-span-2 sm:col-span-1 flex flex-row sm:flex-col justify-between items-center sm:items-start gap-1.5 p-1">
                             <span className="text-xs font-black text-slate-800 dark:text-zinc-200">{dayLabel}</span>
                             <div className="flex flex-col gap-1 text-[10px] font-bold text-slate-500 dark:text-zinc-400">
                               <span className="mb-0.5">Mult. Día:</span>
