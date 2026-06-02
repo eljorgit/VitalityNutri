@@ -358,11 +358,15 @@ export default function Dashboard({
     <div className="space-y-8">
       {/* Hero Header Card */}
       <section className="relative overflow-hidden rounded-3xl bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/40 p-8 md:p-12 shadow-sm animate-fade-in">
-        {/* Decorative Absolutes */}
-        <div className="absolute top-0 right-0 w-1/4 h-full opacity-10 pointer-events-none hidden md:block">
-          <span className="material-symbols-outlined text-[160px] text-emerald-800 dark:text-emerald-500" style={{ fontVariationSettings: "'FILL' 0" }}>
-            nutrition
-          </span>
+        {/* Background Image with Overlay */}
+        <div className="absolute inset-0 z-0 pointer-events-none select-none">
+          <img 
+            src="/hero_background.png" 
+            alt="Fondo nutricional" 
+            className="w-full h-full object-cover object-right opacity-30 dark:opacity-20 transition-all duration-300" 
+          />
+          {/* Subtle gradient to ensure left-aligned text is 100% readable and contrast is perfect */}
+          <div className="absolute inset-0 bg-gradient-to-r from-emerald-50/90 via-emerald-50/40 to-transparent dark:from-emerald-950/90 dark:via-emerald-950/40 dark:to-transparent" />
         </div>
 
         <div className="relative z-10 max-w-3xl">
@@ -571,13 +575,13 @@ export default function Dashboard({
           </div>
 
           {/* Right column sidebar */}
-          <div className="lg:col-span-4 flex flex-col gap-6">
-            <div className="bg-[#0f5238] text-white p-6 rounded-2xl shadow-sm h-full flex flex-col justify-between">
+          <div className="lg:col-span-4 flex flex-col gap-6 relative z-10">
+            <div className="bg-[#0f5238] dark:bg-[#073322] text-white p-6 rounded-2xl shadow-md h-full flex flex-col justify-between border border-emerald-800 dark:border-emerald-900/40">
               <div>
-                <h3 className="text-lg font-bold mb-3 flex items-center gap-2">
+                <h3 className="text-lg font-extrabold mb-3 flex items-center gap-2 text-white">
                   <span className="material-symbols-outlined text-emerald-300">query_stats</span> Análisis Automático
                 </h3>
-                <p className="text-sm text-emerald-100/90 leading-relaxed mb-6">
+                <p className="text-sm text-emerald-100 leading-relaxed mb-6 font-medium">
                   Nuestra tecnología de inteligencia artificial estructura los planes más complejos en cuestion de segundos de forma comprensible:
                 </p>
                 <ul className="space-y-3.5 text-sm">
@@ -585,32 +589,32 @@ export default function Dashboard({
                     <span className="material-symbols-outlined text-emerald-300 text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>
                       check_circle
                     </span>
-                    <span className="font-medium">Extracción de macronutrientes</span>
+                    <span className="font-semibold text-white">Extracción de macronutrientes</span>
                   </li>
                   <li className="flex items-center gap-2.5">
                     <span className="material-symbols-outlined text-emerald-300 text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>
                       check_circle
                     </span>
-                    <span className="font-medium">Pesos e ingredientes precisos</span>
+                    <span className="font-semibold text-white">Pesos e ingredientes precisos</span>
                   </li>
                   <li className="flex items-center gap-2.5">
                     <span className="material-symbols-outlined text-emerald-300 text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>
                       check_circle
                     </span>
-                    <span className="font-medium">Lista automática de la compra</span>
+                    <span className="font-semibold text-white">Lista automática de la compra</span>
                   </li>
                 </ul>
               </div>
 
-              <div className="mt-6 pt-6 border-t border-emerald-700/50 flex items-center justify-between">
-                <span className="text-xs text-emerald-200">Impulsado por Gemini 3.5</span>
-                <span className="text-xs font-bold bg-emerald-800 text-emerald-100 px-2.5 py-1 rounded-md">VITALITY AI</span>
+              <div className="mt-6 pt-6 border-t border-emerald-800/60 dark:border-emerald-900/50 flex items-center justify-between">
+                <span className="text-xs text-emerald-250">Impulsado por Gemini 3.5</span>
+                <span className="text-xs font-bold bg-emerald-900/80 dark:bg-emerald-900/60 text-emerald-100 px-2.5 py-1 rounded-md">VITALITY AI</span>
               </div>
             </div>
 
             {/* Active Plan / Reset widget */}
             {metadata && (
-              <div className="bg-white dark:bg-zinc-900 rounded-2xl p-5 border border-gray-150 dark:border-zinc-800/80 shadow-sm relative flex flex-col gap-3">
+              <div className="bg-white dark:bg-zinc-900 rounded-2xl p-5 border border-gray-200 dark:border-zinc-800/80 shadow-sm relative flex flex-col gap-3">
                 <div className="flex items-center justify-between text-xs tracking-wider text-gray-400 dark:text-zinc-500 font-bold uppercase">
                   <span>Plan de Alimentación Activo</span>
                   <span className="text-[#0f5238] dark:text-emerald-450 flex items-center gap-0.5 font-bold">
@@ -669,7 +673,7 @@ export default function Dashboard({
 
             {/* Inactive Plan / History access widget */}
             {!metadata && (
-              <div className="bg-white dark:bg-zinc-900 rounded-2xl p-5 border border-gray-150 dark:border-zinc-800/80 shadow-sm flex flex-col gap-3">
+              <div className="bg-white dark:bg-zinc-900 rounded-2xl p-5 border border-gray-200 dark:border-zinc-800/80 shadow-sm flex flex-col gap-3">
                 <div className="flex items-center justify-between text-xs tracking-wider text-gray-400 dark:text-zinc-500 font-bold uppercase">
                   <span>Planes Anteriores</span>
                 </div>

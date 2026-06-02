@@ -1,6 +1,33 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { MealPlan, Ingredient, DayType, MealType } from "../types";
 
+const formatAmountAndUnit = (amount: number, unit: string) => {
+  let normalizedUnit = unit.trim().toLowerCase();
+  let val = amount;
+  
+  if (normalizedUnit === "mg" || normalizedUnit === "mgs" || normalizedUnit === "miligramo" || normalizedUnit === "miligramos") {
+    val = val / 1000;
+    normalizedUnit = "g";
+  }
+  
+  if ((normalizedUnit === "g" || normalizedUnit === "gr" || normalizedUnit === "grs" || normalizedUnit === "gramo" || normalizedUnit === "gramos") && val >= 1000) {
+    val = val / 1000;
+    normalizedUnit = "kg";
+  }
+  
+  let displayUnit = unit;
+  if (normalizedUnit === "g") {
+    displayUnit = "g";
+  } else if (normalizedUnit === "kg") {
+    displayUnit = "kg";
+  }
+  
+  return {
+    amount: Math.round(val * 100) / 100,
+    unit: displayUnit
+  };
+};
+
 interface GroceryListProps {
   plan: MealPlan | null;
 }
@@ -307,9 +334,12 @@ export default function GroceryList({ plan }: GroceryListProps) {
 
           let amountText = "";
           if (item.secondaryTotal && item.secondaryUnit) {
-            amountText = `${Math.round(item.secondaryTotal * 100) / 100} ${item.secondaryUnit} (${Math.round(item.total * 100) / 100} ${item.unit})`;
+            const sec = formatAmountAndUnit(item.secondaryTotal, item.secondaryUnit);
+            const pri = formatAmountAndUnit(item.total, item.unit);
+            amountText = `${sec.amount} ${sec.unit} (${pri.amount} ${pri.unit})`;
           } else {
-            amountText = `${Math.round(item.total * 100) / 100} ${item.unit}`;
+            const pri = formatAmountAndUnit(item.total, item.unit);
+            amountText = `${pri.amount} ${pri.unit}`;
           }
 
           text += `${prefix}${item.name} (${amountText})\n`;
@@ -324,9 +354,12 @@ export default function GroceryList({ plan }: GroceryListProps) {
 
         let amountText = "";
         if (item.secondaryTotal && item.secondaryUnit) {
-          amountText = `${Math.round(item.secondaryTotal * 100) / 100} ${item.secondaryUnit} (${Math.round(item.total * 100) / 100} ${item.unit})`;
+          const sec = formatAmountAndUnit(item.secondaryTotal, item.secondaryUnit);
+          const pri = formatAmountAndUnit(item.total, item.unit);
+          amountText = `${sec.amount} ${sec.unit} (${pri.amount} ${pri.unit})`;
         } else {
-          amountText = `${Math.round(item.total * 100) / 100} ${item.unit}`;
+          const pri = formatAmountAndUnit(item.total, item.unit);
+          amountText = `${pri.amount} ${pri.unit}`;
         }
 
         text += `${prefix}${item.name} (${amountText})\n`;
@@ -663,7 +696,7 @@ export default function GroceryList({ plan }: GroceryListProps) {
       case "Despensa y Condimentos":
         return "text-orange-650 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/30 border-orange-100 dark:border-orange-900/30";
       default:
-        return "text-gray-550 dark:text-slate-400 bg-gray-50 dark:bg-slate-900 border-gray-150 dark:border-slate-800";
+        return "text-gray-500 dark:text-zinc-400 bg-gray-50 dark:bg-zinc-900 border-gray-200 dark:border-zinc-800";
     }
   };
 
@@ -711,10 +744,10 @@ export default function GroceryList({ plan }: GroceryListProps) {
     <div className="space-y-6 text-left select-text">
 
       {/* Header with stats */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-gray-100 dark:border-slate-800 pb-4 no-print">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-gray-100 dark:border-zinc-800 pb-4 no-print">
         <div>
           <h1 className="text-3xl font-bold text-gray-950 dark:text-white tracking-tight">Lista del Supermercado Inteligente</h1>
-          <p className="text-sm text-gray-500 dark:text-slate-400">Consolida y planifica tus compras. Filtra la duración de tu suministro de alimentos.</p>
+          <p className="text-sm text-gray-500 dark:text-zinc-400">Consolida y planifica tus compras. Filtra la duración de tu suministro de alimentos.</p>
         </div>
 
         {totalGroceryItemsCount > 0 && (
@@ -727,12 +760,12 @@ export default function GroceryList({ plan }: GroceryListProps) {
       {plan && (
         <div className="space-y-3 no-print select-none">
           {/* Main selection tabs */}
-          <div className="flex flex-wrap gap-2 items-center bg-slate-100 dark:bg-zinc-800 p-1.5 rounded-2xl w-max border border-slate-250/50 dark:border-zinc-800/60 text-xs">
+          <div className="flex flex-wrap gap-2 items-center bg-slate-100 dark:bg-zinc-800 p-1.5 rounded-2xl w-max border border-slate-200/50 dark:border-zinc-800/60 text-xs">
             {(["semanal", "3dias", "diario"] as const).map((type) => {
               const labels = {
-                semanal: "Lista Semanal (L-D)",
-                "3dias": "Plan de 3 días",
-                diario: "Pauta Diaria"
+                semanal: "Semanal",
+                "3dias": "3 Días",
+                diario: "Diario"
               };
               const active = listType === type;
               return (
@@ -742,7 +775,7 @@ export default function GroceryList({ plan }: GroceryListProps) {
                   onClick={() => setListType(type)}
                   className={`px-4 py-2 text-xs font-black rounded-xl transition duration-200 cursor-pointer ${active
                     ? "bg-white dark:bg-zinc-900 text-emerald-800 dark:text-emerald-300 shadow-sm border border-slate-100 dark:border-zinc-700/60"
-                    : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-zinc-200"
+                    : "text-slate-500 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-zinc-200"
                     }`}
                 >
                   {labels[type]}
@@ -771,7 +804,7 @@ export default function GroceryList({ plan }: GroceryListProps) {
                       onClick={() => setSelected3DaysStart(startDay)}
                       className={`px-3 py-2 rounded-lg text-xs font-bold transition cursor-pointer flex flex-col items-center ${isSelected
                         ? "bg-emerald-600 text-white font-extrabold shadow-sm"
-                        : "bg-white dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-750 border border-slate-100 dark:border-zinc-800"
+                        : "bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 border border-zinc-200/80 dark:border-zinc-800"
                         }`}
                     >
                       <span className="uppercase text-[9px] tracking-wide opacity-80">Empieza {day1}</span>
@@ -785,8 +818,8 @@ export default function GroceryList({ plan }: GroceryListProps) {
 
           {/* Sub-selector for single daily selection */}
           {listType === "diario" && (
-            <div className="flex flex-col gap-1.5 p-3.5 bg-slate-50 dark:bg-zinc-900/60 rounded-2xl border border-slate-200/60 dark:border-zinc-800/80 w-full md:w-max animate-fade-in text-xs">
-              <span className="font-extrabold text-slate-500 dark:text-zinc-400">Seleccionar día de la pauta:</span>
+            <div className="flex flex-col gap-1.5 p-3.5 bg-zinc-50 dark:bg-zinc-900/60 rounded-2xl border border-zinc-200/60 dark:border-zinc-800/80 w-full md:w-max animate-fade-in text-xs">
+              <span className="font-extrabold text-zinc-500 dark:text-zinc-400">Seleccionar día de la pauta:</span>
               <div className="flex flex-wrap gap-1.5">
                 {["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"].map((dayName) => {
                   const label = getDayNameSpanish(dayName);
@@ -798,7 +831,7 @@ export default function GroceryList({ plan }: GroceryListProps) {
                       onClick={() => setSelectedSingleDay(dayName)}
                       className={`px-3.5 py-2 rounded-lg text-xs font-bold transition cursor-pointer ${isSelected
                         ? "bg-emerald-600 text-white font-extrabold shadow-sm"
-                        : "bg-white dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-750 border border-slate-100 dark:border-zinc-800"
+                        : "bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 border border-zinc-200/80 dark:border-zinc-800"
                         }`}
                     >
                       {label}
@@ -822,7 +855,7 @@ export default function GroceryList({ plan }: GroceryListProps) {
                   <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
                     Configuración de Comidas y Raciones
                   </h3>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  <p className="text-[11px] text-slate-500 dark:text-zinc-400">
                     {listType === "semanal"
                       ? "Excluye desayunos/meriendas o ajusta el multiplicador de cantidad global."
                       : "Selecciona qué comidas incluir y ajusta sus raciones con multiplicadores individuales."
@@ -846,14 +879,14 @@ export default function GroceryList({ plan }: GroceryListProps) {
                     <button
                       type="button"
                       onClick={() => handleToggleAllMealTypeShortcut("desayuno")}
-                      className="px-3 py-1.5 text-[11px] font-black rounded-lg border border-slate-100 dark:border-zinc-800/80 bg-slate-50 hover:bg-slate-100 dark:bg-zinc-800 dark:hover:bg-zinc-750 text-slate-700 dark:text-zinc-300 transition duration-150 cursor-pointer"
+                      className="px-3 py-1.5 text-[11px] font-black rounded-lg border border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 transition duration-150 cursor-pointer"
                     >
                       Activar/Desactivar Desayunos
                     </button>
                     <button
                       type="button"
                       onClick={() => handleToggleAllMealTypeShortcut("merienda")}
-                      className="px-3 py-1.5 text-[11px] font-black rounded-lg border border-slate-100 dark:border-zinc-800/80 bg-slate-50 hover:bg-slate-100 dark:bg-zinc-800 dark:hover:bg-zinc-750 text-slate-700 dark:text-zinc-300 transition duration-150 cursor-pointer"
+                      className="px-3 py-1.5 text-[11px] font-black rounded-lg border border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 transition duration-150 cursor-pointer"
                     >
                       Activar/Desactivar Meriendas
                     </button>
@@ -871,33 +904,48 @@ export default function GroceryList({ plan }: GroceryListProps) {
                 </div>
 
                 {/* Renglón de Multiplicador Global */}
-                <div className="flex items-center gap-3 bg-slate-50 dark:bg-zinc-950/40 p-3 rounded-2xl border border-slate-100 dark:border-zinc-800/40 w-max max-w-full">
-                  <span className="text-xs font-bold text-slate-500 dark:text-zinc-400">Multiplicador Global:</span>
+                <div className="flex items-center gap-3 bg-zinc-50 dark:bg-zinc-950/40 p-3 rounded-2xl border border-zinc-200/60 dark:border-zinc-800/40 w-max max-w-full">
+                  <span className="text-xs font-bold text-zinc-550 dark:text-zinc-400">Multiplicador Global:</span>
                   <div className="flex items-center gap-1.5">
                     <button
                       type="button"
                       onClick={() => {
-                        const newMult = Math.max(1.0, globalMultiplier - 0.5);
+                        const newMult = Math.max(0.5, Math.round((globalMultiplier - 0.5) * 10) / 10);
                         setGlobalMultiplier(newMult);
                         setDayMultipliers({});
                         setMealMultipliers({});
                       }}
-                      className="w-7 h-7 rounded-lg bg-white dark:bg-zinc-800 border border-slate-150 dark:border-zinc-700 flex items-center justify-center font-bold text-xs hover:bg-slate-50 cursor-pointer text-slate-700 dark:text-zinc-300"
+                      className="w-7 h-7 rounded-lg bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center font-bold text-xs hover:bg-zinc-50 cursor-pointer text-slate-700 dark:text-zinc-300 select-none"
                     >
                       -
                     </button>
-                    <span className="text-xs font-extrabold text-emerald-800 dark:text-emerald-450 w-10 text-center">
-                      x{globalMultiplier.toFixed(1)}
-                    </span>
+                    <div className="flex items-center gap-0.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded px-1.5 py-0.5 w-14">
+                      <span className="text-xs font-bold text-zinc-400 select-none">x</span>
+                      <input
+                        type="number"
+                        step="0.5"
+                        min="0.5"
+                        className="w-full text-xs font-extrabold text-emerald-800 dark:text-emerald-450 text-center bg-transparent focus:outline-none focus:ring-0 border-none p-0"
+                        value={globalMultiplier}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value);
+                          if (!isNaN(val) && val >= 0.5) {
+                            setGlobalMultiplier(val);
+                            setDayMultipliers({});
+                            setMealMultipliers({});
+                          }
+                        }}
+                      />
+                    </div>
                     <button
                       type="button"
                       onClick={() => {
-                        const newMult = globalMultiplier + 0.5;
+                        const newMult = Math.round((globalMultiplier + 0.5) * 10) / 10;
                         setGlobalMultiplier(newMult);
                         setDayMultipliers({});
                         setMealMultipliers({});
                       }}
-                      className="w-7 h-7 rounded-lg bg-white dark:bg-zinc-800 border border-slate-150 dark:border-zinc-700 flex items-center justify-center font-bold text-xs hover:bg-slate-50 cursor-pointer text-slate-700 dark:text-zinc-300"
+                      className="w-7 h-7 rounded-lg bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center font-bold text-xs hover:bg-zinc-50 cursor-pointer text-slate-700 dark:text-zinc-300 select-none"
                     >
                       +
                     </button>
@@ -926,7 +974,7 @@ export default function GroceryList({ plan }: GroceryListProps) {
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    const val = Math.max(1.0, dayMult - 0.5);
+                                    const val = Math.max(0.5, dayMult - 0.5);
                                     setDayMultipliers(prev => ({ ...prev, [dayKey]: val }));
                                   }}
                                   className="w-5 h-5 rounded bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 flex items-center justify-center font-bold text-[10px] hover:bg-slate-50 cursor-pointer text-slate-700 dark:text-zinc-300"
@@ -976,10 +1024,10 @@ export default function GroceryList({ plan }: GroceryListProps) {
                                 className={`col-span-1 min-h-[64px] flex flex-col items-center justify-center p-2 rounded-xl border transition duration-150 ${
                                   isIncluded
                                     ? "bg-white dark:bg-zinc-900 border-slate-100 dark:border-zinc-800/80 shadow-sm"
-                                    : "bg-slate-150/40 dark:bg-zinc-900/10 border-transparent opacity-50"
+                                    : "bg-slate-100/40 dark:bg-zinc-900/10 border-transparent opacity-50"
                                 }`}
                               >
-                                <label className="flex items-center gap-1.5 cursor-pointer select-none text-[11px] font-bold text-slate-750 dark:text-zinc-350">
+                                <label className="flex items-center gap-1.5 cursor-pointer select-none text-[11px] font-bold text-slate-750 dark:text-zinc-300">
                                   <input
                                     type="checkbox"
                                     checked={isIncluded}
@@ -999,7 +1047,7 @@ export default function GroceryList({ plan }: GroceryListProps) {
                                     <button
                                       type="button"
                                       onClick={() => {
-                                        const val = Math.max(1.0, mealMult - 0.5);
+                                        const val = Math.max(0.5, mealMult - 0.5);
                                         setMealMultipliers(prev => ({ ...prev, [mealId]: val }));
                                       }}
                                       className="w-4 h-4 rounded bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 flex items-center justify-center font-bold text-[9px] hover:bg-slate-100 cursor-pointer text-slate-650 dark:text-zinc-350"
@@ -1091,21 +1139,28 @@ export default function GroceryList({ plan }: GroceryListProps) {
                           </div>
                           <span className={`text-xs md:text-sm font-bold px-2.5 py-1 rounded-md shrink-0 transition duration-150 ${isChecked ? "bg-gray-100 dark:bg-zinc-800 text-gray-400 dark:text-zinc-500" : "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-350"
                             }`}>
-                            {item.secondaryTotal && item.secondaryUnit ? (
-                              <span>
-                                {Math.round(item.secondaryTotal * 100) / 100} {item.secondaryUnit}
-                                <span className="text-[10px] opacity-75 ml-1 font-semibold">
-                                  ({Math.round(item.total * 100) / 100} {item.unit})
-                                </span>
-                              </span>
-                            ) : (
-                              <span>{Math.round(item.total * 100) / 100} {item.unit}</span>
-                            )}
+                            {(() => {
+                              if (item.secondaryTotal && item.secondaryUnit) {
+                                const sec = formatAmountAndUnit(item.secondaryTotal, item.secondaryUnit);
+                                const pri = formatAmountAndUnit(item.total, item.unit);
+                                return (
+                                  <span>
+                                    {sec.amount} {sec.unit}
+                                    <span className="text-[10px] opacity-75 ml-1 font-semibold">
+                                      ({pri.amount} {pri.unit})
+                                    </span>
+                                  </span>
+                                );
+                              } else {
+                                const pri = formatAmountAndUnit(item.total, item.unit);
+                                return <span>{pri.amount} {pri.unit}</span>;
+                              }
+                            })()}
                           </span>
                         </li>
                         {expandedRecipes[item.name] && item.recipes && (
                           <div 
-                            className="ml-9 p-3 bg-slate-50/40 dark:bg-zinc-950/20 rounded-2xl border border-slate-150/70 dark:border-zinc-800/40 space-y-2 animate-fade-in text-xs no-print max-w-xl"
+                            className="ml-9 p-3 bg-slate-50/40 dark:bg-zinc-950/20 rounded-2xl border border-slate-200/70 dark:border-zinc-800/40 space-y-2 animate-fade-in text-xs no-print max-w-xl"
                             onClick={(e) => e.stopPropagation()}
                           >
                             <p className="text-[10px] font-extrabold uppercase text-slate-450 dark:text-zinc-500 tracking-wider">
@@ -1128,7 +1183,7 @@ export default function GroceryList({ plan }: GroceryListProps) {
                                       window.history.pushState(null, "", `/recipe/${recRef.day}/${recRef.meal}`);
                                       window.dispatchEvent(new PopStateEvent("popstate"));
                                     }}
-                                    className="grid grid-cols-[auto_1fr_auto_auto] items-center gap-3.5 px-3.5 py-2.5 bg-white dark:bg-zinc-900 hover:bg-emerald-50/30 dark:hover:bg-emerald-950/15 border border-slate-150/70 dark:border-zinc-800 rounded-xl transition duration-150 group"
+                                    className="grid grid-cols-[auto_1fr_auto_auto] items-center gap-3.5 px-3.5 py-2.5 bg-white dark:bg-zinc-900 hover:bg-emerald-50/30 dark:hover:bg-emerald-950/15 border border-slate-200/70 dark:border-zinc-800 rounded-xl transition duration-150 group"
                                   >
                                     <div className="flex items-center gap-1.5 shrink-0 select-none">
                                       <span className="text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-350 w-16 text-center">
@@ -1142,15 +1197,15 @@ export default function GroceryList({ plan }: GroceryListProps) {
                                       {recRef.recipeName}
                                     </span>
                                     <span className="text-xs font-extrabold text-emerald-800 dark:text-emerald-400 bg-emerald-50/60 dark:bg-emerald-950/30 px-2.5 py-0.5 rounded border border-emerald-100/50 dark:border-emerald-900/30 shrink-0 text-right">
-                                      {recRef.secondaryAmount && recRef.secondaryUnit ? (
-                                        <span>
-                                          {Math.round(recRef.secondaryAmount * 100) / 100} {recRef.secondaryUnit}
-                                        </span>
-                                      ) : (
-                                        <span>
-                                          {Math.round(recRef.amount * 100) / 100} {recRef.unit}
-                                        </span>
-                                      )}
+                                      {(() => {
+                                        if (recRef.secondaryAmount && recRef.secondaryUnit) {
+                                          const sec = formatAmountAndUnit(recRef.secondaryAmount, recRef.secondaryUnit);
+                                          return <span>{sec.amount} {sec.unit}</span>;
+                                        } else {
+                                          const pri = formatAmountAndUnit(recRef.amount, recRef.unit);
+                                          return <span>{pri.amount} {pri.unit}</span>;
+                                        }
+                                      })()}
                                     </span>
                                     <span className="material-symbols-outlined text-slate-400 group-hover:text-emerald-600 transition shrink-0 select-none opacity-60 group-hover:opacity-100" style={{ fontSize: "10px" }}>
                                       arrow_forward
@@ -1181,12 +1236,12 @@ export default function GroceryList({ plan }: GroceryListProps) {
               </p>
 
               {/* Opciones de Filtro y Exportación */}
-              <div className="bg-slate-50 dark:bg-zinc-800/40 p-3.5 rounded-xl border border-slate-100 dark:border-zinc-800/80 space-y-2.5">
-                <span className="text-[10px] font-extrabold uppercase text-slate-400 dark:text-zinc-500 tracking-wider block mb-1">
+              <div className="bg-zinc-50 dark:bg-zinc-800/40 p-3.5 rounded-xl border border-zinc-200/60 dark:border-zinc-800/80 space-y-2.5">
+                <span className="text-[10px] font-extrabold uppercase text-zinc-400 dark:text-zinc-550 tracking-wider block mb-1">
                   Opciones de Filtro
                 </span>
 
-                <label className="flex items-center gap-2.5 cursor-pointer text-xs text-gray-700 dark:text-zinc-350 select-none relative group/tooltip">
+                <label className="flex items-center gap-2.5 cursor-pointer text-xs text-gray-700 dark:text-zinc-200 select-none relative group/tooltip">
                   <input
                     type="checkbox"
                     checked={shareExcludeCompleted}
@@ -1195,15 +1250,15 @@ export default function GroceryList({ plan }: GroceryListProps) {
                   />
                   <span className="flex items-center gap-1">
                     Omitir completados
-                    <span className="material-symbols-outlined text-slate-400 dark:text-zinc-500 cursor-help" style={{ fontSize: "14px" }}>info</span>
+                    <span className="material-symbols-outlined text-zinc-400 dark:text-zinc-500 cursor-help" style={{ fontSize: "14px" }}>info</span>
                   </span>
                   {/* Tooltip */}
-                  <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-48 p-2 bg-slate-900 text-white text-[10px] rounded-lg opacity-0 pointer-events-none group-hover/tooltip:opacity-100 transition-opacity duration-150 shadow-md z-30 leading-normal font-medium text-center">
+                  <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-48 p-2 bg-zinc-950 text-white text-[10px] rounded-lg opacity-0 pointer-events-none group-hover/tooltip:opacity-100 transition-opacity duration-150 shadow-md z-30 leading-normal font-medium text-center">
                     Los ingredientes marcados como completados no se mostrarán en la pantalla ni al imprimir la lista.
                   </span>
                 </label>
 
-                <label className="flex items-center gap-2.5 cursor-pointer text-xs text-gray-700 dark:text-zinc-350 select-none relative group/tooltip">
+                <label className="flex items-center gap-2.5 cursor-pointer text-xs text-gray-700 dark:text-zinc-200 select-none relative group/tooltip">
                   <input
                     type="checkbox"
                     checked={shareIncludeCheckboxes}
@@ -1212,15 +1267,15 @@ export default function GroceryList({ plan }: GroceryListProps) {
                   />
                   <span className="flex items-center gap-1">
                     Incluir casillas de verificación
-                    <span className="material-symbols-outlined text-slate-400 dark:text-zinc-500 cursor-help" style={{ fontSize: "14px" }}>info</span>
+                    <span className="material-symbols-outlined text-zinc-400 dark:text-zinc-500 cursor-help" style={{ fontSize: "14px" }}>info</span>
                   </span>
                   {/* Tooltip */}
-                  <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-48 p-2 bg-slate-900 text-white text-[10px] rounded-lg opacity-0 pointer-events-none group-hover/tooltip:opacity-100 transition-opacity duration-150 shadow-md z-30 leading-normal font-medium text-center">
+                  <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-48 p-2 bg-zinc-950 text-white text-[10px] rounded-lg opacity-0 pointer-events-none group-hover/tooltip:opacity-100 transition-opacity duration-150 shadow-md z-30 leading-normal font-medium text-center">
                     Añade casillas vacías (⬜) o completadas (✅) al copiar el texto para WhatsApp o Google Keep.
                   </span>
                 </label>
 
-                <label className="flex items-center gap-2.5 cursor-pointer text-xs text-gray-700 dark:text-zinc-350 select-none relative group/tooltip">
+                <label className="flex items-center gap-2.5 cursor-pointer text-xs text-gray-700 dark:text-zinc-200 select-none relative group/tooltip">
                   <input
                     type="checkbox"
                     checked={shareGroupByCategories}
@@ -1229,10 +1284,10 @@ export default function GroceryList({ plan }: GroceryListProps) {
                   />
                   <span className="flex items-center gap-1">
                     Organizar por categorías
-                    <span className="material-symbols-outlined text-slate-400 dark:text-zinc-500 cursor-help" style={{ fontSize: "14px" }}>info</span>
+                    <span className="material-symbols-outlined text-zinc-400 dark:text-zinc-500 cursor-help" style={{ fontSize: "14px" }}>info</span>
                   </span>
                   {/* Tooltip */}
-                  <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-48 p-2 bg-slate-900 text-white text-[10px] rounded-lg opacity-0 pointer-events-none group-hover/tooltip:opacity-100 transition-opacity duration-150 shadow-md z-30 leading-normal font-medium text-center">
+                  <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-48 p-2 bg-zinc-950 text-white text-[10px] rounded-lg opacity-0 pointer-events-none group-hover/tooltip:opacity-100 transition-opacity duration-150 shadow-md z-30 leading-normal font-medium text-center">
                     Agrupa los ingredientes en secciones (verduras, carnes, lácteos...) al exportar o compartir.
                   </span>
                 </label>
@@ -1251,7 +1306,7 @@ export default function GroceryList({ plan }: GroceryListProps) {
                 <button
                   type="button"
                   onClick={handleLoadListFromDB}
-                  className="flex items-center justify-center gap-1.5 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-750 text-slate-700 dark:text-zinc-200 rounded-xl transition duration-200 font-bold text-xs cursor-pointer active:scale-[0.98] border border-slate-200 dark:border-zinc-750"
+                  className="flex items-center justify-center gap-1.5 py-2.5 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 rounded-xl transition duration-200 font-bold text-xs cursor-pointer active:scale-[0.98] border border-zinc-200 dark:border-zinc-700"
                 >
                   <span className="material-symbols-outlined text-[16px]" style={{ fontSize: "16px" }}>folder_open</span>
                   Restaurar
@@ -1259,7 +1314,7 @@ export default function GroceryList({ plan }: GroceryListProps) {
               </div>
 
               {/* Acciones principales de exportar */}
-              <div className="space-y-2.5 pt-3 border-t border-slate-100 dark:border-zinc-800/60">
+              <div className="space-y-2.5 pt-3 border-t border-zinc-100 dark:border-zinc-800/60">
                 {/* Print button */}
                 <button
                   type="button"
@@ -1274,9 +1329,9 @@ export default function GroceryList({ plan }: GroceryListProps) {
                   <button
                     type="button"
                     onClick={handleCopyToClipboard}
-                    className="flex items-center justify-center gap-1.5 py-2.5 bg-slate-50 hover:bg-slate-100 dark:bg-zinc-800/40 dark:hover:bg-zinc-700 text-gray-700 dark:text-zinc-200 rounded-xl transition duration-200 font-bold text-xs border border-slate-150 dark:border-zinc-805 cursor-pointer active:scale-[0.98]"
+                    className="flex items-center justify-center gap-1.5 py-2.5 bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-800/40 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 rounded-xl transition duration-200 font-bold text-xs border border-zinc-200/80 dark:border-zinc-800 cursor-pointer active:scale-[0.98]"
                   >
-                    <span className="material-symbols-outlined text-gray-500 dark:text-zinc-400 text-[16px]" style={{ fontSize: "16px" }}>
+                    <span className="material-symbols-outlined text-zinc-500 dark:text-zinc-400 text-[16px]" style={{ fontSize: "16px" }}>
                       {copied ? "check_circle" : "content_copy"}
                     </span>
                     <span>{copied ? "Copiada" : "Copiar"}</span>
@@ -1333,7 +1388,7 @@ export default function GroceryList({ plan }: GroceryListProps) {
           </aside>
         </div>
       ) : (
-        <div className="bg-white dark:bg-zinc-900 rounded-3xl p-12 text-center border border-gray-150 dark:border-zinc-800 max-w-lg mx-auto shadow-sm">
+        <div className="bg-white dark:bg-zinc-900 rounded-3xl p-12 text-center border border-gray-200 dark:border-zinc-800 max-w-lg mx-auto shadow-sm">
           <span className="material-symbols-outlined text-4xl text-gray-300 dark:text-zinc-600 mb-4 font-light">shopping_bag</span>
           <p className="text-gray-900 dark:text-white font-bold text-lg mb-1">Tu lista está vacía</p>
           <p className="text-sm text-[#404943] dark:text-zinc-400 leading-relaxed">

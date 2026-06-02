@@ -113,9 +113,32 @@ export default function App() {
     }
   }, [plan, pendingRecipe]);
 
+  // Sync page title in browser tab
+  useEffect(() => {
+    if (activeTab === "recipe-detail" && selectedRecipeDetail) {
+      const mealName = selectedRecipeDetail.meal;
+      const dayName = selectedRecipeDetail.day;
+      const capitalizedDay = dayName.charAt(0).toUpperCase() + dayName.slice(1);
+      const capitalizedMeal = mealName.charAt(0).toUpperCase() + mealName.slice(1);
+      document.title = `${selectedRecipeDetail.recipe.recipeName} (${capitalizedMeal} - ${capitalizedDay}) | VitalityNutri`;
+    } else if (activeTab === "calendar") {
+      document.title = "Calendario | VitalityNutri";
+    } else if (activeTab === "grocery") {
+      document.title = "Lista de Compra | VitalityNutri";
+    } else if (activeTab === "dashboard") {
+      document.title = "Dashboard | VitalityNutri - Planificador de Alimentación Consciente";
+    } else {
+      document.title = "VitalityNutri - Planificador de Alimentación Consciente y Saludable";
+    }
+  }, [activeTab, selectedRecipeDetail]);
+
   const navigate = (path: string) => {
-    window.history.pushState(null, "", path);
-    syncStateFromUrl(path);
+    let cleanPath = path;
+    if (cleanPath.startsWith("/recipe/") && !cleanPath.includes("?v=") && metadata?.id) {
+      cleanPath = `${cleanPath}?v=${metadata.id}`;
+    }
+    window.history.pushState(null, "", cleanPath);
+    syncStateFromUrl(cleanPath);
   };
 
   const handleSetActiveTab = (tab: string) => {
@@ -138,6 +161,12 @@ export default function App() {
       const data = await res.json();
       setPlan(data.plan);
       setMetadata(data.metadata);
+
+      // Si hay un plan cargado por defecto al entrar en la web, vamos directamente al calendario
+      const currentPath = window.location.pathname;
+      if (data.plan && (currentPath === "/" || currentPath.startsWith("/dashboard"))) {
+        navigate("/calendar");
+      }
     } catch (err: any) {
       console.error(err);
       setErrorMsg("Error al conectar con la base de datos de pautas nutricionales compartidas.");
@@ -204,7 +233,7 @@ export default function App() {
                 className={`text-xs font-black px-3.5 py-2 rounded-xl transition duration-150 cursor-pointer ${
                   activeTab === "dashboard"
                     ? "text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 font-bold"
-                    : "text-slate-500 hover:text-emerald-700 dark:text-slate-400 dark:hover:text-emerald-300 hover:bg-gray-50/50 dark:hover:bg-slate-800"
+                    : "text-slate-500 hover:text-emerald-700 dark:text-zinc-400 dark:hover:text-emerald-300 hover:bg-gray-50/50 dark:hover:bg-zinc-800"
                 }`}
               >
                 Dashboard
@@ -217,7 +246,7 @@ export default function App() {
                 className={`text-xs font-black px-3.5 py-2 rounded-xl transition duration-150 cursor-pointer ${
                   activeTab === "calendar"
                     ? "text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 font-bold"
-                    : "text-slate-500 hover:text-emerald-700 dark:text-slate-400 dark:hover:text-emerald-300 hover:bg-gray-50/50 dark:hover:bg-slate-800"
+                    : "text-slate-500 hover:text-emerald-700 dark:text-zinc-400 dark:hover:text-emerald-300 hover:bg-gray-50/50 dark:hover:bg-zinc-800"
                 }`}
               >
                 Calendario
@@ -253,7 +282,7 @@ export default function App() {
                 className={`text-xs font-black px-3.5 py-2 rounded-xl transition duration-150 cursor-pointer ${
                   activeTab === "recipes" || activeTab === "recipe-detail"
                     ? "text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 font-bold"
-                    : "text-slate-500 dark:text-slate-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-gray-50/50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed"
+                    : "text-slate-500 dark:text-zinc-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-gray-50/50 dark:hover:bg-zinc-800 disabled:opacity-40 disabled:cursor-not-allowed"
                 }`}
               >
                 Recetas
@@ -266,7 +295,7 @@ export default function App() {
                 className={`text-xs font-black px-3.5 py-2 rounded-xl transition duration-150 cursor-pointer ${
                   activeTab === "grocery"
                     ? "text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 font-bold"
-                    : "text-slate-500 hover:text-emerald-700 dark:text-slate-400 dark:hover:text-emerald-300 hover:bg-gray-50/50 dark:hover:bg-slate-800"
+                    : "text-slate-500 hover:text-emerald-700 dark:text-zinc-400 dark:hover:text-emerald-300 hover:bg-gray-50/50 dark:hover:bg-zinc-800"
                 }`}
               >
                 Lista Compra
@@ -279,7 +308,7 @@ export default function App() {
             <button 
               type="button" 
               onClick={() => setDarkMode(!darkMode)}
-              className="p-2.5 text-gray-500 hover:text-emerald-700 dark:text-slate-400 dark:hover:text-emerald-300 hover:bg-gray-50 dark:hover:bg-slate-800 rounded-xl transition duration-200 material-symbols-outlined select-none text-xl font-bold cursor-pointer flex items-center justify-center shadow-sm border border-transparent dark:border-slate-800/40 bg-slate-50/40 dark:bg-slate-900"
+              className="p-2.5 text-gray-500 hover:text-emerald-700 dark:text-zinc-400 dark:hover:text-emerald-300 hover:bg-gray-50 dark:hover:bg-zinc-800 rounded-xl transition duration-200 material-symbols-outlined select-none text-xl font-bold cursor-pointer flex items-center justify-center shadow-sm border border-transparent dark:border-zinc-800/40 bg-slate-50/40 dark:bg-zinc-900"
               title="Alternar Modo Oscuro"
             >
               {darkMode ? "light_mode" : "dark_mode"}
@@ -332,6 +361,7 @@ export default function App() {
                 meal={selectedRecipeDetail.meal}
                 recipe={selectedRecipeDetail.recipe}
                 plan={plan}
+                metadata={metadata}
                 onNavigate={handleSelectRecipe}
                 onGoBack={() => {
                   navigate("/calendar");

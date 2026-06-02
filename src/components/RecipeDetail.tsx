@@ -1,5 +1,32 @@
 import React, { useState } from "react";
-import { DayType, MealType, Recipe, MealPlan } from "../types";
+import { DayType, MealType, Recipe, MealPlan, PlanMetadata } from "../types";
+
+const formatAmountAndUnit = (amount: number, unit: string) => {
+  let normalizedUnit = unit.trim().toLowerCase();
+  let val = amount;
+  
+  if (normalizedUnit === "mg" || normalizedUnit === "mgs" || normalizedUnit === "miligramo" || normalizedUnit === "miligramos") {
+    val = val / 1000;
+    normalizedUnit = "g";
+  }
+  
+  if ((normalizedUnit === "g" || normalizedUnit === "gr" || normalizedUnit === "grs" || normalizedUnit === "gramo" || normalizedUnit === "gramos") && val >= 1000) {
+    val = val / 1000;
+    normalizedUnit = "kg";
+  }
+  
+  let displayUnit = unit;
+  if (normalizedUnit === "g") {
+    displayUnit = "g";
+  } else if (normalizedUnit === "kg") {
+    displayUnit = "kg";
+  }
+  
+  return {
+    amount: Math.round(val * 100) / 100,
+    unit: displayUnit
+  };
+};
 
 interface RecipeDetailProps {
   day: DayType;
@@ -8,6 +35,7 @@ interface RecipeDetailProps {
   onGoBack: () => void;
   onUpdateRecipeOnServer?: (day: DayType, meal: MealType, updatedRecipe: Recipe) => void;
   plan?: MealPlan | null;
+  metadata?: PlanMetadata | null;
   onNavigate?: (day: DayType, meal: MealType, recipe: Recipe) => void;
 }
 
@@ -18,19 +46,151 @@ export default function RecipeDetail({
   onGoBack,
   onUpdateRecipeOnServer,
   plan,
+  metadata,
   onNavigate
 }: RecipeDetailProps) {
   // Ratio defaults to 1 ración (base)
   const [multiplier, setMultiplier] = useState<number>(1);
-  const [customInput, setCustomInput] = useState<string>("");
+  const [customInput, setCustomInput] = useState<string>("1");
   const [checkedIngredients, setCheckedIngredients] = useState<Record<string, boolean>>({});
   const [checkedSteps, setCheckedSteps] = useState<Record<string, boolean>>({});
   const [showDayMealsDropdown, setShowDayMealsDropdown] = useState<boolean>(false);
   const [showAllRecipesDropdown, setShowAllRecipesDropdown] = useState<boolean>(false);
 
+  // Sharing states
+  const [shareFullRecipe, setShareFullRecipe] = useState<boolean>(false);
+  const [copied, setCopied] = useState<boolean>(false);
+  const [copiedKeep, setCopiedKeep] = useState<boolean>(false);
+  const [canShare, setCanShare] = useState<boolean>(false);
+
+  React.useEffect(() => {
+    if (typeof navigator !== "undefined" && navigator.share) {
+      setCanShare(true);
+    }
+  }, []);
+
+  const getRecipeUrl = (): string => {
+    const meta = metadata || (plan as any)?.metadata;
+    const getVersionBuster = () => {
+      if (meta?.id) return meta.id;
+      if (meta?.processedAt) {
+        return new Date(meta.processedAt).getTime();
+      }
+      return "1";
+    };
+    return `${window.location.protocol}//${window.location.host}/recipe/${day}/${meal}?v=${getVersionBuster()}`;
+  };
+
+  const generateRecipeShareText = (): string => {
+    const capitalizedDay = day.charAt(0).toUpperCase() + day.slice(1);
+    const capitalizedMeal = meal.charAt(0).toUpperCase() + meal.slice(1);
+    const recipeUrl = getRecipeUrl();
+
+    if (!shareFullRecipe) {
+      return `🍳 *${recipe.recipeName}* (${capitalizedMeal} - ${capitalizedDay})\n\nDescubre esta deliciosa receta saludable planificada en VitalityNutri:\n🔗 ${recipeUrl}\n\n¡Buen provecho! 🌱`;
+    }
+
+    let text = `🍳 *RECETA: ${recipe.recipeName.toUpperCase()}*\n`;
+    text += `📅 *Planificación:* ${capitalizedMeal} de ${capitalizedDay}\n`;
+    text += `⏱️ *Tiempo:* ${recipe.time || "20 min"}\n`;
+    text += `🔥 *Calorías:* ${Math.round(recipe.calories * multiplier)} kcal (${multiplier} ración/es)\n`;
+    text += `🏷️ *Categoría:* ${recipe.tag || "Nutritivo"}\n\n`;
+
+    // Add ingredients
+    text += `🛒 *INGREDIENTES:* \n`;
+    const flatIngs = Array.isArray(recipe.ingredients)
+      ? (recipe.ingredients as any[])
+      : (Object.values(recipe.ingredients || {}).flat().filter(Boolean) as any[]);
+
+    if (flatIngs.length > 0) {
+      flatIngs.forEach((ing: any) => {
+        const baseAmt = ing.originalAmount;
+        const scaledAmt = baseAmt * multiplier;
+        
+        let amountText = "";
+        if (ing.secondaryAmount && ing.secondaryUnit) {
+          const secFormatted = formatAmountAndUnit(ing.secondaryAmount * multiplier, ing.secondaryUnit);
+          const priFormatted = formatAmountAndUnit(scaledAmt, ing.unit);
+          amountText = `${secFormatted.amount} ${secFormatted.unit} (${priFormatted.amount} ${priFormatted.unit})`;
+        } else {
+          const priFormatted = formatAmountAndUnit(scaledAmt, ing.unit);
+          amountText = `${priFormatted.amount} ${priFormatted.unit}`;
+        }
+        
+        text += `- ⬜ ${ing.name.charAt(0).toUpperCase() + ing.name.slice(1)} (${amountText})${ing.preparation ? ` - _${ing.preparation}_` : ""}\n`;
+      });
+    } else {
+      text += `(Sin ingredientes especificados)\n`;
+    }
+    text += `\n`;
+
+    // Add steps
+    text += `👨‍🍳 *PREPARACIÓN:* \n`;
+    const stepsList = normalizedSteps.length > 0 ? normalizedSteps : [];
+    if (stepsList.length > 0) {
+      stepsList.forEach((ns, index) => {
+        text += `${index + 1}. ${ns.text}\n\n`;
+      });
+    } else {
+      text += `Sigue las instrucciones estándar para esta preparación.\n\n`;
+    }
+
+    if (recipe.tips) {
+      text += `💡 *Consejo:* ${recipe.tips}\n\n`;
+    }
+
+    text += `🔗 *Ver en la web:* ${recipeUrl}\n\n`;
+    text += `Generado por VitalityNutri 🌱`;
+    
+    return text;
+  };
+
+  const handleCopyToClipboard = async () => {
+    const text = shareFullRecipe ? generateRecipeShareText() : getRecipeUrl();
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error("Error al copiar al portapapeles: ", err);
+    }
+  };
+
+  const handleShareWhatsApp = () => {
+    const text = generateRecipeShareText();
+    const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+    window.open(url, "_blank");
+  };
+
+  const handleExportToKeep = async () => {
+    const text = generateRecipeShareText();
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedKeep(true);
+      setTimeout(() => setCopiedKeep(false), 3000);
+      window.open("https://keep.new", "_blank");
+    } catch (err) {
+      console.error("Error al copiar para Google Keep: ", err);
+    }
+  };
+
+  const handleNativeShare = async () => {
+    const text = generateRecipeShareText();
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `Receta: ${recipe.recipeName}`,
+          text: text
+        });
+      } catch (err) {
+        console.error("Error al usar Web Share: ", err);
+      }
+    }
+  };
+
   const handleSetPreset = (factor: number) => {
     setMultiplier(factor);
-    setCustomInput("");
+    setCustomInput(factor.toString());
   };
 
   const handleApplyCustom = () => {
@@ -42,7 +202,7 @@ export default function RecipeDetail({
 
   const handleReset = () => {
     setMultiplier(1);
-    setCustomInput("");
+    setCustomInput("1");
   };
 
   const formatQuantity = (val: number) => {
@@ -484,7 +644,7 @@ export default function RecipeDetail({
       </div>
 
       {/* Hero Header Presentation */}
-      <section className="relative overflow-hidden rounded-3xl bg-slate-100 dark:bg-slate-850 border border-slate-200/50 dark:border-slate-800 min-h-[250px] flex flex-col md:flex-row items-stretch shadow-sm">
+      <section className="relative overflow-hidden rounded-3xl bg-slate-100 dark:bg-zinc-900 border border-slate-200/50 dark:border-zinc-800 min-h-[250px] flex flex-col md:flex-row items-stretch shadow-sm">
         <div className="w-full md:w-5/12 min-h-[200px] relative shrink-0">
           <img
             src={recipe.image || "https://images.unsplash.com/photo-1490645935967-10de6ba17061?q=80&w=1000&auto=format&fit=crop"}
@@ -492,7 +652,7 @@ export default function RecipeDetail({
             className="absolute inset-0 w-full h-full object-cover animate-fade-in"
           />
         </div>
-        <div className="w-full md:w-7/12 p-6 md:p-8 flex flex-col justify-center bg-white dark:bg-slate-900">
+        <div className="w-full md:w-7/12 p-6 md:p-8 flex flex-col justify-center bg-white dark:bg-zinc-900">
           <span className="inline-flex items-center gap-1 text-[10px] font-bold tracking-widest bg-emerald-50 dark:bg-emerald-900/30 text-emerald-850 dark:text-emerald-400 px-3 py-1 rounded-full w-max mb-3 uppercase">
             {recipe.tag || "Saludable"}
           </span>
@@ -500,11 +660,11 @@ export default function RecipeDetail({
             {recipe.recipeName}
           </h1>
           <div className="flex flex-wrap gap-4 select-none">
-            <div className="flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400">
+            <div className="flex items-center gap-1.5 text-sm text-slate-500 dark:text-zinc-400">
               <span className="material-symbols-outlined text-emerald-600">schedule</span>
               <span className="font-semibold">{recipe.time || "25 min"}</span>
             </div>
-            <div className="flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400 font-bold">
+            <div className="flex items-center gap-1.5 text-sm text-slate-500 dark:text-zinc-400 font-bold">
               <span className="material-symbols-outlined text-emerald-600">fitness_center</span>
               <span className="font-semibold text-emerald-750 dark:text-emerald-400">Alta densidad nutricional</span>
             </div>
@@ -518,67 +678,101 @@ export default function RecipeDetail({
         {/* Sidebar calculations */}
         <aside className="lg:col-span-4 space-y-6">
 
-          <div className="bg-slate-50 dark:bg-zinc-900 p-6 rounded-2xl border border-slate-200 dark:border-zinc-850 shadow-sm text-left">
+          <div className="bg-zinc-50 dark:bg-zinc-900/60 p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800/80 shadow-sm text-left">
             <h2 className="text-md font-extrabold text-slate-900 dark:text-white mb-2 flex items-center gap-2">
               <span className="material-symbols-outlined text-emerald-600">calculate</span>
               Raciones Ajustables
             </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-4">
+            <p className="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed mb-4">
               Ajusta las raciones para toda la familia de forma instantánea. Se actualizarán todas las cantidades y se resaltarán en verde.
             </p>
 
-            {/* Presets and factor selection row */}
-            <div className="grid grid-cols-4 gap-2 mb-4 select-none">
-              {[1, 2, 3, 4].map((factor) => (
-                <button
-                  key={factor}
-                  type="button"
-                  onClick={() => handleSetPreset(factor)}
-                  className={`py-2 rounded-xl text-xs font-black transition duration-200 cursor-pointer ${multiplier === factor
-                    ? "bg-emerald-600 text-white border border-emerald-600 dark:bg-emerald-600"
-                    : "bg-white hover:bg-emerald-50/50 dark:bg-slate-900 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300"
-                    }`}
-                >
-                  x{factor}
-                </button>
-              ))}
-            </div>
+            {/* Presets and custom numeric factor input in a unified layout */}
+            <div className="space-y-4">
+              {/* Presets Segmented Grid */}
+              <div className="bg-zinc-100/70 dark:bg-zinc-950/40 p-1.5 rounded-2xl border border-zinc-200/50 dark:border-zinc-800/40 grid grid-cols-4 gap-1.5 select-none">
+                {[1, 2, 3, 4].map((factor) => {
+                  const isActive = multiplier === factor;
+                  return (
+                    <button
+                      key={factor}
+                      type="button"
+                      onClick={() => handleSetPreset(factor)}
+                      className={`py-2 rounded-xl text-xs font-black transition duration-200 cursor-pointer ${isActive
+                        ? "bg-emerald-600 text-white shadow-sm"
+                        : "bg-white hover:bg-zinc-50/50 dark:bg-zinc-900 dark:hover:bg-zinc-850 text-zinc-700 dark:text-zinc-300 border border-zinc-200/60 dark:border-zinc-700/60"
+                        }`}
+                    >
+                      x{factor}
+                    </button>
+                  );
+                })}
+              </div>
 
-            {/* Custom numeric factor input with action triggers */}
-            <div className="space-y-1.5 text-left">
-              <label htmlFor="custom-factor" className="text-[11px] font-bold text-slate-400 block uppercase tracking-wider">
-                Factor Personalizado
-              </label>
-              <div className="flex gap-2">
-                <input
-                  id="custom-factor"
-                  type="number"
-                  step="0.1"
-                  min="0.1"
-                  placeholder="Ej: 1.5"
-                  value={customInput}
-                  onChange={(e) => setCustomInput(e.target.value)}
-                  className="flex-grow px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100"
-                />
-                <button
-                  type="button"
-                  onClick={handleApplyCustom}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2 rounded-xl transition duration-200 cursor-pointer"
-                >
-                  Aplicar
-                </button>
+              {/* Custom factor control spanning full width */}
+              <div className="space-y-2 text-left">
+                <div className="flex items-center justify-between">
+                  <label htmlFor="custom-factor" className="text-[11px] font-bold text-zinc-400 dark:text-zinc-550 block uppercase tracking-wider">
+                    Factor Personalizado
+                  </label>
+                  {multiplier !== 1 && (
+                    <button
+                      type="button"
+                      onClick={handleReset}
+                      className="text-emerald-600 hover:text-emerald-700 dark:text-emerald-450 dark:hover:text-emerald-400 font-bold text-[11px] hover:underline cursor-pointer transition-all duration-150"
+                    >
+                      Restablecer original
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between gap-3 bg-zinc-100/40 dark:bg-zinc-950/50 p-2.5 rounded-2xl border border-zinc-200/80 dark:border-zinc-800/50 w-full shadow-inner-sm">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newMult = Math.max(0.5, Math.round((multiplier - 0.5) * 10) / 10);
+                      setMultiplier(newMult);
+                      setCustomInput(newMult.toString());
+                    }}
+                    className="w-10 h-10 rounded-xl bg-white dark:bg-zinc-800 border border-zinc-200/50 dark:border-zinc-700/60 flex items-center justify-center font-black text-sm hover:bg-zinc-50 dark:hover:bg-zinc-700 cursor-pointer text-slate-700 dark:text-zinc-300 select-none animate-fade-in shadow-sm active:scale-95 transition-all duration-150"
+                  >
+                    -
+                  </button>
+                  <div className="flex items-center gap-1 bg-white dark:bg-zinc-900 border border-zinc-200/60 dark:border-zinc-700/60 rounded-xl px-4 py-2 flex-1 shadow-sm justify-center">
+                    <span className="text-xs font-bold text-zinc-400 select-none">x</span>
+                    <input
+                      id="custom-factor"
+                      type="number"
+                      step="0.5"
+                      min="0.5"
+                      className="w-full text-sm font-black text-emerald-800 dark:text-emerald-450 text-center bg-transparent focus:outline-none focus:ring-0 border-none p-0"
+                      value={customInput}
+                      onChange={(e) => {
+                        setCustomInput(e.target.value);
+                        const val = parseFloat(e.target.value);
+                        if (!isNaN(val) && val >= 0.5) {
+                          setMultiplier(val);
+                        }
+                      }}
+                    />
+                    <span className="text-xs font-bold text-zinc-400 dark:text-zinc-500 select-none">
+                      {multiplier === 1 ? "ración" : "raciones"}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newMult = Math.round((multiplier + 0.5) * 10) / 10;
+                      setMultiplier(newMult);
+                      setCustomInput(newMult.toString());
+                    }}
+                    className="w-10 h-10 rounded-xl bg-white dark:bg-zinc-800 border border-zinc-200/50 dark:border-zinc-700/60 flex items-center justify-center font-black text-sm hover:bg-zinc-50 dark:hover:bg-zinc-700 cursor-pointer text-slate-700 dark:text-zinc-300 select-none animate-fade-in shadow-sm active:scale-95 transition-all duration-150"
+                  >
+                    +
+                  </button>
+                </div>
               </div>
             </div>
-
-            {multiplier !== 1 && (
-              <button
-                type="button"
-                onClick={handleReset}
-                className="w-full mt-4 text-emerald-600 hover:text-emerald-700 font-bold text-xs py-1 hover:underline text-center cursor-pointer"
-              >
-                Restablecer original
-              </button>
-            )}
           </div>
 
           {/* Caloric balance scaled display box */}
@@ -603,15 +797,95 @@ export default function RecipeDetail({
             </div>
           </div>
 
+          {/* Compartir Receta Panel */}
+          <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-slate-100 dark:border-zinc-800/80 shadow-sm space-y-4 no-print text-left">
+            <h3 className="text-md font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <span className="material-symbols-outlined text-[#0f5238] dark:text-emerald-450" style={{ fontSize: "20px" }}>share</span>
+              Compartir Receta
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed">
+              Comparte esta receta con tus familiares o amigos en redes sociales o guárdala en tus notas.
+            </p>
+
+            {/* Checkbox selector */}
+            <div className="bg-slate-50 dark:bg-zinc-800/45 p-3.5 rounded-xl border border-slate-100 dark:border-zinc-800/60">
+              <label className="flex items-center gap-2.5 cursor-pointer text-xs text-gray-750 dark:text-zinc-300 select-none relative group/tooltip flex-wrap">
+                <input
+                  type="checkbox"
+                  checked={shareFullRecipe}
+                  onChange={(e) => setShareFullRecipe(e.target.checked)}
+                  className="w-4 h-4 rounded border-gray-300 dark:border-zinc-700 text-emerald-600 focus:ring-emerald-500 cursor-pointer dark:bg-zinc-900 shrink-0"
+                />
+                <span className="flex items-center gap-1 font-semibold">
+                  Compartir receta completa
+                  <span className="material-symbols-outlined text-slate-400 dark:text-zinc-500 cursor-help" style={{ fontSize: "14px" }}>info</span>
+                </span>
+                <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-48 p-2 bg-slate-900 text-white text-[10px] rounded-lg opacity-0 pointer-events-none group-hover/tooltip:opacity-100 transition-opacity duration-150 shadow-md z-30 leading-normal font-medium text-center">
+                  Al activarlo, se exportarán todos los ingredientes escalados y los pasos de preparación. Si está desactivado, solo se enviará el enlace de acceso directo.
+                </span>
+              </label>
+            </div>
+
+            {/* Export action triggers */}
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <button
+                type="button"
+                onClick={handleCopyToClipboard}
+                className="flex items-center justify-center gap-1.5 py-2.5 bg-slate-50 hover:bg-slate-100 dark:bg-zinc-800/40 dark:hover:bg-zinc-700 text-gray-700 dark:text-zinc-200 rounded-xl transition duration-200 font-bold text-xs border border-slate-200 dark:border-zinc-750 cursor-pointer active:scale-[0.98]"
+              >
+                <span className="material-symbols-outlined text-gray-500 dark:text-zinc-450 text-[16px]" style={{ fontSize: "16px" }}>
+                  {copied ? "check_circle" : "content_copy"}
+                </span>
+                <span>
+                  {copied 
+                    ? (shareFullRecipe ? "Copiada" : "Copiado") 
+                    : (shareFullRecipe ? "Copiar receta" : "Copiar enlace")}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={handleShareWhatsApp}
+                className="flex items-center justify-center gap-1.5 py-2.5 bg-[#25D366]/10 hover:bg-[#25D366]/20 dark:bg-[#25D366]/15 dark:hover:bg-[#25D366]/25 text-[#075e54] dark:text-[#4fce5d] rounded-xl transition duration-200 font-bold text-xs border border-[#25D366]/20 cursor-pointer active:scale-[0.98]"
+              >
+                <svg className="w-[15px] h-[15px] fill-current text-[#25D366] dark:text-[#4fce5d]" viewBox="0 0 24 24">
+                  <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.513 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.457L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.625 1.451 5.437.002 9.861-4.416 9.863-9.864.001-2.639-1.02-5.12-2.874-6.978-1.855-1.857-4.327-2.88-6.967-2.881-5.439 0-9.865 4.42-9.867 9.867-.001 1.867.501 3.585 1.45 5.161l-.952 3.479 3.565-.936zm11.597-5.495c-.32-.16-1.89-.93-2.185-1.04-.294-.11-.51-.16-.723.16-.214.32-.827 1.04-1.013 1.252-.186.213-.372.24-.692.08-.32-.16-1.353-.5-2.577-1.6-.952-.85-1.594-1.9-1.782-2.22-.186-.32-.02-.492.14-.65.143-.142.32-.37.48-.557.16-.188.21-.32.32-.53.11-.21.05-.4-.03-.56-.08-.16-.723-1.74-.99-2.39-.26-.63-.526-.54-.723-.55-.187-.01-.4-.01-.613-.01-.213 0-.56.08-.853.4-.293.32-1.118 1.1-1.118 2.68 0 1.58 1.15 3.11 1.31 3.32.16.21 2.263 3.456 5.482 4.848.765.33 1.362.528 1.826.674.77.244 1.47.21 2.02.128.618-.092 1.89-.77 2.157-1.48.266-.71.266-1.32.186-1.45-.08-.13-.294-.21-.614-.37z" />
+                </svg>
+                <span>WhatsApp</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={handleExportToKeep}
+                className="flex items-center justify-center gap-1.5 py-2.5 bg-[#FBBC05]/10 hover:bg-[#FBBC05]/20 dark:bg-[#FBBC05]/15 dark:hover:bg-[#FBBC05]/25 text-[#c29202] dark:text-[#fcd34d] rounded-xl transition duration-200 font-bold text-xs border border-[#FBBC05]/20 cursor-pointer active:scale-[0.98]"
+              >
+                <span className="material-symbols-outlined text-[16px] text-[#FBBC05]" style={{ fontSize: "16px" }}>lightbulb</span>
+                <span>{copiedKeep ? "Keep..." : "Google Keep"}</span>
+              </button>
+
+              {canShare && (
+                <button
+                  type="button"
+                  onClick={handleNativeShare}
+                  className="flex items-center justify-center gap-1.5 py-2.5 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/20 dark:hover:bg-emerald-950/30 text-emerald-800 dark:text-emerald-400 rounded-xl transition duration-200 font-bold text-xs border border-emerald-100/80 dark:border-emerald-900/30 cursor-pointer active:scale-[0.98]"
+                >
+                  <span className="material-symbols-outlined text-[16px]" style={{ fontSize: "16px" }}>share</span>
+                  <span>Compartir</span>
+                </button>
+              )}
+            </div>
+          </div>
+
         </aside>
 
         {/* Main Ingredients detail presentation card layout */}
         <section className="lg:col-span-8 space-y-6">
 
-          <div className="bg-white dark:bg-slate-900 p-6 md:p-8 rounded-3xl border border-slate-200/50 dark:border-slate-800 shadow-sm text-left">
-            <div className="flex justify-between items-baseline mb-6 pb-4 border-b border-slate-100 dark:border-slate-800 select-text">
+          <div className="bg-white dark:bg-zinc-900 p-6 md:p-8 rounded-3xl border border-slate-200/50 dark:border-zinc-800 shadow-sm text-left">
+            <div className="flex justify-between items-baseline mb-6 pb-4 border-b border-slate-100 dark:border-zinc-800 select-text">
               <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">Ingredientes Pautados</h2>
-              <span className="text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 px-3 py-1 rounded-lg">
+              <span className="text-xs text-slate-500 dark:text-zinc-400 bg-slate-50 dark:bg-zinc-800 px-3 py-1 rounded-lg">
                 Mostrando <span className="font-extrabold text-slate-900 dark:text-white">{multiplier}</span> ración(es)
               </span>
             </div>
@@ -653,6 +927,11 @@ export default function RecipeDetail({
                 const scaledAmt = baseAmt * multiplier;
                 const hasChanged = multiplier !== 1;
                 const isChecked = !!checkedIngredients[ing.name];
+
+                const formattedPrimary = formatAmountAndUnit(scaledAmt, ing.unit);
+                const formattedSecondary = ing.secondaryAmount && ing.secondaryUnit
+                  ? formatAmountAndUnit(ing.secondaryAmount * multiplier, ing.secondaryUnit)
+                  : null;
 
                 return (
                   <li
@@ -709,15 +988,15 @@ export default function RecipeDetail({
                           ? "text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/35 px-2 py-0.5 rounded-lg border border-emerald-200 dark:border-emerald-900/45"
                           : "text-slate-900 dark:text-zinc-100"
                         }`}>
-                        {ing.secondaryAmount && ing.secondaryUnit ? (
+                        {formattedSecondary ? (
                           <>
-                            {formatQuantity(ing.secondaryAmount * multiplier)} {ing.secondaryUnit}
+                            {formattedSecondary.amount} {formattedSecondary.unit}
                             <span className="text-xs font-semibold text-slate-400 dark:text-zinc-500 ml-1.5 font-sans">
-                              ({formatQuantity(scaledAmt)} {ing.unit})
+                              ({formattedPrimary.amount} {formattedPrimary.unit})
                             </span>
                           </>
                         ) : (
-                          <>{formatQuantity(scaledAmt)} {ing.unit}</>
+                          <>{formattedPrimary.amount} {formattedPrimary.unit}</>
                         )}
                       </span>
 
@@ -746,7 +1025,7 @@ export default function RecipeDetail({
                   <h4 className="text-xs font-bold text-emerald-800 dark:text-emerald-400 uppercase tracking-wider mb-0.5 animate-pulse">
                     Consejo del Nutricionista
                   </h4>
-                  <p className="text-xs md:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                  <p className="text-xs md:text-sm text-slate-600 dark:text-zinc-300 leading-relaxed">
                     {recipe.tips}
                   </p>
                 </div>
@@ -756,7 +1035,7 @@ export default function RecipeDetail({
 
           {/* Meticulous Culinary Step-by-Step Instructions */}
           <div className="bg-white dark:bg-zinc-900 p-6 md:p-8 rounded-3xl border border-slate-200/50 dark:border-zinc-800 shadow-sm text-left">
-            <h3 className="text-lg font-black text-slate-900 dark:text-white mb-6 pb-4 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2 select-none">
+            <h3 className="text-lg font-black text-slate-900 dark:text-white mb-6 pb-4 border-b border-slate-100 dark:border-zinc-800 flex items-center gap-2 select-none">
               <span className="material-symbols-outlined text-emerald-600">restaurant_menu</span>
               Preparación Meticulosa Paso a Paso
             </h3>

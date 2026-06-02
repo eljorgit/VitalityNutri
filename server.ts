@@ -68,98 +68,117 @@ function getVerifiedImageForRecipe(recipeName: string, mealType: string): string
 
   const mapping = [
     {
-      keywords: ["avena", "porridge", "gachas", "oatmeal", "muesli", "granola"],
+      // 1. Oats & Cereals (Breakfast porridge)
+      keywords: ["avena", "porridge", "gachas", "oatmeal", "muesli", "granola", "cereal", "cereales"],
       url: "https://images.unsplash.com/photo-1517881917430-e70dfb3610aa?q=80&w=1000&auto=format&fit=crop"
     },
     {
-      keywords: ["ensalada", "salad", "cesar", "césar"],
-      url: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?q=80&w=1000&auto=format&fit=crop"
+      // 2. Pasta plates (checked before general meats/proteins)
+      keywords: ["pasta", "espagueti", "espaguetis", "macarrones", "tallarines", "lasana", "lasagna", "ravioles", "fideos", "noodles"],
+      url: "https://images.unsplash.com/photo-1546549032-9571cd6b27df?q=80&w=1000&auto=format&fit=crop"
     },
     {
-      keywords: ["salmon"],
-      url: "https://images.unsplash.com/photo-1467003909585-2f8a72700288?q=80&w=1000&auto=format&fit=crop"
-    },
-    {
-      keywords: ["pescado", "merluza", "bacalao", "lenguado", "lubina", "atun", "bonito", "emperador", "dorada", "trucha", "marisco", "pulpo", "gambas", "langostinos"],
-      url: "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?q=80&w=1000&auto=format&fit=crop"
-    },
-    {
-      keywords: ["pollo", "pavo", "pechuga", "alitas", "muslo", "ave"],
-      url: "https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?q=80&w=1000&auto=format&fit=crop"
-    },
-    {
-      keywords: ["carne", "ternera", "cerdo", "bistec", "filete", "lomo", "entrecot", "solomillo", "hamburguesa", "albondigas"],
-      url: "https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=1000&auto=format&fit=crop"
-    },
-    {
-      keywords: ["aguacate", "avocado", "guacamole"],
-      url: "https://images.unsplash.com/photo-1541532713592-79a0317b6b77?q=80&w=1000&auto=format&fit=crop"
-    },
-    {
-      keywords: ["tostada", "pan", "sandwich", "bocadillo", "tosta"],
-      url: "https://images.unsplash.com/photo-1509440159596-0249088772ff?q=80&w=1000&auto=format&fit=crop"
-    },
-    {
-      keywords: ["huevo", "huevos", "tortilla", "revuelto", "poche", "pocha", "escalfado", "frito", "fritos"],
-      url: "https://images.unsplash.com/photo-1525351484163-7529414344d8?q=80&w=1000&auto=format&fit=crop"
-    },
-    {
-      keywords: ["pasta", "espagueti", "espaguetis", "macarrones", "tallarines", "lasana", "lasagna", "ravioles", "noodles"],
-      url: "https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?q=80&w=1000&auto=format&fit=crop"
-    },
-    {
-      keywords: ["arroz", "paella", "risotto"],
+      // 3. Rice & Quinoa plates
+      keywords: ["arroz", "paella", "risotto", "quinoa", "cuscus", "cuscus"],
       url: "https://images.unsplash.com/photo-1534080564583-6be75777b70a?q=80&w=1000&auto=format&fit=crop"
     },
     {
-      keywords: ["lentejas", "garbanzos", "alubias", "judias", "legumbres", "habas"],
-      url: "https://images.unsplash.com/photo-1547592180-85f173990554?q=80&w=1000&auto=format&fit=crop"
-    },
-    {
-      keywords: ["sopa", "crema", "caldo", "gazpacho", "salmorejo", "pure"],
-      url: "https://images.unsplash.com/photo-1547592165-e1d17fed6005?q=80&w=1000&auto=format&fit=crop"
-    },
-    {
-      keywords: ["yogur", "yogurt", "kefir", "cuajada"],
-      url: "https://images.unsplash.com/photo-1488477181946-6428a0291777?q=80&w=1000&auto=format&fit=crop"
-    },
-    {
-      keywords: ["batido", "smoothie", "licuado", "shake"],
-      url: "https://images.unsplash.com/photo-1553530666-ba11a7da3888?q=80&w=1000&auto=format&fit=crop"
-    },
-    {
-      keywords: ["fruta", "fresas", "fresa", "platano", "manzana", "pera", "naranja", "kiwi", "uvas", "melocoton", "bayas", "arandanos", "frutas"],
-      url: "https://images.unsplash.com/photo-1619546813926-a78fa6372cd2?q=80&w=1000&auto=format&fit=crop"
-    },
-    {
-      keywords: ["frutos secos", "nueces", "almendras", "avellanas", "cacahuetes", "pistachos", "semillas", "chia", "pipas"],
-      url: "https://images.unsplash.com/photo-1596701062351-df5f8a42f3c5?q=80&w=1000&auto=format&fit=crop"
-    },
-    {
-      keywords: ["hummus", "dip", "pate"],
-      url: "https://images.unsplash.com/photo-1541518763669-27fef04b14ea?q=80&w=1000&auto=format&fit=crop"
-    },
-    {
+      // 4. Pizza & Focaccia
       keywords: ["pizza", "focaccia"],
       url: "https://images.unsplash.com/photo-1513104890138-7c749659a591?q=80&w=1000&auto=format&fit=crop"
     },
     {
-      keywords: ["wrap", "taco", "tacos", "burrito", "fajita", "fajitas", "quesadilla"],
-      url: "https://images.unsplash.com/photo-1626700051175-6518c4793f73?q=80&w=1000&auto=format&fit=crop"
+      // 5. Salads
+      keywords: ["ensalada", "salad", "cesar", "cesar"],
+      url: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?q=80&w=1000&auto=format&fit=crop"
     },
     {
-      keywords: ["cafe", "te", "infusion", "manzanilla", "poleo"],
-      url: "https://images.unsplash.com/photo-1541167760496-1628856ab772?q=80&w=1000&auto=format&fit=crop"
+      // 6. Avocado dishes (specifically avocado toast / fillings)
+      keywords: ["aguacate", "avocado", "guacamole"],
+      url: "https://images.unsplash.com/photo-1541532713592-79a0317b6b77?q=80&w=1000&auto=format&fit=crop"
     },
     {
+      // 7. Toast, Sandwiches, Pitufos & Bread (checked before generic proteins so pitufo with chicken/tuna displays as a sandwich)
+      keywords: ["pitufo", "tostada", "tosta", "sandwich", "sandich", "bocadillo", "pulguita", "mollete", "panecillo", "pan"],
+      url: "https://images.unsplash.com/photo-1539252554453-80ab65ce3586?q=80&w=1000&auto=format&fit=crop"
+    },
+    {
+      // 8. Pancakes & Crepes
       keywords: ["tortitas", "pancakes", "crepes", "gofres", "waffles"],
       url: "https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?q=80&w=1000&auto=format&fit=crop"
     },
     {
+      // 9. Eggs & Tortillas
+      keywords: ["huevo", "huevos", "tortilla", "revuelto", "poche", "pocha", "escalfado", "frito", "fritos"],
+      url: "https://images.unsplash.com/photo-1525351484163-7529414344d8?q=80&w=1000&auto=format&fit=crop"
+    },
+    {
+      // 10. Salmon
+      keywords: ["salmon"],
+      url: "https://images.unsplash.com/photo-1467003909585-2f8a72700288?q=80&w=1000&auto=format&fit=crop"
+    },
+    {
+      // 11. Other Fish & Seafood
+      keywords: ["pescado", "merluza", "bacalao", "lenguado", "lubina", "atun", "bonito", "emperador", "dorada", "trucha", "marisco", "pulpo", "gambas", "langostinos"],
+      url: "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?q=80&w=1000&auto=format&fit=crop"
+    },
+    {
+      // 12. Chicken & Poultry
+      keywords: ["pollo", "pavo", "pechuga", "alitas", "muslo", "ave"],
+      url: "https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?q=80&w=1000&auto=format&fit=crop"
+    },
+    {
+      // 13. Meat (Beef, pork, etc.) - Uses a beautiful healthy grilled steak/salad image instead of heavy BBQ ribs
+      keywords: ["carne", "ternera", "cerdo", "bistec", "filete", "lomo", "entrecot", "solomillo", "hamburguesa", "albondigas", "jamon"],
+      url: "https://images.unsplash.com/photo-1532550907401-a500c9a57435?q=80&w=1000&auto=format&fit=crop"
+    },
+    {
+      // 14. Soups, Caldos & Creams
+      keywords: ["sopa", "crema", "caldo", "gazpacho", "salmorejo", "pure"],
+      url: "https://images.unsplash.com/photo-1547592165-e1d17fed6005?q=80&w=1000&auto=format&fit=crop"
+    },
+    {
+      // 15. Yogurt & Dairy
+      keywords: ["yogur", "yogurt", "kefir", "cuajada"],
+      url: "https://images.unsplash.com/photo-1488477181946-6428a0291777?q=80&w=1000&auto=format&fit=crop"
+    },
+    {
+      // 16. Smoothies & Shakes
+      keywords: ["batido", "smoothie", "licuado", "shake"],
+      url: "https://images.unsplash.com/photo-1553530666-ba11a7da3888?q=80&w=1000&auto=format&fit=crop"
+    },
+    {
+      // 17. Fruits
+      keywords: ["fruta", "fresas", "fresa", "platano", "manzana", "pera", "naranja", "kiwi", "uvas", "melocoton", "bayas", "arandanos", "frutas"],
+      url: "https://images.unsplash.com/photo-1619546813926-a78fa6372cd2?q=80&w=1000&auto=format&fit=crop"
+    },
+    {
+      // 18. Nuts & Seeds
+      keywords: ["frutos secos", "nueces", "almendras", "avellanas", "cacahuetes", "pistachos", "semillas", "chia", "pipas"],
+      url: "https://images.unsplash.com/photo-1596701062351-df5f8a42f3c5?q=80&w=1000&auto=format&fit=crop"
+    },
+    {
+      // 19. Hummus & Dips
+      keywords: ["hummus", "dip", "pate"],
+      url: "https://images.unsplash.com/photo-1541518763669-27fef04b14ea?q=80&w=1000&auto=format&fit=crop"
+    },
+    {
+      // 20. Wraps & Tacos
+      keywords: ["wrap", "taco", "tacos", "burrito", "fajita", "fajitas", "quesadilla"],
+      url: "https://images.unsplash.com/photo-1626700051175-6518c4793f73?q=80&w=1000&auto=format&fit=crop"
+    },
+    {
+      // 21. Coffee & Tea
+      keywords: ["cafe", "te", "infusion", "manzanilla", "poleo"],
+      url: "https://images.unsplash.com/photo-1541167760496-1628856ab772?q=80&w=1000&auto=format&fit=crop"
+    },
+    {
+      // 22. Cheese
       keywords: ["queso", "cottage", "requeson", "burgos", "mozzarella", "feta"],
       url: "https://images.unsplash.com/photo-1486887396153-fa416525c108?q=80&w=1000&auto=format&fit=crop"
     },
     {
+      // 23. General Veggies & Greens
       keywords: ["verduras", "verdura", "vegetales", "espinacas", "espinaca", "brocoli", "calabacin", "berenjena", "pimiento", "zanahoria", "champinones", "champinon", "setas", "puerro", "apio", "esparragos"],
       url: "https://images.unsplash.com/photo-1490645935967-10de6ba17061?q=80&w=1000&auto=format&fit=crop"
     }
@@ -171,16 +190,16 @@ function getVerifiedImageForRecipe(recipeName: string, mealType: string): string
     }
   }
 
-  // Fallbacks based on meal type if no keyword matches
+  // Fallbacks based on meal type if no keyword matches (using more varied, premium fallback images)
   switch (mealType.toLowerCase()) {
     case "desayuno":
-      return "https://images.unsplash.com/photo-1496042399014-dc73c4f2bde1?q=80&w=1000&auto=format&fit=crop";
+      return "https://images.unsplash.com/photo-1496042399014-dc73c4f2bde1?q=80&w=1000&auto=format&fit=crop"; // breakfast table
     case "almuerzo":
-      return "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=1000&auto=format&fit=crop";
+      return "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=1000&auto=format&fit=crop"; // salad/bowl
     case "merienda":
-      return "https://images.unsplash.com/photo-1488477181946-6428a0291777?q=80&w=1000&auto=format&fit=crop";
+      return "https://images.unsplash.com/photo-1505253716362-afaea1d3d1af?q=80&w=1000&auto=format&fit=crop"; // premium snack table (tea, bread, fruit) - avoids repeating yogurt too much
     case "cena":
-      return "https://images.unsplash.com/photo-1498837167922-ddd27525d352?q=80&w=1000&auto=format&fit=crop";
+      return "https://images.unsplash.com/photo-1498837167922-ddd27525d352?q=80&w=1000&auto=format&fit=crop"; // dinner plate
     default:
       return "https://images.unsplash.com/photo-1490645935967-10de6ba17061?q=80&w=1000&auto=format&fit=crop";
   }
@@ -261,6 +280,9 @@ async function processPDFWithGemini(filePath: string): Promise<MealPlan> {
 // 1. Endpoint to get the active global meal plan
 app.get("/api/plan", (req, res) => {
   const active = getPlan();
+  if (active.plan) {
+    fillDefaultRecipeValues(active.plan);
+  }
   res.json({
     plan: active.plan,
     metadata: active.metadata,
@@ -284,6 +306,9 @@ app.post("/api/plan/update-recipe", (req, res) => {
   if (active.plan && active.plan.days[day as keyof typeof active.plan.days]) {
     updateRecipe(day, meal, recipe);
     const updated = getPlan();
+    if (updated.plan) {
+      fillDefaultRecipeValues(updated.plan);
+    }
     return res.json({ success: true, plan: updated.plan });
   } else {
     return res.status(400).json({ error: "No hay ningún plan pautado cargado." });
@@ -456,6 +481,7 @@ app.post("/api/history/restore/:id", (req, res) => {
   try {
     const restored = restorePlanFromHistory(id);
     if (restored) {
+      fillDefaultRecipeValues(restored.plan);
       res.json({
         success: true,
         plan: restored.plan,
@@ -554,20 +580,178 @@ app.post("/api/reprocess", async (req, res) => {
   }
 });
 
+// Auxiliary helpers to escape HTML attribute values and replace/inject meta tags dynamically
+
+/**
+ * Helper to escape HTML special characters in attributes to prevent breakage.
+ */
+function escapeHtmlAttr(val: string): string {
+  return String(val || "")
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+/**
+ * Helper to replace or inject a meta tag by name/property.
+ */
+function replaceMetaTag(html: string, nameOrProperty: string, value: string, isProperty: boolean = false): string {
+  const attribute = isProperty ? "property" : "name";
+  const escapedVal = escapeHtmlAttr(value);
+  const regex = new RegExp(`<meta\\s+${attribute}="${nameOrProperty.replace(/:/g, "\\:")}"\\s+content="[^"]*"\\s*\\/?>`, "i");
+  if (regex.test(html)) {
+    return html.replace(regex, `<meta ${attribute}="${nameOrProperty}" content="${escapedVal}" />`);
+  }
+  // If tag doesn't exist, we append it right before </head>
+  return html.replace("</head>", `<meta ${attribute}="${nameOrProperty}" content="${escapedVal}" />\n</head>`);
+}
+
+/**
+ * Inject the dynamic page metadata (Title, OpenGraph, Twitter Cards) into the HTML template.
+ */
+function injectMetaTags(html: string, data: { title: string; description: string; image: string; url: string }): string {
+  let result = html;
+  
+  // Replace <title> tag
+  if (/<title>.*?<\/title>/i.test(result)) {
+    result = result.replace(/<title>.*?<\/title>/i, `<title>${escapeHtmlAttr(data.title)}</title>`);
+  } else {
+    result = result.replace("</head>", `<title>${escapeHtmlAttr(data.title)}</title>\n</head>`);
+  }
+
+  // Name meta tags
+  result = replaceMetaTag(result, "description", data.description, false);
+  result = replaceMetaTag(result, "twitter:title", data.title, false);
+  result = replaceMetaTag(result, "twitter:description", data.description, false);
+  result = replaceMetaTag(result, "twitter:image", data.image, false);
+
+  // Property meta tags
+  result = replaceMetaTag(result, "og:title", data.title, true);
+  result = replaceMetaTag(result, "og:description", data.description, true);
+  result = replaceMetaTag(result, "og:image", data.image, true);
+  result = replaceMetaTag(result, "og:url", data.url, true);
+  result = replaceMetaTag(result, "og:type", "website", true);
+  result = replaceMetaTag(result, "og:site_name", "VitalityNutri", true);
+
+  return result;
+}
+
+/**
+ * Resolves the dynamic metadata (title, description, image, canonical url) based on request path and database values.
+ */
+function getMetaDataForRequest(req: express.Request): { title: string; description: string; image: string; url: string } {
+  const protocol = req.headers["x-forwarded-proto"] || req.protocol || "http";
+  const host = req.get("host") || "vitalitynutri.com";
+  const absoluteUrl = `${protocol}://${host}${req.originalUrl}`;
+
+  // Default website-wide metadata
+  let title = "VitalityNutri - Planificador de Alimentación Consciente y Saludable";
+  let description = "Organiza tus comidas, genera listas de compra inteligentes y descubre recetas saludables pautadas a tu medida.";
+  let image = "https://images.unsplash.com/photo-1490645935967-10de6ba17061?q=80&w=1000&auto=format&fit=crop";
+
+  // Check if we are requesting a recipe page: /recipe/:day/:meal
+  const match = req.path.match(/\/recipe\/([^/]+)\/([^/]+)/i);
+  if (match) {
+    const rawDay = match[1];
+    const rawMeal = match[2];
+    
+    const active = getPlan();
+    if (active.plan && active.plan.days) {
+      const dayName = rawDay.toLowerCase();
+      const mealName = rawMeal.toLowerCase();
+      
+      const dayRecipes = active.plan.days[dayName as keyof typeof active.plan.days];
+      if (dayRecipes) {
+        const recipe = dayRecipes[mealName as keyof typeof dayRecipes];
+        if (recipe) {
+          const capitalizedDay = dayName.charAt(0).toUpperCase() + dayName.slice(1);
+          const capitalizedMeal = mealName.charAt(0).toUpperCase() + mealName.slice(1);
+          
+          title = `${recipe.recipeName} (${capitalizedMeal} - ${capitalizedDay}) | VitalityNutri`;
+          
+          const caloriesText = recipe.calories ? `${recipe.calories} kcal` : "";
+          const timeText = recipe.time ? `en ${recipe.time}` : "";
+          const details = [caloriesText, timeText].filter(Boolean).join(" • ");
+          
+          description = `Receta para ${recipe.recipeName} (${recipe.tag || "Nutritivo"}). ${details ? details + ". " : ""}${recipe.tips || ""}`;
+          if (description.length > 200) {
+            description = description.slice(0, 197) + "...";
+          }
+          
+          if (recipe.image) {
+            image = recipe.image;
+          }
+        }
+      }
+    }
+  }
+
+  return { title, description, image, url: absoluteUrl };
+}
+
 // Integrate Vite middleware in development
 async function setupVite() {
+  let vite: any = null;
+
+  const handlePageRequest = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    // Skip API and files/assets containing dots
+    if (req.path.startsWith("/api") || req.path.includes(".")) {
+      return next();
+    }
+
+    try {
+      let templatePath = "";
+      if (process.env.NODE_ENV !== "production") {
+        templatePath = path.join(process.cwd(), "index.html");
+      } else {
+        templatePath = path.join(process.cwd(), "dist", "index.html");
+      }
+
+      if (!fs.existsSync(templatePath)) {
+        return next();
+      }
+
+      let html = fs.readFileSync(templatePath, "utf-8");
+
+      // 1. Resolve dynamic metadata
+      const metaData = getMetaDataForRequest(req);
+
+      // 2. Transform index.html via Vite in development to support HMR
+      if (process.env.NODE_ENV !== "production" && vite) {
+        html = await vite.transformIndexHtml(req.originalUrl, html);
+      }
+
+      // 3. Inject dynamic tags
+      html = injectMetaTags(html, metaData);
+
+      // 4. Return page
+      res.status(200).set({ "Content-Type": "text/html" }).end(html);
+    } catch (e) {
+      if (process.env.NODE_ENV !== "production" && vite) {
+        vite.ssrFixStacktrace(e as Error);
+      }
+      next(e);
+    }
+  };
+
   if (process.env.NODE_ENV !== "production") {
-    const vite = await createViteServer({
+    vite = await createViteServer({
       server: { middlewareMode: true },
-      appType: "spa",
+      appType: "custom", // Dynamic routing handled by handlePageRequest
     });
+    
+    // Serve page requests with dynamic metadata in development
+    app.get(["/", "/dashboard", "/calendar", "/grocery", "/recipe/:day/:meal"], handlePageRequest);
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), "dist");
+    
+    // Serve page requests with dynamic metadata in production
+    app.get(["/", "/dashboard", "/calendar", "/grocery", "/recipe/:day/:meal"], handlePageRequest);
     app.use(express.static(distPath));
-    app.get("*", (req, res) => {
-      res.sendFile(path.join(distPath, "index.html"));
-    });
+    app.get("*", handlePageRequest);
   }
 
   app.listen(PORT, "0.0.0.0", () => {

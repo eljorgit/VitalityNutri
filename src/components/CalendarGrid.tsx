@@ -234,7 +234,7 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab }: Cal
                                 )}
                               </div>
                               <h3 className={`font-bold text-[11px] md:text-xs group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors leading-snug line-clamp-2 ${
-                                  isFocused ? "text-emerald-950 dark:text-emerald-100 font-black" : "text-slate-700 dark:text-slate-200"
+                                  isFocused ? "text-emerald-950 dark:text-emerald-100 font-black" : "text-slate-700 dark:text-zinc-200"
                               }`} title={recipe.recipeName}>
                                 {recipe.recipeName}
                               </h3>
@@ -254,7 +254,7 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab }: Cal
                             
                             {/* Hover indicators */}
                             <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity no-print">
-                              <span className="material-symbols-outlined text-[13px] text-emerald-700 bg-emerald-150 p-0.5 rounded select-none">
+                              <span className="material-symbols-outlined text-[13px] text-emerald-700 bg-emerald-100 p-0.5 rounded select-none">
                                 arrow_forward
                               </span>
                             </div>
@@ -287,7 +287,7 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab }: Cal
           {/* Main Mobile Day Tabs View - Shown on mobile, hidden on desktop/print */}
           <div className="md:hidden print:hidden space-y-5">
             {/* Horizontal Scrolling Day Selector */}
-            <div className="flex gap-2 overflow-x-auto pb-2 select-none justify-between border-b border-gray-150 dark:border-zinc-800/60 pr-1">
+            <div className="flex gap-2 overflow-x-auto pb-2 select-none justify-between border-b border-gray-200 dark:border-zinc-800/60 pr-1">
               {daysKeys.map((day) => {
                 const label = datesMap[day];
                 const isSelected = activeMobileDay === day;
@@ -408,34 +408,34 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab }: Cal
           <section className="grid grid-cols-1 md:grid-cols-3 gap-6 no-print">
             
             {/* Weekly progress card details */}
-            <div className="bg-white/80 dark:bg-slate-900 p-6 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm flex flex-col justify-between select-text">
+            <div className="bg-white/80 dark:bg-zinc-900 p-6 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm flex flex-col justify-between select-text">
               <div className="flex items-center justify-between mb-4">
-                <h4 className="text-sm font-bold text-gray-700 dark:text-slate-200">Porcentaje de Completitud</h4>
+                <h4 className="text-sm font-bold text-gray-700 dark:text-zinc-200">Porcentaje de Completitud</h4>
                 <span className="text-sm font-bold text-emerald-800 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-0.5 rounded-full">
                   {stats.percentage}%
                 </span>
               </div>
-              <div className="w-full bg-gray-100 dark:bg-slate-800 h-2.5 rounded-full overflow-hidden">
+              <div className="w-full bg-gray-100 dark:bg-zinc-800 h-2.5 rounded-full overflow-hidden">
                 <div 
                   className="bg-emerald-600 h-full rounded-full transition-all duration-500"
                   style={{ width: `${stats.percentage}%` }}
                 ></div>
               </div>
-              <p className="mt-4 text-xs text-[#404943] dark:text-slate-400 leading-relaxed text-left">
+              <p className="mt-4 text-xs text-[#404943] dark:text-zinc-400 leading-relaxed text-left">
                 ¡Excelente progreso! Tienes <span className="font-bold text-gray-900 dark:text-white">{stats.planned} de 28 comidas</span> pautadas y vinculadas con las métricas nutricionales en tu calendario.
               </p>
             </div>
 
             {/* Top calorie macro card */}
-            <div className="bg-white/80 dark:bg-slate-900 p-6 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm flex flex-col justify-between select-text text-left">
-              <h4 className="text-sm font-bold text-gray-700 dark:text-slate-200 mb-4">Aporte Proteico Estimado</h4>
+            <div className="bg-white/80 dark:bg-zinc-900 p-6 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm flex flex-col justify-between select-text text-left">
+              <h4 className="text-sm font-bold text-gray-700 dark:text-zinc-200 mb-4">Aporte Proteico Estimado</h4>
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-950/30 text-[#0f5238] dark:text-emerald-400 rounded-2xl flex items-center justify-center border border-emerald-100 dark:border-emerald-900/40 select-none">
                   <span className="material-symbols-outlined">restaurant</span>
                 </div>
                 <div>
                   <span className="block font-bold text-md text-gray-950 dark:text-white">Proteína Balanceada</span>
-                  <span className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed block mt-0.5">
+                  <span className="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed block mt-0.5">
                     Provee un aporte de alta biodisponibilidad para preservar la masa muscular activa.
                   </span>
                 </div>
@@ -443,10 +443,10 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab }: Cal
             </div>
 
             {/* Shopping quick link card helper */}
-            <div className="bg-white/80 dark:bg-slate-900 p-6 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm flex items-center justify-between gap-4 select-text text-left">
+            <div className="bg-white/80 dark:bg-zinc-900 p-6 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm flex items-center justify-between gap-4 select-text text-left">
               <div className="text-left">
-                <h4 className="text-sm font-bold text-gray-700 dark:text-slate-200 mb-1">Lista de la Compra Inteligente</h4>
-                <p className="text-xs text-slate-500 dark:text-slate-450 leading-relaxed">
+                <h4 className="text-sm font-bold text-gray-700 dark:text-zinc-200 mb-1">Lista de la Compra Inteligente</h4>
+                <p className="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed">
                   Calculada en base a los ingredientes del plan actual, organizada y optimizada de forma inmediata.
                 </p>
               </div>
@@ -462,10 +462,10 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab }: Cal
           </section>
         </>
       ) : (
-        <div className="bg-white dark:bg-slate-900 rounded-3xl p-12 text-center border border-gray-100 dark:border-slate-800 max-w-lg mx-auto">
-          <span className="material-symbols-outlined text-4xl text-gray-300 dark:text-slate-600 mb-4 font-light">soup_kitchen</span>
+        <div className="bg-white dark:bg-zinc-900 rounded-3xl p-12 text-center border border-gray-100 dark:border-zinc-800 max-w-lg mx-auto">
+          <span className="material-symbols-outlined text-4xl text-gray-300 dark:text-zinc-600 mb-4 font-light">soup_kitchen</span>
           <p className="text-slate-950 dark:text-white font-bold text-lg mb-1">No hay ningún plan cargado</p>
-          <p className="text-sm text-[#404943] dark:text-slate-400 leading-relaxed mb-6">
+          <p className="text-sm text-[#404943] dark:text-zinc-400 leading-relaxed mb-6">
             Por favor, vuelve al Dashboard principal y sube un plan semanal de alimentación en formato PDF de forma instantánea.
           </p>
           <button

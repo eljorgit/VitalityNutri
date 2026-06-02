@@ -21,7 +21,7 @@ Debes separar los ingredientes y los pasos de preparación según el tipo de pla
 2. **Desayunos y Meriendas (Sin Tipo):** Al no tener una división por platos o cursos, está prohibido usar las claves de platos. En su lugar, introduce todos los ingredientes y pasos directamente dentro de la clave `general`.
 3. **Platos Únicos:** Si un Almuerzo o Cena consta de un solo plato principal unificado sin postre ni divisiones, utiliza también la clave `general`.
 4. **Título de la Receta (recipeName):** El título de la comida (`recipeName`) puede combinar el primer y segundo plato (ej: 'Crema de verduras y Pollo al horno'), pero **nunca** debe incluir el postre en el título (ej: no uses 'Pollo al horno y manzana' si la manzana es el postre).
-5. **Imágenes de la Receta (image):** Escribe una cadena de texto vacía `""` en el campo `image`. El backend se encargará de asignar automáticamente la URL de la imagen real y verificada de alta calidad según el nombre de la receta.
+5. **Imágenes de la Receta (image):** Escribe siempre una cadena vacía en este campo. El backend se encargará de asignar automáticamente la URL de la imagen.
 
 ---
 
@@ -97,7 +97,7 @@ interface Recipe {
   calories: number;       // Número entero estimado extraído de la tabla por porción
   time: string;           // Tiempo de preparación extraído o estimado (ej: "15 min", "1 hora")
   tag: string;            // Etiqueta nutricional corta (ej: "Alto en Proteína", "Bajo en Grasas")
-  image: string;          // Cadena de texto vacía (ej: "") que será rellenada automáticamente por el backend.
+  image: string;          // Cadena vacía.
   ingredients: CategorizedIngredients; // Objeto con ingredientes separados por tipo
   steps: CategorizedSteps;             // Objeto con pasos separados por tipo
   tips: string;           // Una recomendación técnica del chef o nutricionista
