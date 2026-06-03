@@ -6,6 +6,8 @@ import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
 import { Agent, setGlobalDispatcher } from "undici";
 
+import { createApi } from "unsplash-js";
+
 import { DEFAULT_MEAL_PLAN, DEFAULT_PLAN_METADATA } from "./src/defaultData.js";
 import { MealPlan, PlanMetadata } from "./src/types.js";
 import { getPlan, savePlan, resetPlan, updateRecipe, getHistory, restorePlanFromHistory, deleteHistoryItem, getGroceryListState, saveGroceryListState } from "./src/db.js";
@@ -36,6 +38,11 @@ const ai = process.env.GEMINI_API_KEY
   })
   : null;
 
+// Initialize Unsplash client
+const unsplash = process.env.UNSPLASH_ACCESS_KEY && process.env.UNSPLASH_ACCESS_KEY.trim() !== ""
+  ? createApi({ accessKey: process.env.UNSPLASH_ACCESS_KEY })
+  : null;
+
 /**
  * Helper to build the optimized prompt with extreme speed & conciseness instructions.
  */
@@ -63,130 +70,159 @@ Para acelerar el tiempo de procesamiento y no exceder los límites de tiempo de 
 /**
  * Helper to get a verified Unsplash food image URL based on recipe name keywords.
  */
+interface FoodCategoryMapping {
+  keywords: string[];
+  fallbackUrl: string;
+  searchQuery: string;
+}
+
+const foodCategories: FoodCategoryMapping[] = [
+  {
+    // 1. Oats & Cereals (Breakfast porridge)
+    keywords: ["avena", "porridge", "gachas", "oatmeal", "muesli", "granola", "cereal", "cereales"],
+    fallbackUrl: "https://images.unsplash.com/photo-1517881917430-e70dfb3610aa?q=80&w=1000&auto=format&fit=crop",
+    searchQuery: "oatmeal bowl"
+  },
+  {
+    // 2. Pasta plates (checked before general meats/proteins)
+    keywords: ["pasta", "espagueti", "espaguetis", "macarrones", "tallarines", "lasana", "lasagna", "ravioles", "fideos", "noodles"],
+    fallbackUrl: "https://images.unsplash.com/photo-1546549032-9571cd6b27df?q=80&w=1000&auto=format&fit=crop",
+    searchQuery: "pasta spaghetti"
+  },
+  {
+    // 3. Rice & Quinoa plates
+    keywords: ["arroz", "paella", "risotto", "quinoa", "cuscus", "cuscus"],
+    fallbackUrl: "https://images.unsplash.com/photo-1534080564583-6be75777b70a?q=80&w=1000&auto=format&fit=crop",
+    searchQuery: "risotto rice"
+  },
+  {
+    // 4. Pizza & Focaccia
+    keywords: ["pizza", "focaccia"],
+    fallbackUrl: "https://images.unsplash.com/photo-1513104890138-7c749659a591?q=80&w=1000&auto=format&fit=crop",
+    searchQuery: "pizza"
+  },
+  {
+    // 5. Salads
+    keywords: ["ensalada", "salad", "cesar", "cesar"],
+    fallbackUrl: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?q=80&w=1000&auto=format&fit=crop",
+    searchQuery: "salad bowl"
+  },
+  {
+    // 6. Avocado dishes (specifically avocado toast / fillings)
+    keywords: ["aguacate", "avocado", "guacamole"],
+    fallbackUrl: "https://images.unsplash.com/photo-1541532713592-79a0317b6b77?q=80&w=1000&auto=format&fit=crop",
+    searchQuery: "avocado toast"
+  },
+  {
+    // 7. Toast, Sandwiches, Pitufos & Bread (checked before generic proteins so pitufo with chicken/tuna displays as a sandwich)
+    keywords: ["pitufo", "tostada", "tosta", "sandwich", "sandich", "bocadillo", "pulguita", "mollete", "panecillo", "pan"],
+    fallbackUrl: "https://images.unsplash.com/photo-1539252554453-80ab65ce3586?q=80&w=1000&auto=format&fit=crop",
+    searchQuery: "healthy sandwich"
+  },
+  {
+    // 8. Pancakes & Crepes
+    keywords: ["tortitas", "pancakes", "crepes", "gofres", "waffles"],
+    fallbackUrl: "https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?q=80&w=1000&auto=format&fit=crop",
+    searchQuery: "pancakes"
+  },
+  {
+    // 9. Eggs & Tortillas
+    keywords: ["huevo", "huevos", "tortilla", "revuelto", "poche", "pocha", "escalfado", "frito", "fritos"],
+    fallbackUrl: "https://images.unsplash.com/photo-1525351484163-7529414344d8?q=80&w=1000&auto=format&fit=crop",
+    searchQuery: "eggs breakfast"
+  },
+  {
+    // 10. Salmon
+    keywords: ["salmon"],
+    fallbackUrl: "https://images.unsplash.com/photo-1467003909585-2f8a72700288?q=80&w=1000&auto=format&fit=crop",
+    searchQuery: "cooked salmon"
+  },
+  {
+    // 11. Other Fish & Seafood
+    keywords: ["pescado", "merluza", "bacalao", "lenguado", "lubina", "atun", "bonito", "emperador", "dorada", "trucha", "marisco", "pulpo", "gambas", "langostinos"],
+    fallbackUrl: "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?q=80&w=1000&auto=format&fit=crop",
+    searchQuery: "fish meal"
+  },
+  {
+    // 12. Chicken & Poultry
+    keywords: ["pollo", "pavo", "pechuga", "alitas", "muslo", "ave"],
+    fallbackUrl: "https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?q=80&w=1000&auto=format&fit=crop",
+    searchQuery: "grilled chicken"
+  },
+  {
+    // 13. Meat (Beef, pork, etc.) - Uses a beautiful healthy grilled steak/salad image instead of heavy BBQ ribs
+    keywords: ["carne", "ternera", "cerdo", "bistec", "filete", "lomo", "entrecot", "solomillo", "hamburguesa", "albondigas", "jamon"],
+    fallbackUrl: "https://images.unsplash.com/photo-1532550907401-a500c9a57435?q=80&w=1000&auto=format&fit=crop",
+    searchQuery: "steak beef"
+  },
+  {
+    // 14. Soups, Caldos & Creams
+    keywords: ["sopa", "crema", "caldo", "gazpacho", "salmorejo", "pure"],
+    fallbackUrl: "https://images.unsplash.com/photo-1547592165-e1d17fed6005?q=80&w=1000&auto=format&fit=crop",
+    searchQuery: "vegetable soup"
+  },
+  {
+    // 15. Yogurt & Dairy
+    keywords: ["yogur", "yogurt", "kefir", "cuajada"],
+    fallbackUrl: "https://images.unsplash.com/photo-1488477181946-6428a0291777?q=80&w=1000&auto=format&fit=crop",
+    searchQuery: "yogurt bowl"
+  },
+  {
+    // 16. Smoothies & Shakes
+    keywords: ["batido", "smoothie", "licuado", "shake"],
+    fallbackUrl: "https://images.unsplash.com/photo-1553530666-ba11a7da3888?q=80&w=1000&auto=format&fit=crop",
+    searchQuery: "smoothie"
+  },
+  {
+    // 17. Fruits
+    keywords: ["fruta", "fresas", "fresa", "platano", "manzana", "pera", "naranja", "kiwi", "uvas", "melocoton", "bayas", "arandanos", "frutas"],
+    fallbackUrl: "https://images.unsplash.com/photo-1619546813926-a78fa6372cd2?q=80&w=1000&auto=format&fit=crop",
+    searchQuery: "fruit platter"
+  },
+  {
+    // 18. Nuts & Seeds
+    keywords: ["frutos secos", "nueces", "almendras", "avellanas", "cacahuetes", "pistachos", "semillas", "chia", "pipas"],
+    fallbackUrl: "https://images.unsplash.com/photo-1596701062351-df5f8a42f3c5?q=80&w=1000&auto=format&fit=crop",
+    searchQuery: "mixed nuts"
+  },
+  {
+    // 19. Hummus & Dips
+    keywords: ["hummus", "dip", "pate"],
+    fallbackUrl: "https://images.unsplash.com/photo-1541518763669-27fef04b14ea?q=80&w=1000&auto=format&fit=crop",
+    searchQuery: "hummus"
+  },
+  {
+    // 20. Wraps & Tacos
+    keywords: ["wrap", "taco", "tacos", "burrito", "fajita", "fajitas", "quesadilla"],
+    fallbackUrl: "https://images.unsplash.com/photo-1626700051175-6518c4793f73?q=80&w=1000&auto=format&fit=crop",
+    searchQuery: "tacos wrap"
+  },
+  {
+    // 21. Coffee & Tea
+    keywords: ["cafe", "te", "infusion", "manzanilla", "poleo"],
+    fallbackUrl: "https://images.unsplash.com/photo-1541167760496-1628856ab772?q=80&w=1000&auto=format&fit=crop",
+    searchQuery: "tea coffee cup"
+  },
+  {
+    // 22. Cheese
+    keywords: ["queso", "cottage", "requeson", "burgos", "mozzarella", "feta"],
+    fallbackUrl: "https://images.unsplash.com/photo-1486887396153-fa416525c108?q=80&w=1000&auto=format&fit=crop",
+    searchQuery: "cheese plate"
+  },
+  {
+    // 23. General Veggies & Greens
+    keywords: ["verduras", "verdura", "vegetales", "espinacas", "espinaca", "brocoli", "calabacin", "berenjena", "pimiento", "zanahoria", "champinones", "champinon", "setas", "puerro", "apio", "esparragos"],
+    fallbackUrl: "https://images.unsplash.com/photo-1490645935967-10de6ba17061?q=80&w=1000&auto=format&fit=crop",
+    searchQuery: "cooked vegetables"
+  }
+];
+
 function getVerifiedImageForRecipe(recipeName: string, mealType: string): string {
   const nameLower = recipeName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
-  const mapping = [
-    {
-      // 1. Oats & Cereals (Breakfast porridge)
-      keywords: ["avena", "porridge", "gachas", "oatmeal", "muesli", "granola", "cereal", "cereales"],
-      url: "https://images.unsplash.com/photo-1517881917430-e70dfb3610aa?q=80&w=1000&auto=format&fit=crop"
-    },
-    {
-      // 2. Pasta plates (checked before general meats/proteins)
-      keywords: ["pasta", "espagueti", "espaguetis", "macarrones", "tallarines", "lasana", "lasagna", "ravioles", "fideos", "noodles"],
-      url: "https://images.unsplash.com/photo-1546549032-9571cd6b27df?q=80&w=1000&auto=format&fit=crop"
-    },
-    {
-      // 3. Rice & Quinoa plates
-      keywords: ["arroz", "paella", "risotto", "quinoa", "cuscus", "cuscus"],
-      url: "https://images.unsplash.com/photo-1534080564583-6be75777b70a?q=80&w=1000&auto=format&fit=crop"
-    },
-    {
-      // 4. Pizza & Focaccia
-      keywords: ["pizza", "focaccia"],
-      url: "https://images.unsplash.com/photo-1513104890138-7c749659a591?q=80&w=1000&auto=format&fit=crop"
-    },
-    {
-      // 5. Salads
-      keywords: ["ensalada", "salad", "cesar", "cesar"],
-      url: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?q=80&w=1000&auto=format&fit=crop"
-    },
-    {
-      // 6. Avocado dishes (specifically avocado toast / fillings)
-      keywords: ["aguacate", "avocado", "guacamole"],
-      url: "https://images.unsplash.com/photo-1541532713592-79a0317b6b77?q=80&w=1000&auto=format&fit=crop"
-    },
-    {
-      // 7. Toast, Sandwiches, Pitufos & Bread (checked before generic proteins so pitufo with chicken/tuna displays as a sandwich)
-      keywords: ["pitufo", "tostada", "tosta", "sandwich", "sandich", "bocadillo", "pulguita", "mollete", "panecillo", "pan"],
-      url: "https://images.unsplash.com/photo-1539252554453-80ab65ce3586?q=80&w=1000&auto=format&fit=crop"
-    },
-    {
-      // 8. Pancakes & Crepes
-      keywords: ["tortitas", "pancakes", "crepes", "gofres", "waffles"],
-      url: "https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?q=80&w=1000&auto=format&fit=crop"
-    },
-    {
-      // 9. Eggs & Tortillas
-      keywords: ["huevo", "huevos", "tortilla", "revuelto", "poche", "pocha", "escalfado", "frito", "fritos"],
-      url: "https://images.unsplash.com/photo-1525351484163-7529414344d8?q=80&w=1000&auto=format&fit=crop"
-    },
-    {
-      // 10. Salmon
-      keywords: ["salmon"],
-      url: "https://images.unsplash.com/photo-1467003909585-2f8a72700288?q=80&w=1000&auto=format&fit=crop"
-    },
-    {
-      // 11. Other Fish & Seafood
-      keywords: ["pescado", "merluza", "bacalao", "lenguado", "lubina", "atun", "bonito", "emperador", "dorada", "trucha", "marisco", "pulpo", "gambas", "langostinos"],
-      url: "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?q=80&w=1000&auto=format&fit=crop"
-    },
-    {
-      // 12. Chicken & Poultry
-      keywords: ["pollo", "pavo", "pechuga", "alitas", "muslo", "ave"],
-      url: "https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?q=80&w=1000&auto=format&fit=crop"
-    },
-    {
-      // 13. Meat (Beef, pork, etc.) - Uses a beautiful healthy grilled steak/salad image instead of heavy BBQ ribs
-      keywords: ["carne", "ternera", "cerdo", "bistec", "filete", "lomo", "entrecot", "solomillo", "hamburguesa", "albondigas", "jamon"],
-      url: "https://images.unsplash.com/photo-1532550907401-a500c9a57435?q=80&w=1000&auto=format&fit=crop"
-    },
-    {
-      // 14. Soups, Caldos & Creams
-      keywords: ["sopa", "crema", "caldo", "gazpacho", "salmorejo", "pure"],
-      url: "https://images.unsplash.com/photo-1547592165-e1d17fed6005?q=80&w=1000&auto=format&fit=crop"
-    },
-    {
-      // 15. Yogurt & Dairy
-      keywords: ["yogur", "yogurt", "kefir", "cuajada"],
-      url: "https://images.unsplash.com/photo-1488477181946-6428a0291777?q=80&w=1000&auto=format&fit=crop"
-    },
-    {
-      // 16. Smoothies & Shakes
-      keywords: ["batido", "smoothie", "licuado", "shake"],
-      url: "https://images.unsplash.com/photo-1553530666-ba11a7da3888?q=80&w=1000&auto=format&fit=crop"
-    },
-    {
-      // 17. Fruits
-      keywords: ["fruta", "fresas", "fresa", "platano", "manzana", "pera", "naranja", "kiwi", "uvas", "melocoton", "bayas", "arandanos", "frutas"],
-      url: "https://images.unsplash.com/photo-1619546813926-a78fa6372cd2?q=80&w=1000&auto=format&fit=crop"
-    },
-    {
-      // 18. Nuts & Seeds
-      keywords: ["frutos secos", "nueces", "almendras", "avellanas", "cacahuetes", "pistachos", "semillas", "chia", "pipas"],
-      url: "https://images.unsplash.com/photo-1596701062351-df5f8a42f3c5?q=80&w=1000&auto=format&fit=crop"
-    },
-    {
-      // 19. Hummus & Dips
-      keywords: ["hummus", "dip", "pate"],
-      url: "https://images.unsplash.com/photo-1541518763669-27fef04b14ea?q=80&w=1000&auto=format&fit=crop"
-    },
-    {
-      // 20. Wraps & Tacos
-      keywords: ["wrap", "taco", "tacos", "burrito", "fajita", "fajitas", "quesadilla"],
-      url: "https://images.unsplash.com/photo-1626700051175-6518c4793f73?q=80&w=1000&auto=format&fit=crop"
-    },
-    {
-      // 21. Coffee & Tea
-      keywords: ["cafe", "te", "infusion", "manzanilla", "poleo"],
-      url: "https://images.unsplash.com/photo-1541167760496-1628856ab772?q=80&w=1000&auto=format&fit=crop"
-    },
-    {
-      // 22. Cheese
-      keywords: ["queso", "cottage", "requeson", "burgos", "mozzarella", "feta"],
-      url: "https://images.unsplash.com/photo-1486887396153-fa416525c108?q=80&w=1000&auto=format&fit=crop"
-    },
-    {
-      // 23. General Veggies & Greens
-      keywords: ["verduras", "verdura", "vegetales", "espinacas", "espinaca", "brocoli", "calabacin", "berenjena", "pimiento", "zanahoria", "champinones", "champinon", "setas", "puerro", "apio", "esparragos"],
-      url: "https://images.unsplash.com/photo-1490645935967-10de6ba17061?q=80&w=1000&auto=format&fit=crop"
-    }
-  ];
-
-  for (const entry of mapping) {
-    if (entry.keywords.some(kw => nameLower.includes(kw))) {
-      return entry.url;
+  for (const category of foodCategories) {
+    if (category.keywords.some(kw => nameLower.includes(kw))) {
+      return category.fallbackUrl;
     }
   }
 
@@ -205,10 +241,73 @@ function getVerifiedImageForRecipe(recipeName: string, mealType: string): string
   }
 }
 
+function getSearchQueryForRecipe(recipeName: string, mealType: string): string {
+  const nameLower = recipeName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+  for (const category of foodCategories) {
+    if (category.keywords.some(kw => nameLower.includes(kw))) {
+      return category.searchQuery;
+    }
+  }
+
+  // Fallbacks based on meal type if no keyword matches
+  switch (mealType.toLowerCase()) {
+    case "desayuno":
+      return "healthy breakfast";
+    case "almuerzo":
+      return "healthy lunch";
+    case "merienda":
+      return "healthy snack";
+    case "cena":
+      return "healthy dinner";
+    default:
+      return "healthy food";
+  }
+}
+
+async function fetchStaticImageForRecipe(recipeName: string, mealType: string): Promise<string> {
+  const fallbackUrl = getVerifiedImageForRecipe(recipeName, mealType);
+
+  if (!unsplash) {
+    console.log(`[Unsplash] Client not initialized. Using static fallback for "${recipeName}"`);
+    return fallbackUrl;
+  }
+
+  const query = getSearchQueryForRecipe(recipeName, mealType);
+  try {
+    console.log(`[Unsplash] Searching for "${recipeName}" with query "${query}"...`);
+    const result = await unsplash.search.getPhotos({
+      query: query,
+      page: 1,
+      perPage: 5,
+      orientation: "landscape"
+    });
+
+    if (result.type === "success" && result.response.results.length > 0) {
+      // Pick a random image from the top 3 results to give some variety
+      const photos = result.response.results;
+      const selectedPhoto = photos[Math.floor(Math.random() * Math.min(photos.length, 3))];
+      const imageUrl = selectedPhoto.urls.regular;
+      console.log(`[Unsplash] Found image for "${recipeName}": ${imageUrl}`);
+      return imageUrl;
+    } else {
+      if (result.type === "error") {
+        console.error(`[Unsplash] API Error searching for "${query}":`, result.errors[0]);
+      } else {
+        console.warn(`[Unsplash] No results found for "${query}"`);
+      }
+      return fallbackUrl;
+    }
+  } catch (error) {
+    console.error(`[Unsplash] Exception searching for "${query}":`, error);
+    return fallbackUrl;
+  }
+}
+
 /**
- * Helper to fill default values (images, calories, time, tags, tips) for recipes.
+ * Helper to resolve and assign static images (via Unsplash API or local fallback) and other default values.
  */
-function fillDefaultRecipeValues(mealPlan: MealPlan): void {
+async function fillStaticRecipeImages(mealPlan: MealPlan): Promise<void> {
   const daysKeys = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"] as const;
   const mealsKeys = ["desayuno", "almuerzo", "merienda", "cena"] as const;
 
@@ -216,8 +315,8 @@ function fillDefaultRecipeValues(mealPlan: MealPlan): void {
     for (const m of mealsKeys) {
       const recipe = mealPlan.days[d][m];
       if (recipe) {
-        // Always overwrite or fill the image based on our verified Unsplash mapping
-        recipe.image = getVerifiedImageForRecipe(recipe.recipeName, m);
+        // Overwrite or fill the image based on our Unsplash search or verified fallback
+        recipe.image = await fetchStaticImageForRecipe(recipe.recipeName, m);
 
         if (!recipe.calories) recipe.calories = 380;
         if (!recipe.time) recipe.time = "20 min";
@@ -270,7 +369,7 @@ async function processPDFWithGemini(filePath: string): Promise<MealPlan> {
   const parsedData = JSON.parse(textResponse.trim());
   if (parsedData && parsedData.days) {
     const mealPlan = parsedData as MealPlan;
-    fillDefaultRecipeValues(mealPlan);
+    await fillStaticRecipeImages(mealPlan);
     return mealPlan;
   } else {
     throw new Error("El plan devuelto no tiene una estructura con la clave 'days'.");
@@ -280,9 +379,6 @@ async function processPDFWithGemini(filePath: string): Promise<MealPlan> {
 // 1. Endpoint to get the active global meal plan
 app.get("/api/plan", (req, res) => {
   const active = getPlan();
-  if (active.plan) {
-    fillDefaultRecipeValues(active.plan);
-  }
   res.json({
     plan: active.plan,
     metadata: active.metadata,
@@ -306,9 +402,6 @@ app.post("/api/plan/update-recipe", (req, res) => {
   if (active.plan && active.plan.days[day as keyof typeof active.plan.days]) {
     updateRecipe(day, meal, recipe);
     const updated = getPlan();
-    if (updated.plan) {
-      fillDefaultRecipeValues(updated.plan);
-    }
     return res.json({ success: true, plan: updated.plan });
   } else {
     return res.status(400).json({ error: "No hay ningún plan pautado cargado." });
@@ -481,7 +574,6 @@ app.post("/api/history/restore/:id", (req, res) => {
   try {
     const restored = restorePlanFromHistory(id);
     if (restored) {
-      fillDefaultRecipeValues(restored.plan);
       res.json({
         success: true,
         plan: restored.plan,
