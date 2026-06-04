@@ -317,7 +317,7 @@ export default function App() {
 
         </div>
       </header>      {/* 2. Main Content Frame */}
-      <main className="flex-grow w-full max-w-container-max mx-auto px-6 pt-6 pb-24 md:py-12">
+      <main className="flex-grow w-full max-w-container-max mx-auto px-6 pt-6 pb-36 md:py-12">
         {isLoading ? (
           <div className="py-24 text-center">
             <div className="w-12 h-12 rounded-full border-4 border-emerald-100 dark:border-zinc-850 border-t-emerald-600 dark:border-t-emerald-450 animate-spin mx-auto mb-4"></div>
@@ -378,7 +378,7 @@ export default function App() {
 
       {/* 3. Footer */}
       <footer className="w-full mt-auto bg-white dark:bg-zinc-900 border-t border-gray-100 dark:border-zinc-800 select-none no-print transition-colors">
-        <div className="flex flex-col md:flex-row justify-between items-center w-full px-6 pt-8 pb-24 md:py-8 max-w-container-max mx-auto gap-6">
+        <div className="flex flex-col md:flex-row justify-between items-center w-full px-6 pt-8 pb-36 md:py-8 max-w-container-max mx-auto gap-6">
           <div className="flex flex-col items-center md:items-start gap-1">
             <span className="font-extrabold text-emerald-600 text-lg">VitalityNutri</span>
             <p className="text-xs text-gray-450 dark:text-zinc-550">© 2026 VitalityNutri. Alimentación consciente, viva y pautada.</p>

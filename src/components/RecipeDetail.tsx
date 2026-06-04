@@ -57,6 +57,62 @@ export default function RecipeDetail({
   const [showDayMealsDropdown, setShowDayMealsDropdown] = useState<boolean>(false);
   const [showAllRecipesDropdown, setShowAllRecipesDropdown] = useState<boolean>(false);
 
+  // Mobile Drawer settings state
+  const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
+
+  // Swipe gesture detection state
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const [touchEndX, setTouchEndX] = useState<number | null>(null);
+  const [touchStartY, setTouchStartY] = useState<number | null>(null);
+  const [touchEndY, setTouchEndY] = useState<number | null>(null);
+
+  // Scroll lock effect when drawer is open
+  React.useEffect(() => {
+    if (isDrawerOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isDrawerOpen]);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStartX(e.targetTouches[0].clientX);
+    setTouchStartY(e.targetTouches[0].clientY);
+    setTouchEndX(null);
+    setTouchEndY(null);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEndX(e.targetTouches[0].clientX);
+    setTouchEndY(e.targetTouches[0].clientY);
+  };
+
+  const handleTouchEnd = () => {
+    if (touchStartX === null || touchEndX === null || touchStartY === null || touchEndY === null) return;
+    const diffX = touchStartX - touchEndX;
+    const diffY = touchStartY - touchEndY;
+
+    // Horizontal swipe must exceed vertical movement and threshold (60px)
+    if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 60) {
+      if (diffX > 0) {
+        // Swiped Left -> Next Recipe
+        if (activeRecipes.length > 1 && onNavigate) {
+          const nextIdx = (currentIndex + 1) % activeRecipes.length;
+          onNavigate(activeRecipes[nextIdx].day, activeRecipes[nextIdx].meal, activeRecipes[nextIdx].recipe);
+        }
+      } else {
+        // Swiped Right -> Previous Recipe
+        if (activeRecipes.length > 1 && onNavigate) {
+          const prevIdx = (currentIndex - 1 + activeRecipes.length) % activeRecipes.length;
+          onNavigate(activeRecipes[prevIdx].day, activeRecipes[prevIdx].meal, activeRecipes[prevIdx].recipe);
+        }
+      }
+    }
+  };
+
   // Sharing states
   const [shareFullRecipe, setShareFullRecipe] = useState<boolean>(false);
   const [copied, setCopied] = useState<boolean>(false);
@@ -457,21 +513,394 @@ export default function RecipeDetail({
     ? normalizedSteps
     : normalizedSteps.filter(step => step.categoryKey === selectedStepCategory);
 
-  return (
-    <div className="space-y-6 select-text text-left">
+  const renderSidebarContent = () => {
+    return (
+      <div className="space-y-6">
+        {/* Raciones Ajustables */}
+        <div className="bg-white/40 dark:bg-zinc-900/40 p-5 rounded-2xl border border-slate-200/50 dark:border-zinc-800/50 shadow-xs text-left">
+          <h2 className="text-xs font-black text-slate-800 dark:text-zinc-200 mb-2 flex items-center gap-1.5 uppercase tracking-wider">
+            <span className="material-symbols-outlined text-emerald-600 dark:text-emerald-400 text-[18px]">calculate</span>
+            Raciones Ajustables
+          </h2>
+          <p className="text-[11px] text-slate-500 dark:text-zinc-400 leading-relaxed mb-4">
+            Ajusta las raciones para toda la familia. Las cantidades de los ingredientes se recalcularán al instante.
+          </p>
 
-      {/* Recipe Navigation Bar - ordered exactly left-to-right as requested */}
-      <div className="flex flex-col md:flex-row items-center justify-between gap-4 border-b border-slate-200/50 dark:border-zinc-800 pb-4 no-print select-none">
+          <div className="space-y-4">
+            {/* Presets Grid */}
+            <div className="bg-slate-100/80 dark:bg-zinc-950/45 p-1 rounded-xl border border-slate-200/30 dark:border-zinc-850/50 grid grid-cols-4 gap-1 select-none">
+              {[1, 2, 3, 4].map((factor) => {
+                const isActive = multiplier === factor;
+                return (
+                  <button
+                    key={factor}
+                    type="button"
+                    onClick={() => handleSetPreset(factor)}
+                    className={`py-1.5 rounded-lg text-xs font-black transition duration-200 cursor-pointer ${isActive
+                      ? "bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-600/10"
+                      : "bg-white/90 hover:bg-slate-50 dark:bg-zinc-800 dark:hover:bg-zinc-750 text-zinc-700 dark:text-zinc-300 border border-slate-200/50 dark:border-zinc-700/50"
+                      }`}
+                  >
+                    x{factor}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Custom factor control */}
+            <div className="space-y-2 text-left">
+              <div className="flex items-center justify-between select-none">
+                <label htmlFor="custom-factor" className="text-[10px] font-bold text-zinc-400 dark:text-zinc-550 uppercase tracking-widest">
+                  Personalizar
+                </label>
+                {multiplier !== 1 && (
+                  <button
+                    type="button"
+                    onClick={handleReset}
+                    className="text-emerald-600 hover:text-emerald-700 dark:text-emerald-450 dark:hover:text-emerald-450 font-bold text-[10px] hover:underline cursor-pointer transition-all duration-150"
+                  >
+                    Resetear
+                  </button>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between gap-2.5 bg-slate-100/60 dark:bg-zinc-950/40 p-2 rounded-xl border border-slate-200/50 dark:border-zinc-850 w-full shadow-inner-sm">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newMult = Math.max(0.5, Math.round((multiplier - 0.5) * 10) / 10);
+                    setMultiplier(newMult);
+                    setCustomInput(newMult.toString());
+                  }}
+                  className="w-9 h-9 rounded-lg bg-white dark:bg-zinc-800 border border-slate-200/55 dark:border-zinc-700/60 flex items-center justify-center font-black text-sm hover:bg-slate-50 dark:hover:bg-zinc-750 cursor-pointer text-slate-700 dark:text-zinc-300 shadow-sm active:scale-95 transition-all"
+                >
+                  -
+                </button>
+                <div className="flex items-center gap-1 bg-white dark:bg-zinc-900 border border-slate-200/40 dark:border-zinc-800 rounded-lg px-3 py-1.5 flex-1 shadow-sm justify-center">
+                  <span className="text-[11px] font-bold text-zinc-400 select-none">x</span>
+                  <input
+                    id="custom-factor"
+                    type="number"
+                    step="0.5"
+                    min="0.5"
+                    className="w-full text-xs font-black text-emerald-800 dark:text-emerald-450 text-center bg-transparent focus:outline-none focus:ring-0 border-none p-0"
+                    value={customInput}
+                    onChange={(e) => {
+                      setCustomInput(e.target.value);
+                      const val = parseFloat(e.target.value);
+                      if (!isNaN(val) && val >= 0.5) {
+                        setMultiplier(val);
+                      }
+                    }}
+                  />
+                  <span className="text-[10px] font-bold text-zinc-400 select-none">
+                    {multiplier === 1 ? "ración" : "raciones"}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newMult = Math.round((multiplier + 0.5) * 10) / 10;
+                    setMultiplier(newMult);
+                    setCustomInput(newMult.toString());
+                  }}
+                  className="w-9 h-9 rounded-lg bg-white dark:bg-zinc-800 border border-slate-200/55 dark:border-zinc-700/60 flex items-center justify-center font-black text-sm hover:bg-slate-50 dark:hover:bg-zinc-750 cursor-pointer text-slate-700 dark:text-zinc-300 shadow-sm active:scale-95 transition-all"
+                >
+                  +
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Caloric balance scaled display box */}
+        <div className="bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white p-5 rounded-2xl shadow-md border border-emerald-400/10 shadow-emerald-500/5">
+          <div className="flex justify-between items-center text-left">
+            <div>
+              <p className="text-[9px] uppercase tracking-widest font-extrabold text-emerald-100/90 leading-none mb-1.5">
+                Valor Calórico Ajustado
+              </p>
+              <h3 className="text-3xl font-extrabold leading-none">
+                {Math.round(recipe.calories * multiplier)} <span className="text-sm font-semibold">kcal</span>
+              </h3>
+              {multiplier !== 1 && (
+                <p className="text-[10px] text-emerald-100/80 mt-1.5">
+                  Base: {recipe.calories} kcal × {multiplier} ración(es).
+                </p>
+              )}
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center border border-white/10 shrink-0">
+              <span className="material-symbols-outlined text-emerald-100 text-2xl select-none">
+                nutrition
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Compartir Receta Panel */}
+        <div className="bg-white/40 dark:bg-zinc-900/40 p-5 rounded-2xl border border-slate-200/50 dark:border-zinc-800/50 shadow-xs space-y-4 no-print text-left">
+          <h2 className="text-xs font-black text-slate-800 dark:text-zinc-200 flex items-center gap-1.5 uppercase tracking-wider">
+            <span className="material-symbols-outlined text-emerald-600 dark:text-emerald-400 text-[18px]">share</span>
+            Compartir Receta
+          </h2>
+          <p className="text-[11px] text-slate-500 dark:text-zinc-400 leading-relaxed">
+            Comparte esta prescripción nutricional o envíala a tus aplicaciones de notas preferidas.
+          </p>
+
+          {/* Checkbox selector */}
+          <div className="bg-slate-50/70 dark:bg-zinc-950/40 p-3 rounded-xl border border-slate-200/35 dark:border-zinc-850 select-none">
+            <label className="flex items-center gap-2 cursor-pointer text-xs text-gray-750 dark:text-zinc-300 relative group/tooltip flex-wrap">
+              <input
+                type="checkbox"
+                checked={shareFullRecipe}
+                onChange={(e) => setShareFullRecipe(e.target.checked)}
+                className="w-4 h-4 rounded border-slate-300 dark:border-zinc-700 text-emerald-600 focus:ring-emerald-500 cursor-pointer dark:bg-zinc-900 shrink-0"
+              />
+              <span className="flex items-center gap-1 font-semibold">
+                Compartir receta completa
+                <span className="material-symbols-outlined text-slate-400 dark:text-zinc-550 cursor-help" style={{ fontSize: "14px" }}>info</span>
+              </span>
+              <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-48 p-2 bg-slate-900 text-white text-[10px] rounded-lg opacity-0 pointer-events-none group-hover/tooltip:opacity-100 transition-opacity duration-150 shadow-md z-30 leading-normal font-medium text-center">
+                Al activarlo se copiarán todos los ingredientes y preparación detallados. Si está inactivo, solo se compartirá el enlace.
+              </span>
+            </label>
+          </div>
+
+          {/* Export action triggers */}
+          <div className="grid grid-cols-2 gap-2 pt-1">
+            <button
+              type="button"
+              onClick={handleCopyToClipboard}
+              className="flex items-center justify-center gap-1.5 py-2.5 bg-white dark:bg-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-750 text-slate-700 dark:text-zinc-200 rounded-xl transition duration-200 font-bold text-xs border border-slate-200/60 dark:border-zinc-700/50 shadow-sm cursor-pointer active:scale-[0.98]"
+            >
+              <span className="material-symbols-outlined text-slate-500 dark:text-zinc-400 text-[16px]">
+                {copied ? "check_circle" : "content_copy"}
+              </span>
+              <span>
+                {copied 
+                  ? (shareFullRecipe ? "Copiada" : "Copiado") 
+                  : (shareFullRecipe ? "Copiar receta" : "Copiar enlace")}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={handleShareWhatsApp}
+              className="flex items-center justify-center gap-1.5 py-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 dark:bg-emerald-500/15 dark:hover:bg-emerald-500/25 text-emerald-700 dark:text-emerald-400 rounded-xl transition duration-200 font-bold text-xs border border-emerald-500/20 shadow-sm cursor-pointer active:scale-[0.98]"
+            >
+              <svg className="w-[15px] h-[15px] fill-current" viewBox="0 0 24 24">
+                <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.513 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.457L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.625 1.451 5.437.002 9.861-4.416 9.863-9.864.001-2.639-1.02-5.12-2.874-6.978-1.855-1.857-4.327-2.88-6.967-2.881-5.439 0-9.865 4.42-9.867 9.867-.001 1.867.501 3.585 1.45 5.161l-.952 3.479 3.565-.936zm11.597-5.495c-.32-.16-1.89-.93-2.185-1.04-.294-.11-.51-.16-.723.16-.214.32-.827 1.04-1.013 1.252-.186.213-.372.24-.692.08-.32-.16-1.353-.5-2.577-1.6-.952-.85-1.594-1.9-1.782-2.22-.186-.32-.02-.492.14-.65.143-.142.32-.37.48-.557.16-.188.21-.32.32-.53.11-.21.05-.4-.03-.56-.08-.16-.723-1.74-.99-2.39-.26-.63-.526-.54-.723-.55-.187-.01-.4-.01-.613-.01-.213 0-.56.08-.853.4-.293.32-1.118 1.1-1.118 2.68 0 1.58 1.15 3.11 1.31 3.32.16.21 2.263 3.456 5.482 4.848.765.33 1.362.528 1.826.674.77.244 1.47.21 2.02.128.618-.092 1.89-.77 2.157-1.48.266-.71.266-1.32.186-1.45-.08-.13-.294-.21-.614-.37z" />
+              </svg>
+              <span>WhatsApp</span>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={handleExportToKeep}
+              className="flex items-center justify-center gap-1.5 py-2.5 bg-amber-500/10 hover:bg-amber-500/20 dark:bg-amber-500/15 dark:hover:bg-amber-500/25 text-amber-700 dark:text-amber-400 rounded-xl transition duration-200 font-bold text-xs border border-amber-500/20 shadow-sm cursor-pointer active:scale-[0.98]"
+            >
+              <span className="material-symbols-outlined text-[16px] text-amber-600 dark:text-amber-400">lightbulb</span>
+              <span>{copiedKeep ? "Keep..." : "Google Keep"}</span>
+            </button>
+
+            {canShare && (
+              <button
+                type="button"
+                onClick={handleNativeShare}
+                className="flex items-center justify-center gap-1.5 py-2.5 bg-blue-500/10 hover:bg-blue-500/20 dark:bg-blue-500/15 dark:hover:bg-blue-500/25 text-blue-700 dark:text-blue-400 rounded-xl transition duration-200 font-bold text-xs border border-blue-500/20 shadow-sm cursor-pointer active:scale-[0.98]"
+              >
+                <span className="material-symbols-outlined text-[16px]">share</span>
+                <span>Compartir</span>
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderMealNavigator = (isMobileSticky = false) => {
+    if (activeRecipes.length === 0) return null;
+
+    return (
+      <div className={`flex items-center gap-1.5 p-1.5 rounded-2xl relative shrink-0 transition-all duration-300 ${
+        isMobileSticky
+          ? "bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-850 shadow-lg scale-95"
+          : "bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 shadow-sm"
+      }`}>
+
+        {/* 1. Flecha tipo chevron hacia la izquierda (comida anterior ciclico) */}
+        <button
+          type="button"
+          onClick={() => {
+            if (activeRecipes.length <= 1 || !onNavigate) return;
+            const prevIdx = (currentIndex - 1 + activeRecipes.length) % activeRecipes.length;
+            onNavigate(activeRecipes[prevIdx].day, activeRecipes[prevIdx].meal, activeRecipes[prevIdx].recipe);
+          }}
+          className="p-2 rounded-xl hover:bg-white dark:hover:bg-zinc-800 text-slate-600 hover:text-emerald-700 dark:text-zinc-300 dark:hover:text-emerald-400 transition cursor-pointer flex items-center justify-center font-bold"
+          title="Receta anterior"
+        >
+          <span className="material-symbols-outlined block text-[20px] font-black">chevron_left</span>
+        </button>
+
+        {/* 2. Texto del día actual y tipo de comida */}
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => {
+              setShowDayMealsDropdown(!showDayMealsDropdown);
+              setShowAllRecipesDropdown(false);
+            }}
+            className="px-3 py-2 text-xs md:text-sm font-black text-slate-800 dark:text-zinc-100 uppercase tracking-tight hover:text-emerald-700 dark:hover:text-emerald-400 rounded-xl cursor-pointer transition flex items-center gap-1"
+            title="Ver otras comidas de este día"
+          >
+            <span className="w-40 md:w-56 text-center truncate inline-block">
+              {dayNames[day]} • <span className="text-emerald-600 dark:text-emerald-400 font-extrabold">{mealNames[meal]}</span>
+            </span>
+            <span className="material-symbols-outlined text-[16px] text-slate-400 dark:text-zinc-500">arrow_drop_down</span>
+          </button>
+
+          {showDayMealsDropdown && (
+            <div className={`absolute left-1/2 -translate-x-1/2 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-xl py-2.5 w-60 z-50 text-left ${
+              isMobileSticky ? "bottom-full mb-2" : "top-full mt-2"
+            }`}>
+              <div className="px-3.5 py-1 text-[10px] font-extrabold text-slate-400 dark:text-zinc-500 uppercase tracking-wider select-none">
+                Comidas del {dayNames[day]}
+              </div>
+              {orderedMeals.map((m) => {
+                const r = plan?.days[day]?.[m];
+                const isCurrent = m === meal;
+                if (!r) return null;
+                return (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => {
+                      if (onNavigate) onNavigate(day, m, r);
+                      setShowDayMealsDropdown(false);
+                    }}
+                    className={`w-full px-4 py-2.5 text-xs text-left transition flex flex-col ${isCurrent
+                      ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-850 dark:text-emerald-300 font-extrabold"
+                      : "text-slate-700 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-zinc-800"
+                      }`}
+                  >
+                    <span className="font-extrabold text-[11px] uppercase tracking-wide">{mealNames[m]}</span>
+                    <span className="text-slate-400 dark:text-zinc-400 text-[10px] truncate">{r.recipeName}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* 3. Icono de calendario (pegado justo al texto) con dropdown agrupado por dia de la semana */}
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => {
+              setShowAllRecipesDropdown(!showAllRecipesDropdown);
+              setShowDayMealsDropdown(false);
+            }}
+            className={`p-2 rounded-xl transition cursor-pointer flex items-center justify-center font-bold ${
+              showAllRecipesDropdown
+                ? "bg-slate-100 dark:bg-zinc-800 text-emerald-700 dark:text-emerald-400"
+                : "text-slate-500 hover:text-emerald-700 dark:text-zinc-400 dark:hover:text-emerald-400"
+            }`}
+            title="Mostrar todas las recetas"
+          >
+            <span className="material-symbols-outlined block text-[18px]">calendar_today</span>
+          </button>
+
+          {showAllRecipesDropdown && (
+            <div className={`absolute left-1/2 -translate-x-1/2 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2.5xl shadow-xl p-4 w-72 md:w-80 z-50 text-left max-h-[250px] overflow-y-auto ${
+              isMobileSticky ? "bottom-full mb-2" : "top-full mt-2"
+            }`}>
+              <h4 className="text-[10px] font-black text-slate-405 dark:text-zinc-550 uppercase mb-3.5 tracking-widest select-none">Prescripción Semanal</h4>
+              <div className="space-y-3">
+                {orderedDays.map((d) => {
+                  const dayLabel = dayNames[d];
+                  return (
+                    <div key={d} className="border-b border-slate-100 dark:border-zinc-800/40 pb-2.5 last:border-none last:pb-0">
+                      <span className="text-xs font-black text-slate-800 dark:text-zinc-200 block mb-1.5">{dayLabel}</span>
+                      <div className="flex gap-1.5 select-none text-center">
+                        {orderedMeals.map((m) => {
+                          const r = plan?.days[d]?.[m];
+                          const initials = { desayuno: "D", almuerzo: "A", merienda: "M", cena: "C" };
+                          const initial = initials[m];
+                          const isCurrent = d === day && m === meal;
+                          const hasRecipe = !!r;
+                          return (
+                            <button
+                              key={m}
+                              type="button"
+                              disabled={!hasRecipe}
+                              onClick={() => {
+                                if (r && onNavigate) {
+                                  onNavigate(d, m, r);
+                                  setShowAllRecipesDropdown(false);
+                                }
+                              }}
+                              className={`w-7.5 h-7.5 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center justify-center ${isCurrent
+                                ? "bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-200 dark:ring-emerald-900"
+                                : hasRecipe
+                                  ? "bg-emerald-50 text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-950/45 dark:text-emerald-300 dark:hover:bg-emerald-950"
+                                  : "bg-slate-50 text-slate-300 dark:bg-zinc-950 dark:text-zinc-700 cursor-not-allowed"
+                                }`}
+                              title={r ? `${mealNames[m]}: ${r.recipeName}` : `${mealNames[m]}: Sin pautar`}
+                            >
+                              {initial}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* 4. Flecha tipo chevron hacia la derecha (comida siguiente ciclico) */}
+        <button
+          type="button"
+          onClick={() => {
+            if (activeRecipes.length <= 1 || !onNavigate) return;
+            const nextIdx = (currentIndex + 1) % activeRecipes.length;
+            onNavigate(activeRecipes[nextIdx].day, activeRecipes[nextIdx].meal, activeRecipes[nextIdx].recipe);
+          }}
+          className="p-2 rounded-xl hover:bg-white dark:hover:bg-zinc-800 text-slate-600 hover:text-emerald-700 dark:text-zinc-300 dark:hover:text-emerald-400 transition cursor-pointer flex items-center justify-center font-bold"
+          title="Comida siguiente"
+        >
+          <span className="material-symbols-outlined block text-[20px] font-black">chevron_right</span>
+        </button>
+
+      </div>
+    );
+  };
+
+  return (
+    <div 
+      className="space-y-6 select-text text-left relative"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+
+      {/* Recipe Navigation Bar - static header on mobile and desktop */}
+      <div className="flex items-center justify-between gap-4 border-b border-slate-200/50 dark:border-zinc-800 pb-4 no-print select-none">
 
         {/* Go back trigger and Next Meal helper */}
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={onGoBack}
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-emerald-700 dark:text-zinc-300 dark:hover:text-emerald-400 bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 px-3.5 py-2.5 rounded-xl transition duration-200 cursor-pointer animate-fade-in"
+            className="inline-flex items-center justify-center p-2.5 md:px-3.5 md:py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-600 hover:text-emerald-700 dark:text-zinc-300 dark:hover:text-emerald-400 transition duration-200 cursor-pointer font-bold text-xs shadow-sm"
+            title="Volver al Calendario"
           >
             <span className="material-symbols-outlined text-[16px]">arrow_back</span>
-            Volver al Calendario
+            <span className="hidden md:inline ml-1.5">Volver al Calendario</span>
           </button>
 
           {nextMeal && (
@@ -482,161 +911,22 @@ export default function RecipeDetail({
                   onNavigate(nextMeal.day, nextMeal.meal, nextMeal.recipe);
                 }
               }}
-              className="inline-flex items-center gap-1.5 text-xs font-extrabold text-emerald-800 hover:text-emerald-950 dark:text-emerald-300 dark:hover:text-emerald-100 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-950/60 px-3.5 py-2.5 rounded-xl transition duration-200 cursor-pointer animate-fade-in border border-emerald-100/50 dark:border-emerald-900/40"
+              className="inline-flex items-center gap-1.5 text-[11px] md:text-xs font-extrabold text-emerald-800 hover:text-emerald-950 dark:text-emerald-300 dark:hover:text-emerald-100 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-950/60 px-3 py-2 md:px-3.5 md:py-2.5 rounded-xl transition duration-200 cursor-pointer border border-emerald-100/50 dark:border-emerald-900/40 shadow-sm"
               title={`Ir a la próxima comida: ${mealNames[nextMeal.meal]}`}
             >
-              <span className="material-symbols-outlined text-[15px]">fastfood</span>
+              <span className="material-symbols-outlined text-[14px] md:text-[15px]">fastfood</span>
               <span>
-                Próxima comida: {mealNames[nextMeal.meal]} ({nextMeal.day === dayKeysInOrder[new Date().getDay()] ? "hoy" : nextMeal.day === dayKeysInOrder[(new Date().getDay() + 1) % 7] ? "mañana" : dayNames[nextMeal.day]})
+                Próxima comida: <span className="hidden sm:inline">{mealNames[nextMeal.meal]} ({nextMeal.day === dayKeysInOrder[new Date().getDay()] ? "hoy" : nextMeal.day === dayKeysInOrder[(new Date().getDay() + 1) % 7] ? "mañana" : dayNames[nextMeal.day]})</span>
+                <span className="sm:hidden">{mealNames[nextMeal.meal]}</span>
               </span>
             </button>
           )}
         </div>
 
-        {activeRecipes.length > 0 && (
-          <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-1.5 rounded-2xl shadow-sm relative shrink-0">
-
-            {/* 1. Flecha tipo chevron hacia la izquierda (comida anterior ciclico) */}
-            <button
-              type="button"
-              onClick={() => {
-                if (activeRecipes.length <= 1 || !onNavigate) return;
-                const prevIdx = (currentIndex - 1 + activeRecipes.length) % activeRecipes.length;
-                onNavigate(activeRecipes[prevIdx].day, activeRecipes[prevIdx].meal, activeRecipes[prevIdx].recipe);
-              }}
-              className="p-2 rounded-xl hover:bg-white dark:hover:bg-zinc-800 text-slate-600 hover:text-emerald-700 dark:text-zinc-300 dark:hover:text-emerald-400 transition cursor-pointer flex items-center justify-center font-bold"
-              title="Receta anterior"
-            >
-              <span className="material-symbols-outlined block text-[20px] font-black">chevron_left</span>
-            </button>
-
-            {/* 2. Texto del día actual y tipo de comida, con tamaño garantizado idéntico */}
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowDayMealsDropdown(!showDayMealsDropdown);
-                  setShowAllRecipesDropdown(false);
-                }}
-                className="px-3 py-2 text-xs md:text-sm font-black text-slate-800 dark:text-zinc-100 uppercase tracking-tight hover:text-emerald-700 dark:hover:text-emerald-400 rounded-xl cursor-pointer transition flex items-center gap-1"
-                title="Ver otras comidas de este día"
-              >
-                <span className="w-40 md:w-56 text-center truncate inline-block">{dayNames[day]} • <span className="text-emerald-600 dark:text-emerald-400 font-extrabold">{mealNames[meal]}</span></span>
-                <span className="material-symbols-outlined text-[16px] text-slate-400 dark:text-zinc-500">arrow_drop_down</span>
-              </button>
-
-              {showDayMealsDropdown && (
-                <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-xl py-2.5 w-60 z-50 text-left">
-                  <div className="px-3.5 py-1 text-[10px] font-extrabold text-slate-400 dark:text-zinc-500 uppercase tracking-wider select-none">
-                    Comidas del {dayNames[day]}
-                  </div>
-                  {orderedMeals.map((m) => {
-                    const r = plan?.days[day]?.[m];
-                    const isCurrent = m === meal;
-                    if (!r) return null;
-                    return (
-                      <button
-                        key={m}
-                        type="button"
-                        onClick={() => {
-                          if (onNavigate) onNavigate(day, m, r);
-                          setShowDayMealsDropdown(false);
-                        }}
-                        className={`w-full px-4 py-2.5 text-xs text-left transition flex flex-col ${isCurrent
-                          ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-850 dark:text-emerald-300 font-extrabold"
-                          : "text-slate-700 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-zinc-800"
-                          }`}
-                      >
-                        <span className="font-extrabold text-[11px] uppercase tracking-wide">{mealNames[m]}</span>
-                        <span className="text-slate-400 dark:text-zinc-400 text-[10px] truncate">{r.recipeName}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* 3. Icono de calendario (pegado justo al texto) con dropdown agrupado por dia de la semana */}
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowAllRecipesDropdown(!showAllRecipesDropdown);
-                  setShowDayMealsDropdown(false);
-                }}
-                className={`p-2 rounded-xl transition cursor-pointer flex items-center justify-center font-bold ${showAllRecipesDropdown
-                  ? "bg-slate-100 dark:bg-zinc-800 text-emerald-700 dark:text-emerald-400"
-                  : "text-slate-500 hover:text-emerald-700 dark:text-zinc-400 dark:hover:text-emerald-400"
-                  }`}
-                title="Mostrar todas las recetas"
-              >
-                <span className="material-symbols-outlined block text-[18px]">calendar_today</span>
-              </button>
-
-              {showAllRecipesDropdown && (
-                <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2.5xl shadow-xl p-4 w-72 md:w-80 z-50 text-left max-h-[350px] overflow-y-auto">
-                  <h4 className="text-[10px] font-black text-slate-405 dark:text-zinc-500 uppercase mb-3.5 tracking-widest select-none">Prescripción Semanal</h4>
-                  <div className="space-y-3">
-                    {orderedDays.map((d) => {
-                      const dayLabel = dayNames[d];
-                      return (
-                        <div key={d} className="border-b border-slate-100 dark:border-zinc-800/40 pb-2.5 last:border-none last:pb-0">
-                          <span className="text-xs font-black text-slate-800 dark:text-zinc-200 block mb-1.5">{dayLabel}</span>
-                          <div className="flex gap-1.5 select-none text-center">
-                            {orderedMeals.map((m) => {
-                              const r = plan?.days[d]?.[m];
-                              const initials = { desayuno: "D", almuerzo: "A", merienda: "M", cena: "C" };
-                              const initial = initials[m];
-                              const isCurrent = d === day && m === meal;
-                              const hasRecipe = !!r;
-                              return (
-                                <button
-                                  key={m}
-                                  type="button"
-                                  disabled={!hasRecipe}
-                                  onClick={() => {
-                                    if (r && onNavigate) {
-                                      onNavigate(d, m, r);
-                                      setShowAllRecipesDropdown(false);
-                                    }
-                                  }}
-                                  className={`w-7.5 h-7.5 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center justify-center ${isCurrent
-                                    ? "bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-200 dark:ring-emerald-900"
-                                    : hasRecipe
-                                      ? "bg-emerald-50 text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-950/45 dark:text-emerald-300 dark:hover:bg-emerald-950"
-                                      : "bg-slate-50 text-slate-300 dark:bg-zinc-950 dark:text-zinc-700 cursor-not-allowed"
-                                    }`}
-                                  title={r ? `${mealNames[m]}: ${r.recipeName}` : `${mealNames[m]}: Sin pautar`}
-                                >
-                                  {initial}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* 4. Flecha tipo chevron hacia la derecha (comida siguiente ciclico) */}
-            <button
-              type="button"
-              onClick={() => {
-                if (activeRecipes.length <= 1 || !onNavigate) return;
-                const nextIdx = (currentIndex + 1) % activeRecipes.length;
-                onNavigate(activeRecipes[nextIdx].day, activeRecipes[nextIdx].meal, activeRecipes[nextIdx].recipe);
-              }}
-              className="p-2 rounded-xl hover:bg-white dark:hover:bg-zinc-800 text-slate-600 hover:text-emerald-700 dark:text-zinc-300 dark:hover:text-emerald-400 transition cursor-pointer flex items-center justify-center font-bold"
-              title="Comida siguiente"
-            >
-              <span className="material-symbols-outlined block text-[20px] font-black">chevron_right</span>
-            </button>
-
-          </div>
-        )}
+        {/* Meal Selector - visible on desktop, hidden on mobile in the header */}
+        <div className="hidden md:block">
+          {renderMealNavigator(false)}
+        </div>
 
         <div className="text-xs text-slate-400 md:w-[150px] text-right">
           Pauta {currentIndex + 1} de {activeRecipes.length}
@@ -669,214 +959,35 @@ export default function RecipeDetail({
               <span className="font-semibold text-emerald-750 dark:text-emerald-400">Alta densidad nutricional</span>
             </div>
           </div>
+
+          {/* Mobile adjustments & sharing shortcut triggers */}
+          <div className="flex flex-wrap gap-2.5 mt-5 lg:hidden no-print select-none">
+            <button
+              type="button"
+              onClick={() => setIsDrawerOpen(true)}
+              className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-800 dark:text-emerald-350 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-950/60 px-3.5 py-2 rounded-xl transition duration-200 border border-emerald-100/50 dark:border-emerald-900/40 cursor-pointer shadow-sm active:scale-95"
+            >
+              <span className="material-symbols-outlined text-[15px]">calculate</span>
+              Raciones (x{multiplier}) • {Math.round(recipe.calories * multiplier)} kcal
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsDrawerOpen(true)}
+              className="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-700 dark:text-zinc-300 bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 px-3.5 py-2 rounded-xl transition duration-200 border border-slate-200/65 dark:border-zinc-700/50 cursor-pointer shadow-sm active:scale-95"
+            >
+              <span className="material-symbols-outlined text-[15px]">share</span>
+              Compartir
+            </button>
+          </div>
         </div>
       </section>
 
       {/* Main interactive grid content */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
-        {/* Sidebar calculations */}
-        <aside className="lg:col-span-4 space-y-6">
-
-          <div className="bg-zinc-50 dark:bg-zinc-900/60 p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800/80 shadow-sm text-left">
-            <h2 className="text-md font-extrabold text-slate-900 dark:text-white mb-2 flex items-center gap-2">
-              <span className="material-symbols-outlined text-emerald-600">calculate</span>
-              Raciones Ajustables
-            </h2>
-            <p className="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed mb-4">
-              Ajusta las raciones para toda la familia de forma instantánea. Se actualizarán todas las cantidades y se resaltarán en verde.
-            </p>
-
-            {/* Presets and custom numeric factor input in a unified layout */}
-            <div className="space-y-4">
-              {/* Presets Segmented Grid */}
-              <div className="bg-zinc-100/70 dark:bg-zinc-950/40 p-1.5 rounded-2xl border border-zinc-200/50 dark:border-zinc-800/40 grid grid-cols-4 gap-1.5 select-none">
-                {[1, 2, 3, 4].map((factor) => {
-                  const isActive = multiplier === factor;
-                  return (
-                    <button
-                      key={factor}
-                      type="button"
-                      onClick={() => handleSetPreset(factor)}
-                      className={`py-2 rounded-xl text-xs font-black transition duration-200 cursor-pointer ${isActive
-                        ? "bg-emerald-600 text-white shadow-sm"
-                        : "bg-white hover:bg-zinc-50/50 dark:bg-zinc-900 dark:hover:bg-zinc-850 text-zinc-700 dark:text-zinc-300 border border-zinc-200/60 dark:border-zinc-700/60"
-                        }`}
-                    >
-                      x{factor}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Custom factor control spanning full width */}
-              <div className="space-y-2 text-left">
-                <div className="flex items-center justify-between">
-                  <label htmlFor="custom-factor" className="text-[11px] font-bold text-zinc-400 dark:text-zinc-550 block uppercase tracking-wider">
-                    Factor Personalizado
-                  </label>
-                  {multiplier !== 1 && (
-                    <button
-                      type="button"
-                      onClick={handleReset}
-                      className="text-emerald-600 hover:text-emerald-700 dark:text-emerald-450 dark:hover:text-emerald-400 font-bold text-[11px] hover:underline cursor-pointer transition-all duration-150"
-                    >
-                      Restablecer original
-                    </button>
-                  )}
-                </div>
-
-                <div className="flex items-center justify-between gap-3 bg-zinc-100/40 dark:bg-zinc-950/50 p-2.5 rounded-2xl border border-zinc-200/80 dark:border-zinc-800/50 w-full shadow-inner-sm">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const newMult = Math.max(0.5, Math.round((multiplier - 0.5) * 10) / 10);
-                      setMultiplier(newMult);
-                      setCustomInput(newMult.toString());
-                    }}
-                    className="w-10 h-10 rounded-xl bg-white dark:bg-zinc-800 border border-zinc-200/50 dark:border-zinc-700/60 flex items-center justify-center font-black text-sm hover:bg-zinc-50 dark:hover:bg-zinc-700 cursor-pointer text-slate-700 dark:text-zinc-300 select-none animate-fade-in shadow-sm active:scale-95 transition-all duration-150"
-                  >
-                    -
-                  </button>
-                  <div className="flex items-center gap-1 bg-white dark:bg-zinc-900 border border-zinc-200/60 dark:border-zinc-700/60 rounded-xl px-4 py-2 flex-1 shadow-sm justify-center">
-                    <span className="text-xs font-bold text-zinc-400 select-none">x</span>
-                    <input
-                      id="custom-factor"
-                      type="number"
-                      step="0.5"
-                      min="0.5"
-                      className="w-full text-sm font-black text-emerald-800 dark:text-emerald-450 text-center bg-transparent focus:outline-none focus:ring-0 border-none p-0"
-                      value={customInput}
-                      onChange={(e) => {
-                        setCustomInput(e.target.value);
-                        const val = parseFloat(e.target.value);
-                        if (!isNaN(val) && val >= 0.5) {
-                          setMultiplier(val);
-                        }
-                      }}
-                    />
-                    <span className="text-xs font-bold text-zinc-400 dark:text-zinc-500 select-none">
-                      {multiplier === 1 ? "ración" : "raciones"}
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const newMult = Math.round((multiplier + 0.5) * 10) / 10;
-                      setMultiplier(newMult);
-                      setCustomInput(newMult.toString());
-                    }}
-                    className="w-10 h-10 rounded-xl bg-white dark:bg-zinc-800 border border-zinc-200/50 dark:border-zinc-700/60 flex items-center justify-center font-black text-sm hover:bg-zinc-50 dark:hover:bg-zinc-700 cursor-pointer text-slate-700 dark:text-zinc-300 select-none animate-fade-in shadow-sm active:scale-95 transition-all duration-150"
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Caloric balance scaled display box */}
-          <div className="bg-gradient-to-br from-emerald-600 to-emerald-800 text-white p-6 rounded-2xl shadow-sm">
-            <div className="flex justify-between items-center text-left">
-              <div>
-                <p className="text-[10px] uppercase tracking-wider font-extrabold text-emerald-100 leading-none mb-1">
-                  Calorías Totales Escalas
-                </p>
-                <h3 className="text-3xl font-extrabold leading-none">
-                  {Math.round(recipe.calories * multiplier)} <span className="text-sm font-semibold">kcal</span>
-                </h3>
-                {multiplier !== 1 && (
-                  <p className="text-[10px] text-emerald-100/80 mt-1">
-                    Base: {recipe.calories} kcal × {multiplier} ración(es).
-                  </p>
-                )}
-              </div>
-              <span className="material-symbols-outlined text-4xl text-emerald-200 opacity-60 select-none">
-                nutrition
-              </span>
-            </div>
-          </div>
-
-          {/* Compartir Receta Panel */}
-          <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-slate-100 dark:border-zinc-800/80 shadow-sm space-y-4 no-print text-left">
-            <h3 className="text-md font-bold text-gray-900 dark:text-white flex items-center gap-2">
-              <span className="material-symbols-outlined text-[#0f5238] dark:text-emerald-450" style={{ fontSize: "20px" }}>share</span>
-              Compartir Receta
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed">
-              Comparte esta receta con tus familiares o amigos en redes sociales o guárdala en tus notas.
-            </p>
-
-            {/* Checkbox selector */}
-            <div className="bg-slate-50 dark:bg-zinc-800/45 p-3.5 rounded-xl border border-slate-100 dark:border-zinc-800/60">
-              <label className="flex items-center gap-2.5 cursor-pointer text-xs text-gray-750 dark:text-zinc-300 select-none relative group/tooltip flex-wrap">
-                <input
-                  type="checkbox"
-                  checked={shareFullRecipe}
-                  onChange={(e) => setShareFullRecipe(e.target.checked)}
-                  className="w-4 h-4 rounded border-gray-300 dark:border-zinc-700 text-emerald-600 focus:ring-emerald-500 cursor-pointer dark:bg-zinc-900 shrink-0"
-                />
-                <span className="flex items-center gap-1 font-semibold">
-                  Compartir receta completa
-                  <span className="material-symbols-outlined text-slate-400 dark:text-zinc-500 cursor-help" style={{ fontSize: "14px" }}>info</span>
-                </span>
-                <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-48 p-2 bg-slate-900 text-white text-[10px] rounded-lg opacity-0 pointer-events-none group-hover/tooltip:opacity-100 transition-opacity duration-150 shadow-md z-30 leading-normal font-medium text-center">
-                  Al activarlo, se exportarán todos los ingredientes escalados y los pasos de preparación. Si está desactivado, solo se enviará el enlace de acceso directo.
-                </span>
-              </label>
-            </div>
-
-            {/* Export action triggers */}
-            <div className="grid grid-cols-2 gap-2 pt-1">
-              <button
-                type="button"
-                onClick={handleCopyToClipboard}
-                className="flex items-center justify-center gap-1.5 py-2.5 bg-slate-50 hover:bg-slate-100 dark:bg-zinc-800/40 dark:hover:bg-zinc-700 text-gray-700 dark:text-zinc-200 rounded-xl transition duration-200 font-bold text-xs border border-slate-200 dark:border-zinc-750 cursor-pointer active:scale-[0.98]"
-              >
-                <span className="material-symbols-outlined text-gray-500 dark:text-zinc-450 text-[16px]" style={{ fontSize: "16px" }}>
-                  {copied ? "check_circle" : "content_copy"}
-                </span>
-                <span>
-                  {copied 
-                    ? (shareFullRecipe ? "Copiada" : "Copiado") 
-                    : (shareFullRecipe ? "Copiar receta" : "Copiar enlace")}
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={handleShareWhatsApp}
-                className="flex items-center justify-center gap-1.5 py-2.5 bg-[#25D366]/10 hover:bg-[#25D366]/20 dark:bg-[#25D366]/15 dark:hover:bg-[#25D366]/25 text-[#075e54] dark:text-[#4fce5d] rounded-xl transition duration-200 font-bold text-xs border border-[#25D366]/20 cursor-pointer active:scale-[0.98]"
-              >
-                <svg className="w-[15px] h-[15px] fill-current text-[#25D366] dark:text-[#4fce5d]" viewBox="0 0 24 24">
-                  <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.513 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.457L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.625 1.451 5.437.002 9.861-4.416 9.863-9.864.001-2.639-1.02-5.12-2.874-6.978-1.855-1.857-4.327-2.88-6.967-2.881-5.439 0-9.865 4.42-9.867 9.867-.001 1.867.501 3.585 1.45 5.161l-.952 3.479 3.565-.936zm11.597-5.495c-.32-.16-1.89-.93-2.185-1.04-.294-.11-.51-.16-.723.16-.214.32-.827 1.04-1.013 1.252-.186.213-.372.24-.692.08-.32-.16-1.353-.5-2.577-1.6-.952-.85-1.594-1.9-1.782-2.22-.186-.32-.02-.492.14-.65.143-.142.32-.37.48-.557.16-.188.21-.32.32-.53.11-.21.05-.4-.03-.56-.08-.16-.723-1.74-.99-2.39-.26-.63-.526-.54-.723-.55-.187-.01-.4-.01-.613-.01-.213 0-.56.08-.853.4-.293.32-1.118 1.1-1.118 2.68 0 1.58 1.15 3.11 1.31 3.32.16.21 2.263 3.456 5.482 4.848.765.33 1.362.528 1.826.674.77.244 1.47.21 2.02.128.618-.092 1.89-.77 2.157-1.48.266-.71.266-1.32.186-1.45-.08-.13-.294-.21-.614-.37z" />
-                </svg>
-                <span>WhatsApp</span>
-              </button>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={handleExportToKeep}
-                className="flex items-center justify-center gap-1.5 py-2.5 bg-[#FBBC05]/10 hover:bg-[#FBBC05]/20 dark:bg-[#FBBC05]/15 dark:hover:bg-[#FBBC05]/25 text-[#c29202] dark:text-[#fcd34d] rounded-xl transition duration-200 font-bold text-xs border border-[#FBBC05]/20 cursor-pointer active:scale-[0.98]"
-              >
-                <span className="material-symbols-outlined text-[16px] text-[#FBBC05]" style={{ fontSize: "16px" }}>lightbulb</span>
-                <span>{copiedKeep ? "Keep..." : "Google Keep"}</span>
-              </button>
-
-              {canShare && (
-                <button
-                  type="button"
-                  onClick={handleNativeShare}
-                  className="flex items-center justify-center gap-1.5 py-2.5 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/20 dark:hover:bg-emerald-950/30 text-emerald-800 dark:text-emerald-400 rounded-xl transition duration-200 font-bold text-xs border border-emerald-100/80 dark:border-emerald-900/30 cursor-pointer active:scale-[0.98]"
-                >
-                  <span className="material-symbols-outlined text-[16px]" style={{ fontSize: "16px" }}>share</span>
-                  <span>Compartir</span>
-                </button>
-              )}
-            </div>
-          </div>
-
+        {/* Sidebar calculations - hidden on mobile, visible on desktop (lg breakpoint) */}
+        <aside className="hidden lg:block lg:col-span-4 space-y-6">
+          {renderSidebarContent()}
         </aside>
 
         {/* Main Ingredients detail presentation card layout */}
@@ -1118,6 +1229,57 @@ export default function RecipeDetail({
         </section>
 
       </div>
+
+      {/* Mobile Drawer (Settings Panel) */}
+      {isDrawerOpen && (
+        <div 
+          className="fixed inset-0 z-50 bg-slate-900/35 backdrop-blur-xs transition-opacity duration-300 no-print"
+          onClick={() => setIsDrawerOpen(false)}
+        />
+      )}
+      <div 
+        className={`fixed top-4 bottom-4 right-4 z-55 w-[calc(100%-2rem)] sm:w-[385px] bg-white/90 dark:bg-zinc-900/90 backdrop-blur-lg shadow-2xl rounded-2xl border border-slate-200/40 dark:border-zinc-800/55 p-6 overflow-y-auto no-print transition-all duration-300 ease-out ${
+          isDrawerOpen ? "translate-x-0 opacity-100 scale-100" : "translate-x-[110%] opacity-0 scale-95 pointer-events-none"
+        }`}
+      >
+        <div className="flex justify-between items-center pb-4 border-b border-slate-150 dark:border-zinc-800/70 mb-6 select-none">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-emerald-500/10 dark:bg-emerald-400/10 flex items-center justify-center border border-emerald-500/20 dark:border-emerald-400/10 shrink-0">
+              <span className="material-symbols-outlined text-emerald-600 dark:text-emerald-400 text-lg">tune</span>
+            </div>
+            <div>
+              <h3 className="text-sm font-black text-slate-900 dark:text-white tracking-tight leading-tight">Ajustes & Compartir</h3>
+              <p className="text-[9px] text-slate-400 dark:text-zinc-550 font-extrabold uppercase tracking-widest leading-none mt-0.5">Control Panel</p>
+            </div>
+          </div>
+          <button 
+            type="button"
+            onClick={() => setIsDrawerOpen(false)}
+            className="w-8 h-8 rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-zinc-800/50 dark:hover:bg-zinc-800 text-slate-450 hover:text-slate-700 dark:hover:text-zinc-200 transition duration-200 cursor-pointer flex items-center justify-center border border-slate-200/50 dark:border-zinc-700/50 shadow-xs"
+          >
+            <span className="material-symbols-outlined text-[18px]">close</span>
+          </button>
+        </div>
+        
+        {/* Drawer Content */}
+        {renderSidebarContent()}
+      </div>
+
+      {/* Mobile Floating Action Button (FAB) */}
+      <button
+        type="button"
+        onClick={() => setIsDrawerOpen(true)}
+        className="fixed bottom-[140px] right-6 z-45 lg:hidden bg-emerald-600 hover:bg-emerald-700 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition duration-200 hover:scale-105 active:scale-95 cursor-pointer no-print border border-emerald-500/20"
+        title="Ajustes de Receta"
+      >
+        <span className="material-symbols-outlined text-[26px]">tune</span>
+      </button>
+
+      {/* Mobile Sticky Bottom Recipe Switcher - positioned exactly above the mobile appbar (bottom-16) */}
+      <div className="fixed bottom-16 left-0 right-0 z-40 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border-t border-slate-200/50 dark:border-zinc-850 p-2.5 md:hidden shadow-lg flex justify-center no-print">
+        {renderMealNavigator(true)}
+      </div>
+
     </div>
   );
 }
