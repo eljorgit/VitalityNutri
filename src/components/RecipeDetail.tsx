@@ -59,6 +59,7 @@ export default function RecipeDetail({
 
   // Mobile Drawer settings state
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
+  const [drawerContent, setDrawerContent] = useState<'adjust' | 'share'>('adjust');
 
   // Swipe gesture detection state
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
@@ -513,13 +514,15 @@ export default function RecipeDetail({
     ? normalizedSteps
     : normalizedSteps.filter(step => step.categoryKey === selectedStepCategory);
 
-  const renderSidebarContent = () => {
+  const renderSidebarContent = (showOnly?: 'adjust' | 'share') => {
+    const showAdjust = !showOnly || showOnly === 'adjust';
+    const showShare = !showOnly || showOnly === 'share';
     return (
       <div className="space-y-6">
         {/* Raciones Ajustables */}
-        <div className="bg-white/40 dark:bg-zinc-900/40 p-5 rounded-2xl border border-slate-200/50 dark:border-zinc-800/50 shadow-xs text-left">
+        <div className={`bg-white/40 dark:bg-zinc-900/40 p-5 rounded-2xl border border-slate-200/50 dark:border-zinc-800/50 shadow-xs text-left ${showAdjust ? "" : "hidden"}`}>
           <h2 className="text-xs font-black text-slate-800 dark:text-zinc-200 mb-2 flex items-center gap-1.5 uppercase tracking-wider">
-            <span className="material-symbols-outlined text-emerald-600 dark:text-emerald-400 text-[18px]">calculate</span>
+            <span className="material-symbols-outlined text-emerald-600 dark:text-emerald-450 text-[18px]">calculate</span>
             Raciones Ajustables
           </h2>
           <p className="text-[11px] text-slate-500 dark:text-zinc-400 leading-relaxed mb-4">
@@ -614,7 +617,7 @@ export default function RecipeDetail({
         </div>
 
         {/* Caloric balance scaled display box */}
-        <div className="bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white p-5 rounded-2xl shadow-md border border-emerald-400/10 shadow-emerald-500/5">
+        <div className={`bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white p-5 rounded-2xl shadow-md border border-emerald-400/10 shadow-emerald-500/5 ${showAdjust ? "" : "hidden"}`}>
           <div className="flex justify-between items-center text-left">
             <div>
               <p className="text-[9px] uppercase tracking-widest font-extrabold text-emerald-100/90 leading-none mb-1.5">
@@ -638,7 +641,7 @@ export default function RecipeDetail({
         </div>
 
         {/* Compartir Receta Panel */}
-        <div className="bg-white/40 dark:bg-zinc-900/40 p-5 rounded-2xl border border-slate-200/50 dark:border-zinc-800/50 shadow-xs space-y-4 no-print text-left">
+        <div className={`bg-white/40 dark:bg-zinc-900/40 p-5 rounded-2xl border border-slate-200/50 dark:border-zinc-800/50 shadow-xs space-y-4 no-print text-left ${showShare ? "" : "hidden"}`}>
           <h2 className="text-xs font-black text-slate-800 dark:text-zinc-200 flex items-center gap-1.5 uppercase tracking-wider">
             <span className="material-symbols-outlined text-emerald-600 dark:text-emerald-400 text-[18px]">share</span>
             Compartir Receta
@@ -964,7 +967,10 @@ export default function RecipeDetail({
           <div className="flex flex-wrap gap-2.5 mt-5 lg:hidden no-print select-none">
             <button
               type="button"
-              onClick={() => setIsDrawerOpen(true)}
+              onClick={() => {
+                setDrawerContent('adjust');
+                setIsDrawerOpen(true);
+              }}
               className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-800 dark:text-emerald-350 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-950/60 px-3.5 py-2 rounded-xl transition duration-200 border border-emerald-100/50 dark:border-emerald-900/40 cursor-pointer shadow-sm active:scale-95"
             >
               <span className="material-symbols-outlined text-[15px]">calculate</span>
@@ -972,8 +978,11 @@ export default function RecipeDetail({
             </button>
             <button
               type="button"
-              onClick={() => setIsDrawerOpen(true)}
-              className="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-700 dark:text-zinc-300 bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 px-3.5 py-2 rounded-xl transition duration-200 border border-slate-200/65 dark:border-zinc-700/50 cursor-pointer shadow-sm active:scale-95"
+              onClick={() => {
+                setDrawerContent('share');
+                setIsDrawerOpen(true);
+              }}
+              className="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-700 dark:text-zinc-300 bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-750 px-3.5 py-2 rounded-xl transition duration-200 border border-slate-200/65 dark:border-zinc-700/50 cursor-pointer shadow-sm active:scale-95"
             >
               <span className="material-symbols-outlined text-[15px]">share</span>
               Compartir
@@ -1226,6 +1235,11 @@ export default function RecipeDetail({
             </div>
           </div>
 
+          {/* Mobile-only inline adjustments panel below preparation steps */}
+          <div className="lg:hidden mt-6 no-print" style={{ marginTop: "1.5rem" }}>
+            {renderSidebarContent('adjust')}
+          </div>
+
         </section>
 
       </div>
@@ -1235,20 +1249,26 @@ export default function RecipeDetail({
         <div 
           className="fixed inset-0 z-50 bg-slate-900/35 backdrop-blur-xs transition-opacity duration-300 no-print"
           onClick={() => setIsDrawerOpen(false)}
+          style={{ marginTop: 0 }}
         />
       )}
       <div 
-        className={`fixed top-4 bottom-4 right-4 z-55 w-[calc(100%-2rem)] sm:w-[385px] bg-white/90 dark:bg-zinc-900/90 backdrop-blur-lg shadow-2xl rounded-2xl border border-slate-200/40 dark:border-zinc-800/55 p-6 overflow-y-auto no-print transition-all duration-300 ease-out ${
+        className={`fixed top-4 right-4 z-55 w-[calc(100%-2rem)] sm:w-[385px] max-h-[calc(100vh-2rem)] h-auto bg-white/90 dark:bg-zinc-900/90 backdrop-blur-lg shadow-2xl rounded-2xl border border-slate-200/40 dark:border-zinc-800/55 p-6 overflow-y-auto no-print transition-all duration-300 ease-out ${
           isDrawerOpen ? "translate-x-0 opacity-100 scale-100" : "translate-x-[110%] opacity-0 scale-95 pointer-events-none"
         }`}
+        style={{ marginTop: 0 }}
       >
         <div className="flex justify-between items-center pb-4 border-b border-slate-150 dark:border-zinc-800/70 mb-6 select-none">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-emerald-500/10 dark:bg-emerald-400/10 flex items-center justify-center border border-emerald-500/20 dark:border-emerald-400/10 shrink-0">
-              <span className="material-symbols-outlined text-emerald-600 dark:text-emerald-400 text-lg">tune</span>
+              <span className="material-symbols-outlined text-emerald-600 dark:text-emerald-400 text-lg">
+                {drawerContent === 'adjust' ? "tune" : "share"}
+              </span>
             </div>
             <div>
-              <h3 className="text-sm font-black text-slate-900 dark:text-white tracking-tight leading-tight">Ajustes & Compartir</h3>
+              <h3 className="text-sm font-black text-slate-900 dark:text-white tracking-tight leading-tight">
+                {drawerContent === 'adjust' ? "Ajustes de Receta" : "Compartir Receta"}
+              </h3>
               <p className="text-[9px] text-slate-400 dark:text-zinc-550 font-extrabold uppercase tracking-widest leading-none mt-0.5">Control Panel</p>
             </div>
           </div>
@@ -1262,18 +1282,8 @@ export default function RecipeDetail({
         </div>
         
         {/* Drawer Content */}
-        {renderSidebarContent()}
+        {renderSidebarContent(drawerContent)}
       </div>
-
-      {/* Mobile Floating Action Button (FAB) */}
-      <button
-        type="button"
-        onClick={() => setIsDrawerOpen(true)}
-        className="fixed bottom-[140px] right-6 z-45 lg:hidden bg-emerald-600 hover:bg-emerald-700 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition duration-200 hover:scale-105 active:scale-95 cursor-pointer no-print border border-emerald-500/20"
-        title="Ajustes de Receta"
-      >
-        <span className="material-symbols-outlined text-[26px]">tune</span>
-      </button>
 
       {/* Mobile Sticky Bottom Recipe Switcher - positioned exactly above the mobile appbar (bottom-16) */}
       <div className="fixed bottom-16 left-0 right-0 z-40 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border-t border-slate-200/50 dark:border-zinc-850 p-2.5 md:hidden shadow-lg flex justify-center no-print">
