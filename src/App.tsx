@@ -303,9 +303,10 @@ export default function App() {
               onClick={() => {
                 navigate("/dashboard");
               }}
-              className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 tracking-tight hover:opacity-85 select-none text-left cursor-pointer transition-opacity"
+              className="flex items-center gap-2.5 text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 tracking-tight hover:opacity-90 select-none text-left cursor-pointer transition-opacity group"
             >
-              VitalityNutri
+              <span className="text-3xl filter drop-shadow-sm transform group-hover:scale-110 group-hover:rotate-12 transition-all duration-300 ease-out select-none" role="img" aria-label="VitalityNutri Logo">🥑</span>
+              <span>VitalityNutri</span>
             </button>
 
             <nav className="hidden md:flex items-center gap-3">
