@@ -5,9 +5,10 @@ interface CalendarGridProps {
   plan: MealPlan | null;
   onSelectRecipe: (day: DayType, meal: MealType, recipe: Recipe) => void;
   setActiveTab: (tab: string) => void;
+  completedRecipes: Record<string, boolean>;
 }
 
-export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab }: CalendarGridProps) {
+export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, completedRecipes }: CalendarGridProps) {
   const daysKeys: DayType[] = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"];
   const mealsKeys: MealType[] = ["desayuno", "almuerzo", "merienda", "cena"];
 
@@ -175,13 +176,46 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab }: Cal
 
   const stats = getPlannedStats();
 
+  const getCompletedStats = () => {
+    if (!plan) return { completed: 0, totalPlanned: 0, percentage: 0 };
+    let completed = 0;
+    let totalPlanned = 0;
+    daysKeys.forEach((day) => {
+      mealsKeys.forEach((meal) => {
+        if (plan.days[day] && plan.days[day][meal]) {
+          totalPlanned++;
+          if (completedRecipes[`${day}-${meal}`]) {
+            completed++;
+          }
+        }
+      });
+    });
+    const percentage = totalPlanned > 0 ? Math.round((completed / totalPlanned) * 100) : 0;
+    return { completed, totalPlanned, percentage };
+  };
+
+  const completedStats = getCompletedStats();
+
   return (
     <div className="space-y-8 select-text">
       {/* Header without Date Filter (removed per request) */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-950 dark:text-white tracking-tight font-sans animate-fade-in">Planificador Semanal de Comidas</h1>
           <p className="text-sm text-gray-550 dark:text-zinc-400">Visualiza, edita y organiza tu pauta nutricional compartida para todos.</p>
+        </div>
+        
+        {/* Leyenda de puntos de información */}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs bg-white dark:bg-zinc-900 px-4 py-2.5 rounded-2xl border border-slate-200/80 dark:border-zinc-800/80 w-fit select-none animate-fade-in no-print">
+          <span className="font-bold text-slate-500 dark:text-zinc-400">Leyenda:</span>
+          <span className="flex items-center gap-1.5 text-slate-700 dark:text-zinc-200">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/20"></span>
+            Rico en nutrientes
+          </span>
+          <span className="flex items-center gap-1.5 text-slate-700 dark:text-zinc-200">
+            <span className="w-2.5 h-2.5 rounded-full bg-orange-400 shadow-sm shadow-orange-400/20"></span>
+            Alto aporte energético (&gt; 350 kcal)
+          </span>
         </div>
       </div>      {plan ? (
         <>
@@ -229,6 +263,7 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab }: Cal
 
                       if (recipe) {
                         const isFocused = day === nextMeal.day && meal === nextMeal.meal;
+                        const isCompleted = !!completedRecipes[`${day}-${meal}`];
                         return (
                           <div
                             key={meal}
@@ -236,7 +271,9 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab }: Cal
                             className={`group h-28 p-3 rounded-xl transition-all duration-300 cursor-pointer flex flex-col justify-between text-left relative ${
                               isFocused
                                 ? "bg-emerald-50/90 dark:bg-emerald-950/40 border-2 border-emerald-500 shadow-md ring-2 ring-emerald-500/20 dark:ring-emerald-900/60 ring-offset-2 dark:ring-offset-zinc-950 scale-[1.03] z-10"
-                                : "bg-white dark:bg-zinc-900 border border-slate-200/60 dark:border-zinc-800/80 shadow-sm hover:shadow-md hover:border-slate-350 dark:hover:border-zinc-700 text-slate-800 dark:text-zinc-100"
+                                : isCompleted
+                                  ? "bg-emerald-50/30 dark:bg-emerald-950/15 border border-emerald-500/30 dark:border-emerald-500/25 shadow-sm hover:shadow-md hover:border-emerald-500 text-slate-800 dark:text-zinc-100"
+                                  : "bg-white dark:bg-zinc-900 border border-slate-200/60 dark:border-zinc-800/80 shadow-sm hover:shadow-md hover:border-slate-350 dark:hover:border-zinc-700 text-slate-800 dark:text-zinc-100"
                             } ${mealBorders[meal]}`}
                           >
                             <div>
@@ -246,11 +283,20 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab }: Cal
                                 }`}>
                                   {mealLabels[meal]}
                                 </span>
-                                {isFocused && (
-                                  <span className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-extrabold text-[7.5px] px-1.5 py-0.5 rounded-full select-none animate-pulse shadow-sm shrink-0">
-                                    PRÓXIMA
-                                  </span>
-                                )}
+                                <div className="flex items-center gap-1">
+                                  {isCompleted && (
+                                    <span className="bg-emerald-600 text-white rounded-full select-none shadow-sm shrink-0 flex items-center justify-center w-4 h-4 border border-emerald-500/20" title="Receta completada">
+                                      <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" strokeWidth="4.5" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                      </svg>
+                                    </span>
+                                  )}
+                                  {isFocused && !isCompleted && (
+                                    <span className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-extrabold text-[7.5px] px-1.5 py-0.5 rounded-full select-none animate-pulse shadow-sm shrink-0">
+                                      PRÓXIMA
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                               <h3 className={`font-bold text-[11px] md:text-xs group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors leading-snug line-clamp-2 ${
                                   isFocused ? "text-emerald-950 dark:text-emerald-100 font-black" : "text-slate-700 dark:text-zinc-200"
@@ -359,6 +405,7 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab }: Cal
                  };
 
                 const isFocused = activeMobileDay === nextMeal.day && meal === nextMeal.meal;
+                const isCompleted = !!completedRecipes[`${activeMobileDay}-${meal}`];
 
                 if (recipe) {
                   return (
@@ -368,7 +415,9 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab }: Cal
                       className={`group p-4 rounded-2xl transition-all duration-200 cursor-pointer flex items-center justify-between gap-4 border text-left ${
                         isFocused
                           ? "bg-emerald-50/90 dark:bg-emerald-950/40 border-emerald-500 shadow-md ring-2 ring-emerald-500/20 dark:ring-emerald-900/40"
-                          : "bg-white dark:bg-zinc-900 border-slate-200/80 dark:border-zinc-800/80 hover:border-slate-350 dark:hover:border-zinc-700"
+                          : isCompleted
+                            ? "bg-emerald-50/30 dark:bg-emerald-950/15 border-emerald-500/30 dark:border-emerald-500/25"
+                            : "bg-white dark:bg-zinc-900 border-slate-200/80 dark:border-zinc-800/80 hover:border-slate-350 dark:hover:border-zinc-700"
                       } ${mealBorders[meal]}`}
                     >
                       <div className="flex-grow min-w-0">
@@ -378,7 +427,14 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab }: Cal
                           }`}>
                             {mealLabels[meal]}
                           </span>
-                          {isFocused && (
+                          {isCompleted && (
+                            <span className="bg-emerald-600 text-white rounded-full select-none shadow-sm shrink-0 flex items-center justify-center w-4 h-4 border border-emerald-500/20" title="Receta completada">
+                              <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" strokeWidth="4.5" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                              </svg>
+                            </span>
+                          )}
+                          {isFocused && !isCompleted && (
                             <span className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-extrabold text-[8px] px-2 py-0.5 rounded-full select-none animate-pulse shadow-sm">
                               PRÓXIMA
                             </span>
@@ -389,12 +445,16 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab }: Cal
                         }`}>
                           {recipe.recipeName}
                         </h3>
-                        <div className="flex items-center gap-2 mt-2 select-none">
+                        <div className="flex items-center justify-between gap-2 mt-2 select-none">
                           <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
                             isFocused ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300" : "bg-slate-50 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400"
                           }`}>
                             {recipe.calories} kcal
                           </span>
+                          <div className="flex gap-1.5 items-center mr-1">
+                            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" title="Rico en nutrientes"></span>
+                            {recipe.calories > 350 && <span className="w-2.5 h-2.5 rounded-full bg-orange-400" title="Alto aporte energético"></span>}
+                          </div>
                         </div>
                       </div>
                       <span className="material-symbols-outlined text-slate-450 dark:text-zinc-500 group-hover:text-emerald-600 transition shrink-0 select-none">
@@ -427,7 +487,7 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab }: Cal
           </div>
 
           {/* Bottom stats/insights summary section */}
-          <section className="grid grid-cols-1 md:grid-cols-3 gap-6 no-print">
+          <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 no-print">
             
             {/* Weekly progress card details */}
             <div className="bg-white/80 dark:bg-zinc-900 p-6 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm flex flex-col justify-between select-text">
@@ -445,6 +505,25 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab }: Cal
               </div>
               <p className="mt-4 text-xs text-[#404943] dark:text-zinc-400 leading-relaxed text-left">
                 ¡Excelente progreso! Tienes <span className="font-bold text-gray-900 dark:text-white">{stats.elapsedSlots} de {stats.total} comidas</span> pautadas y vinculadas con las métricas nutricionales en tu calendario.
+              </p>
+            </div>
+
+            {/* Completed recipes card details */}
+            <div className="bg-white/80 dark:bg-zinc-900 p-6 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm flex flex-col justify-between select-text">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-sm font-bold text-gray-700 dark:text-zinc-200">Recetas Completadas</h4>
+                <span className="text-sm font-bold text-emerald-800 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-0.5 rounded-full">
+                  {completedStats.percentage}%
+                </span>
+              </div>
+              <div className="w-full bg-gray-100 dark:bg-zinc-800 h-2.5 rounded-full overflow-hidden">
+                <div 
+                  className="bg-emerald-600 h-full rounded-full transition-all duration-500"
+                  style={{ width: `${completedStats.percentage}%` }}
+                ></div>
+              </div>
+              <p className="mt-4 text-xs text-[#404943] dark:text-zinc-400 leading-relaxed text-left">
+                ¡Progreso real! Has completado y marcado <span className="font-bold text-gray-900 dark:text-white">{completedStats.completed} de {completedStats.totalPlanned} recetas</span> pautadas para esta semana.
               </p>
             </div>
 

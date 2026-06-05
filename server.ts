@@ -10,7 +10,7 @@ import { createApi } from "unsplash-js";
 
 import { DEFAULT_MEAL_PLAN, DEFAULT_PLAN_METADATA } from "./src/defaultData.js";
 import { MealPlan, PlanMetadata } from "./src/types.js";
-import { getPlan, savePlan, resetPlan, updateRecipe, getHistory, restorePlanFromHistory, deleteHistoryItem, getGroceryListState, saveGroceryListState } from "./src/db.js";
+import { getPlan, savePlan, resetPlan, updateRecipe, getHistory, restorePlanFromHistory, deleteHistoryItem, getGroceryListState, saveGroceryListState, getCompletedRecipes, saveCompletedRecipes } from "./src/db.js";
 
 dotenv.config();
 
@@ -432,6 +432,23 @@ app.post("/api/grocery-list", (req, res) => {
     excludedMeals,
     multipliers
   });
+  res.json({ success: true });
+});
+
+// Endpoint to fetch completed recipes for the active plan
+app.get("/api/completed-recipes", (req, res) => {
+  const active = getPlan();
+  const planId = active.metadata?.id || 0;
+  const completed = getCompletedRecipes(planId);
+  res.json({ completedRecipes: completed });
+});
+
+// Endpoint to save completed recipes for the active plan
+app.post("/api/completed-recipes", (req, res) => {
+  const active = getPlan();
+  const planId = active.metadata?.id || 0;
+  const { completedRecipes } = req.body;
+  saveCompletedRecipes(planId, completedRecipes || {});
   res.json({ success: true });
 });
 

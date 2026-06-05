@@ -37,6 +37,8 @@ interface RecipeDetailProps {
   plan?: MealPlan | null;
   metadata?: PlanMetadata | null;
   onNavigate?: (day: DayType, meal: MealType, recipe: Recipe) => void;
+  completedRecipes: Record<string, boolean>;
+  onToggleComplete: (day: DayType, meal: MealType) => void;
 }
 
 export default function RecipeDetail({
@@ -47,7 +49,9 @@ export default function RecipeDetail({
   onUpdateRecipeOnServer,
   plan,
   metadata,
-  onNavigate
+  onNavigate,
+  completedRecipes,
+  onToggleComplete
 }: RecipeDetailProps) {
   // Ratio defaults to 1 ración (base)
   const [multiplier, setMultiplier] = useState<number>(1);
@@ -514,11 +518,80 @@ export default function RecipeDetail({
     ? normalizedSteps
     : normalizedSteps.filter(step => step.categoryKey === selectedStepCategory);
 
+  const isRecipeCompleted = !!completedRecipes[`${day}-${meal}`];
+  const weeklyStats = (() => {
+    if (!plan) return { completed: 0, total: 0, percentage: 0 };
+    let completed = 0;
+    let total = 0;
+    const daysKeys: DayType[] = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"];
+    const mealsKeys: MealType[] = ["desayuno", "almuerzo", "merienda", "cena"];
+    daysKeys.forEach((d) => {
+      mealsKeys.forEach((m) => {
+        if (plan.days[d]?.[m]) {
+          total++;
+          if (completedRecipes[`${d}-${m}`]) {
+            completed++;
+          }
+        }
+      });
+    });
+    const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+    return { completed, total, percentage };
+  })();
+
+  const renderCompletionPanel = () => {
+    return (
+      <div className="bg-white/40 dark:bg-zinc-900/40 p-5 rounded-2xl border border-zinc-200/50 dark:border-zinc-800/50 shadow-xs text-left space-y-4">
+        <h2 className="text-xs font-black text-slate-800 dark:text-zinc-200 flex items-center gap-1.5 uppercase tracking-wider select-none">
+          <span className="material-symbols-outlined text-emerald-600 dark:text-emerald-400 text-[18px]">
+            {isRecipeCompleted ? "check_circle" : "radio_button_unchecked"}
+          </span>
+          Estado de la Receta
+        </h2>
+        <p className="text-[11px] text-slate-550 dark:text-zinc-400 leading-relaxed">
+          Marca esta receta como realizada para registrar tu constancia dietética semanal.
+        </p>
+
+        <button
+          type="button"
+          onClick={() => onToggleComplete(day, meal)}
+          className={`w-full py-3 font-extrabold text-sm rounded-xl transition duration-200 cursor-pointer shadow-sm flex items-center justify-center gap-2 active:scale-[0.98] ${
+            isRecipeCompleted
+              ? "bg-emerald-600 text-white hover:bg-emerald-700"
+              : "bg-white hover:bg-slate-50 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-200 border border-slate-200/60 dark:border-zinc-700/50"
+          }`}
+        >
+          <span className="material-symbols-outlined text-[18px]">
+            {isRecipeCompleted ? "task_alt" : "circle"}
+          </span>
+          <span>{isRecipeCompleted ? "Receta Completada ✓" : "Completar Receta"}</span>
+        </button>
+
+        {/* Weekly progress summary bar */}
+        <div className="pt-2 border-t border-zinc-200/40 dark:border-zinc-800/60">
+          <div className="flex justify-between items-center text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1.5 select-none">
+            <span>Completadas esta Semana</span>
+            <span className="text-emerald-600 dark:text-emerald-400">{weeklyStats.completed} de {weeklyStats.total} ({weeklyStats.percentage}%)</span>
+          </div>
+          <div className="w-full bg-zinc-100 dark:bg-zinc-800 h-1.5 rounded-full overflow-hidden">
+            <div
+              className="bg-emerald-600 h-full rounded-full transition-all duration-500"
+              style={{ width: `${weeklyStats.percentage}%` }}
+            ></div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderSidebarContent = (showOnly?: 'adjust' | 'share') => {
     const showAdjust = !showOnly || showOnly === 'adjust';
     const showShare = !showOnly || showOnly === 'share';
     return (
       <div className="space-y-6">
+        {/* Progreso Semanal / Completar Receta Panel */}
+        {showAdjust && renderCompletionPanel()}
+
         {/* Raciones Ajustables */}
         <div className={`bg-white/40 dark:bg-zinc-900/40 p-5 rounded-2xl border border-zinc-200/50 dark:border-zinc-800/50 shadow-xs text-left ${showAdjust ? "" : "hidden"}`}>
           <h2 className="text-xs font-black text-slate-800 dark:text-zinc-200 mb-2 flex items-center gap-1.5 uppercase tracking-wider">
@@ -674,7 +747,7 @@ export default function RecipeDetail({
             <button
               type="button"
               onClick={handleCopyToClipboard}
-              className="flex items-center justify-center gap-1.5 py-2.5 bg-white dark:bg-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-750 text-slate-700 dark:text-zinc-200 rounded-xl transition duration-200 font-bold text-xs border border-slate-200/60 dark:border-zinc-700/50 shadow-sm cursor-pointer active:scale-[0.98]"
+              className="flex items-center justify-center gap-1.5 py-2.5 bg-white dark:bg-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-200 rounded-xl transition duration-200 font-bold text-xs border border-slate-200/60 dark:border-zinc-700/50 shadow-sm cursor-pointer active:scale-[0.98]"
             >
               <span className="material-symbols-outlined text-slate-500 dark:text-zinc-400 text-[16px]">
                 {copied ? "check_circle" : "content_copy"}
@@ -982,7 +1055,7 @@ export default function RecipeDetail({
                 setDrawerContent('share');
                 setIsDrawerOpen(true);
               }}
-              className="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-700 dark:text-zinc-300 bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-750 px-3.5 py-2 rounded-xl transition duration-200 border border-slate-200/65 dark:border-zinc-700/50 cursor-pointer shadow-sm active:scale-95"
+              className="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-700 dark:text-zinc-300 bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 px-3.5 py-2 rounded-xl transition duration-200 border border-slate-200/65 dark:border-zinc-700/50 cursor-pointer shadow-sm active:scale-95"
             >
               <span className="material-symbols-outlined text-[15px]">share</span>
               Compartir
@@ -1001,6 +1074,24 @@ export default function RecipeDetail({
 
         {/* Main Ingredients detail presentation card layout */}
         <section className="lg:col-span-8 space-y-6">
+
+          {/* Botón de completar para móvil (entre la imagen de cabecera y los ingredientes) */}
+          <div className="lg:hidden no-print">
+            <button
+              type="button"
+              onClick={() => onToggleComplete(day, meal)}
+              className={`w-full py-4 px-5 font-black text-sm rounded-2xl transition duration-200 cursor-pointer shadow-sm flex items-center justify-center gap-2 active:scale-[0.98] ${
+                isRecipeCompleted
+                  ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                  : "bg-white hover:bg-slate-50 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-200 border border-slate-200 dark:border-zinc-800"
+              }`}
+            >
+              <span className="material-symbols-outlined text-[20px] font-black">
+                {isRecipeCompleted ? "check_circle" : "circle"}
+              </span>
+              <span>{isRecipeCompleted ? "Completado ✓ (Desmarcar)" : "Marcar como completado / Completar"}</span>
+            </button>
+          </div>
 
           <div className="bg-white dark:bg-zinc-900 p-6 md:p-8 rounded-3xl border border-slate-200/50 dark:border-zinc-800 shadow-sm text-left">
             <div className="flex justify-between items-baseline mb-6 pb-4 border-b border-slate-100 dark:border-zinc-800 select-text">
@@ -1238,6 +1329,11 @@ export default function RecipeDetail({
           {/* Mobile-only inline adjustments panel below preparation steps */}
           <div className="lg:hidden mt-6 no-print" style={{ marginTop: "1.5rem" }}>
             {renderSidebarContent('adjust')}
+          </div>
+
+          {/* Mobile-only inline completion panel at the very bottom */}
+          <div className="lg:hidden mt-6 no-print">
+            {renderCompletionPanel()}
           </div>
 
         </section>

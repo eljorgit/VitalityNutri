@@ -42,6 +42,12 @@ db.exec(`
     multipliers_json TEXT,
     updated_at TEXT
   );
+
+  CREATE TABLE IF NOT EXISTS completed_recipes_state (
+    plan_id INTEGER PRIMARY KEY,
+    completed_json TEXT,
+    updated_at TEXT
+  );
 `);
 
 /**
@@ -257,3 +263,37 @@ export function saveGroceryListState(state: {
     console.error("Error saving grocery list state to database:", error);
   }
 }
+
+/**
+ * Retrieves the completed recipes state for a specific plan ID.
+ */
+export function getCompletedRecipes(planId: number): Record<string, boolean> {
+  try {
+    const row = db.prepare("SELECT completed_json FROM completed_recipes_state WHERE plan_id = ?").get(planId) as any;
+    if (row && row.completed_json) {
+      return JSON.parse(row.completed_json);
+    }
+  } catch (error) {
+    console.error("Error reading completed recipes state from database:", error);
+  }
+  return {};
+}
+
+/**
+ * Saves the completed recipes state for a specific plan ID.
+ */
+export function saveCompletedRecipes(planId: number, completedRecipes: Record<string, boolean>): void {
+  try {
+    const stmt = db.prepare(`
+      INSERT INTO completed_recipes_state (plan_id, completed_json, updated_at)
+      VALUES (?, ?, ?)
+      ON CONFLICT(plan_id) DO UPDATE SET
+        completed_json = excluded.completed_json,
+        updated_at = excluded.updated_at
+    `);
+    stmt.run(planId, JSON.stringify(completedRecipes), new Date().toISOString());
+  } catch (error) {
+    console.error("Error saving completed recipes state to database:", error);
+  }
+}
+

@@ -11,6 +11,7 @@ export default function App() {
   const [metadata, setMetadata] = useState<PlanMetadata | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [completedRecipes, setCompletedRecipes] = useState<Record<string, boolean>>({});
 
   // Night/Dark theme state
   const [darkMode, setDarkMode] = useState<boolean>(() => {
@@ -196,6 +197,17 @@ export default function App() {
       if (data.plan && (currentPath === "/" || currentPath.startsWith("/dashboard"))) {
         navigate("/calendar");
       }
+
+      // Descargar estado de recetas completadas
+      try {
+        const completedRes = await fetch("/api/completed-recipes");
+        if (completedRes.ok) {
+          const completedData = await completedRes.json();
+          setCompletedRecipes(completedData.completedRecipes || {});
+        }
+      } catch (err) {
+        console.error("Error al descargar recetas completadas:", err);
+      }
     } catch (err: any) {
       console.error(err);
       setErrorMsg("Error al conectar con la base de datos de pautas nutricionales compartidas.");
@@ -208,9 +220,31 @@ export default function App() {
     fetchGlobalPlan();
   }, []);
 
+  const handleToggleCompleteRecipe = async (day: DayType, meal: MealType) => {
+    const key = `${day}-${meal}`;
+    const newCompleted = {
+      ...completedRecipes,
+      [key]: !completedRecipes[key]
+    };
+    setCompletedRecipes(newCompleted);
+
+    try {
+      await fetch("/api/completed-recipes", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ completedRecipes: newCompleted })
+      });
+    } catch (err) {
+      console.error("Error al guardar el estado de receta completada:", err);
+    }
+  };
+
   const handlePlanProcessed = (newPlan: MealPlan, newMetadata: PlanMetadata) => {
     setPlan(newPlan);
     setMetadata(newMetadata);
+    setCompletedRecipes({});
     navigate("/calendar");
   };
 
@@ -225,6 +259,7 @@ export default function App() {
       const data = await res.json();
       setPlan(data.plan);
       setMetadata(data.metadata);
+      setCompletedRecipes({});
       setSelectedRecipeDetail(null);
       navigate("/dashboard");
     } catch {
@@ -381,6 +416,7 @@ export default function App() {
                 plan={plan} 
                 onSelectRecipe={handleSelectRecipe} 
                 setActiveTab={handleSetActiveTab}
+                completedRecipes={completedRecipes}
               />
             )}
 
@@ -395,6 +431,8 @@ export default function App() {
                 onGoBack={() => {
                   navigate("/calendar");
                 }}
+                completedRecipes={completedRecipes}
+                onToggleComplete={handleToggleCompleteRecipe}
               />
             )}
 

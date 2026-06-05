@@ -662,7 +662,7 @@ export default function Dashboard({
                   <button 
                     type="button"
                     onClick={() => setShowHistoryModal(true)}
-                    className="w-full py-2.5 px-4 bg-[#f1f5f9] dark:bg-zinc-800 hover:bg-[#e2e8f0] dark:hover:bg-zinc-750 text-slate-700 dark:text-zinc-300 font-bold text-xs rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5 border border-[#e2e8f0] dark:border-zinc-700/60"
+                    className="w-full py-2.5 px-4 bg-[#f1f5f9] dark:bg-zinc-800 hover:bg-[#e2e8f0] dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-300 font-bold text-xs rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5 border border-[#e2e8f0] dark:border-zinc-700/60"
                   >
                     <span className="material-symbols-outlined text-[16px]">history</span>
                     Ver Historial de Planes
@@ -822,7 +822,7 @@ export default function Dashboard({
               <button
                 type="button"
                 onClick={() => setShowHistoryModal(false)}
-                className="px-5 py-2.5 bg-gray-100 dark:bg-zinc-800 hover:bg-gray-200 dark:hover:bg-zinc-750 text-gray-700 dark:text-zinc-350 font-bold text-xs rounded-xl transition-colors cursor-pointer"
+                className="px-5 py-2.5 bg-gray-100 dark:bg-zinc-800 hover:bg-gray-200 dark:hover:bg-zinc-700 text-gray-700 dark:text-zinc-350 font-bold text-xs rounded-xl transition-colors cursor-pointer"
               >
                 Cerrar
               </button>
