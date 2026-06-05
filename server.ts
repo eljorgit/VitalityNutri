@@ -10,7 +10,7 @@ import { createApi } from "unsplash-js";
 
 import { DEFAULT_MEAL_PLAN, DEFAULT_PLAN_METADATA } from "./src/defaultData.js";
 import { MealPlan, PlanMetadata } from "./src/types.js";
-import { getPlan, savePlan, resetPlan, updateRecipe, getHistory, restorePlanFromHistory, deleteHistoryItem, getGroceryListState, saveGroceryListState, getCompletedRecipes, saveCompletedRecipes } from "./src/db.js";
+import { getPlan, savePlan, resetPlan, updateRecipe, getHistory, restorePlanFromHistory, deleteHistoryItem, getGroceryListState, saveGroceryListState, getCompletedRecipes, saveCompletedRecipes, getSearchHistory, addSearchHistoryItem, deleteSearchHistoryItem, clearSearchHistory } from "./src/db.js";
 
 dotenv.config();
 
@@ -582,6 +582,28 @@ app.get("/api/history", (req, res) => {
   }
 });
 
+// 5b. Endpoint to get a specific plan by ID (read-only, without changing active plan)
+app.get("/api/plan/:id", (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) {
+    return res.status(400).json({ error: "ID de plan no válido." });
+  }
+  try {
+    const historyList = getHistory();
+    const entry = historyList.find((h: any) => h.id === id);
+    if (!entry) {
+      return res.status(404).json({ error: "Plan no encontrado." });
+    }
+    const plan = entry.plan_json ? JSON.parse(entry.plan_json) : null;
+    const metadata = entry.metadata_json ? JSON.parse(entry.metadata_json) : null;
+    res.json({ plan, metadata, isActive: !!entry.is_active });
+  } catch (error: any) {
+    console.error("Error retrieving plan by ID:", error);
+    res.status(500).json({ error: "No se pudo obtener el plan." });
+  }
+});
+
+
 // 6. Endpoint to restore a plan from history as the active plan
 app.post("/api/history/restore/:id", (req, res) => {
   const id = parseInt(req.params.id, 10);
@@ -625,6 +647,107 @@ app.delete("/api/history/:id", (req, res) => {
     res.status(500).json({ error: "Error al eliminar el elemento del historial." });
   }
 });
+
+// 8b. Endpoint to get all recipes from all plans (lightweight, for search)
+app.get("/api/all-recipes", (req, res) => {
+  try {
+    const history = getHistory();
+    const results: any[] = [];
+    for (const h of history) {
+      if (!h.plan_json) continue;
+      let plan: MealPlan;
+      try { plan = JSON.parse(h.plan_json); } catch { continue; }
+      const daysKeys = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"] as const;
+      const mealsKeys = ["desayuno", "almuerzo", "merienda", "cena"] as const;
+      for (const day of daysKeys) {
+        for (const meal of mealsKeys) {
+          const recipe = plan.days[day]?.[meal];
+          if (!recipe) continue;
+          // Flatten ingredient names into a lightweight array
+          let ingredientNames: string[] = [];
+          if (Array.isArray(recipe.ingredients)) {
+            ingredientNames = (recipe.ingredients as any[]).map((i: any) => (i.name || "").toLowerCase());
+          } else if (recipe.ingredients && typeof recipe.ingredients === "object") {
+            for (const cat of Object.values(recipe.ingredients as any)) {
+              if (Array.isArray(cat)) {
+                ingredientNames.push(...(cat as any[]).map((i: any) => (i.name || "").toLowerCase()));
+              }
+            }
+          }
+          results.push({
+            planId: h.id,
+            planName: h.file_name || "",
+            isActive: !!h.is_active,
+            day,
+            meal,
+            recipeName: recipe.recipeName,
+            calories: recipe.calories,
+            time: recipe.time,
+            tag: recipe.tag,
+            image: recipe.image || "",
+            ingredientNames
+          });
+        }
+      }
+    }
+    res.json(results);
+  } catch (error: any) {
+    console.error("Error building all-recipes pool:", error);
+    res.status(500).json({ error: "No se pudo obtener el pool de recetas." });
+  }
+});
+
+// Search history endpoints
+// GET  /api/search-history       – Retrieve recent click history
+// POST /api/search-history       – Add a click to history
+// DELETE /api/search-history     – Clear all history
+// DELETE /api/search-history/:id – Remove a single history item
+
+app.get("/api/search-history", (req, res) => {
+  try {
+    res.json(getSearchHistory());
+  } catch (error: any) {
+    console.error("Error retrieving search history:", error);
+    res.status(500).json({ error: "No se pudo recuperar el historial de búsqueda." });
+  }
+});
+
+app.post("/api/search-history", (req, res) => {
+  const { planId, planName, day, meal, recipeName, image, isActive } = req.body;
+  if (!planId || !day || !meal || !recipeName) {
+    return res.status(400).json({ error: "Faltan campos obligatorios." });
+  }
+  try {
+    addSearchHistoryItem({ planId, planName: planName || "", day, meal, recipeName, image: image || "", isActive: !!isActive });
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error("Error saving search history item:", error);
+    res.status(500).json({ error: "No se pudo guardar el historial de búsqueda." });
+  }
+});
+
+app.delete("/api/search-history", (req, res) => {
+  try {
+    clearSearchHistory();
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error("Error clearing search history:", error);
+    res.status(500).json({ error: "No se pudo borrar el historial de búsqueda." });
+  }
+});
+
+app.delete("/api/search-history/:id", (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) return res.status(400).json({ error: "ID no válido." });
+  try {
+    deleteSearchHistoryItem(id);
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error("Error deleting search history item:", error);
+    res.status(500).json({ error: "No se pudo eliminar el elemento del historial." });
+  }
+});
+
 
 // 8. Endpoint to reprocess the active plan
 app.post("/api/reprocess", async (req, res) => {

@@ -57,3 +57,40 @@ body {
 
 @variant dark (&:where(.dark, .dark *));
 
+/* Lower z-index and disable pointer events on sticky/fixed elements (appbar, mobile nav, scroll buttons, bottom recipe switcher) when modal is open */
+body.modal-open header,
+body.modal-open nav,
+body.modal-open .scroll-nav-buttons,
+body.modal-open .recipe-bottom-switcher,
+body:has(.modal-overlay) header,
+body:has(.modal-overlay) nav,
+body:has(.modal-overlay) .scroll-nav-buttons,
+body:has(.modal-overlay) .recipe-bottom-switcher {
+  z-index: 10 !important;
+  pointer-events: none;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleUp {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.2s ease-out forwards;
+}
+
+.animate-scale-up {
+  animation: scaleUp 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.modal-overlay {
+  margin-top: 0 !important;
+}
+
+
+

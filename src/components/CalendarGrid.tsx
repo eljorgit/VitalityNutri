@@ -21,6 +21,48 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, compl
   const [activeMobileDay, setActiveMobileDay] = React.useState<DayType>(initialMobileDay);
   const [showProgressModal, setShowProgressModal] = React.useState<boolean>(false);
 
+  // Refs for auto-scrolling the desktop grid to today's column
+  const gridScrollContainerRef = React.useRef<HTMLDivElement>(null);
+  const todayColumnRef = React.useRef<HTMLDivElement>(null);
+
+  // Lock background scroll when progress modal is open
+  React.useEffect(() => {
+    if (showProgressModal) {
+      document.body.classList.add("modal-open");
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.classList.remove("modal-open");
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.classList.remove("modal-open");
+      document.body.style.overflow = "";
+    };
+  }, [showProgressModal]);
+
+  React.useEffect(() => {
+    const container = gridScrollContainerRef.current;
+    const todayCol = todayColumnRef.current;
+    if (!container || !todayCol) return;
+
+    // Check if the today column is fully visible inside the scrollable container
+    const containerRect = container.getBoundingClientRect();
+    const colRect = todayCol.getBoundingClientRect();
+
+    const isFullyVisible =
+      colRect.left >= containerRect.left &&
+      colRect.right <= containerRect.right;
+
+    if (!isFullyVisible) {
+      // Scroll so today's column is centred (or at least fully visible)
+      const colOffsetLeft = todayCol.offsetLeft;
+      const colWidth = todayCol.offsetWidth;
+      const containerWidth = container.clientWidth;
+      const targetScrollLeft = colOffsetLeft - containerWidth / 2 + colWidth / 2;
+      container.scrollTo({ left: Math.max(0, targetScrollLeft), behavior: "smooth" });
+    }
+  }, []);
+
   // Touch gesture states for mobile swiping
   const [touchStartX, setTouchStartX] = React.useState<number | null>(null);
   const [touchStartY, setTouchStartY] = React.useState<number | null>(null);
@@ -264,7 +306,7 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, compl
       </div>      {plan ? (
         <>
           {/* Main Desktop Grid Scrollable - Hidden on mobile, shown on desktop/print */}
-          <div className="hidden md:block print:block bg-white dark:bg-zinc-900 rounded-3xl p-6 border border-slate-100 dark:border-zinc-800 shadow-sm overflow-x-auto print-area-container">
+          <div ref={gridScrollContainerRef} className="hidden md:block print:block bg-white dark:bg-zinc-900 rounded-3xl p-6 border border-slate-100 dark:border-zinc-800 shadow-sm overflow-x-auto print-area-container">
             <div className="min-w-[1076px] w-full grid grid-cols-7 gap-4">
 
               {/* Days Columns without Day numbers - showing weekday names Spanish directly */}
@@ -273,7 +315,7 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, compl
                 const isToday = label.isToday;
 
                 return (
-                  <div key={day} className={`flex flex-col gap-4 rounded-2xl p-1 transition-colors ${
+                  <div key={day} ref={isToday ? todayColumnRef : undefined} className={`flex flex-col gap-4 rounded-2xl p-1 transition-colors ${
                     isToday ? "bg-emerald-50/70 dark:bg-emerald-950/20 border-2 border-emerald-500/10" : ""
                   }`}>
                     {/* Column Day Info Header - Only showing name list */}
@@ -636,12 +678,19 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, compl
 
       {/* Progress recipes list modal overlay */}
       {showProgressModal && plan && (
-        <div className="fixed inset-0 z-[999] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in no-print">
+        <div 
+          className="modal-overlay fixed inset-0 z-[999] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in no-print !mt-0"
+          style={{ marginTop: 0 }}
+        >
           <div 
             className="fixed inset-0" 
             onClick={() => setShowProgressModal(false)} 
+            style={{ marginTop: 0 }}
           />
-          <div className="bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border border-slate-150 dark:border-zinc-800 rounded-3xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden relative z-10 select-none">
+          <div 
+            className="bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border border-slate-150 dark:border-zinc-800 rounded-3xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden relative z-10 select-none !mt-0"
+            style={{ marginTop: 0 }}
+          >
             {/* Modal Header */}
             <div className="flex items-center justify-between px-6 py-4.5 border-b border-slate-100 dark:border-zinc-800/80 bg-slate-50/50 dark:bg-zinc-950/20 shrink-0">
               <div>

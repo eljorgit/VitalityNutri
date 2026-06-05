@@ -40,6 +40,8 @@ interface RecipeDetailProps {
   completedRecipes: Record<string, boolean>;
   onToggleComplete: (day: DayType, meal: MealType) => void;
   onToggleDayComplete: (day: DayType, meals: MealType[], targetState: boolean) => void;
+  isPlanActive?: boolean;
+  onRestorePlan?: () => void;
 }
 
 export default function RecipeDetail({
@@ -53,7 +55,9 @@ export default function RecipeDetail({
   onNavigate,
   completedRecipes,
   onToggleComplete,
-  onToggleDayComplete
+  onToggleDayComplete,
+  isPlanActive = true,
+  onRestorePlan,
 }: RecipeDetailProps) {
   // Ratio defaults to 1 ración (base)
   const [multiplier, setMultiplier] = useState<number>(1);
@@ -74,6 +78,13 @@ export default function RecipeDetail({
   const [touchEndY, setTouchEndY] = useState<number | null>(null);
 
   const [showProgressModal, setShowProgressModal] = useState<boolean>(false);
+
+  const topDayMealsDropdownRef = React.useRef<HTMLDivElement>(null);
+  const topAllRecipesDropdownRef = React.useRef<HTMLDivElement>(null);
+  const bottomDayMealsDropdownRef = React.useRef<HTMLDivElement>(null);
+  const bottomAllRecipesDropdownRef = React.useRef<HTMLDivElement>(null);
+  const servingsPanelRef = React.useRef<HTMLDivElement>(null);
+  const [highlightServings, setHighlightServings] = useState<boolean>(false);
 
   const daysKeys: DayType[] = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"];
   const mealsKeys: MealType[] = ["desayuno", "almuerzo", "merienda", "cena"];
@@ -166,17 +177,48 @@ export default function RecipeDetail({
 
   const upcomingMeal = getUpcomingMeal();
 
-  // Scroll lock effect when drawer is open
+  // Scroll lock effect when drawer or progress modal is open
   React.useEffect(() => {
-    if (isDrawerOpen) {
+    if (isDrawerOpen || showProgressModal) {
+      document.body.classList.add("modal-open");
       document.body.style.overflow = "hidden";
     } else {
+      document.body.classList.remove("modal-open");
       document.body.style.overflow = "";
     }
     return () => {
+      document.body.classList.remove("modal-open");
       document.body.style.overflow = "";
     };
-  }, [isDrawerOpen]);
+  }, [isDrawerOpen, showProgressModal]);
+
+  // Close navigation panels when clicking outside of them
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const clickedOutsideDayMeals = 
+        (!topDayMealsDropdownRef.current || !topDayMealsDropdownRef.current.contains(event.target as Node)) &&
+        (!bottomDayMealsDropdownRef.current || !bottomDayMealsDropdownRef.current.contains(event.target as Node));
+
+      if (clickedOutsideDayMeals) {
+        setShowDayMealsDropdown(false);
+      }
+
+      const clickedOutsideAllRecipes = 
+        (!topAllRecipesDropdownRef.current || !topAllRecipesDropdownRef.current.contains(event.target as Node)) &&
+        (!bottomAllRecipesDropdownRef.current || !bottomAllRecipesDropdownRef.current.contains(event.target as Node));
+
+      if (clickedOutsideAllRecipes) {
+        setShowAllRecipesDropdown(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
+  }, []);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     setTouchStartX(e.targetTouches[0].clientX);
@@ -318,6 +360,22 @@ export default function RecipeDetail({
     window.open(url, "_blank");
   };
 
+  const handleShareTelegram = () => {
+    const text = generateRecipeShareText();
+    const url = `https://t.me/share/url?url=${encodeURIComponent(getRecipeUrl())}&text=${encodeURIComponent(text)}`;
+    window.open(url, "_blank");
+  };
+
+  const handleShareInstagram = async () => {
+    const text = generateRecipeShareText();
+    try {
+      await navigator.clipboard.writeText(text);
+      window.open("https://www.instagram.com/", "_blank");
+    } catch (err) {
+      console.error("Error al copiar para Instagram: ", err);
+    }
+  };
+
   const handleExportToKeep = async () => {
     const text = generateRecipeShareText();
     try {
@@ -359,6 +417,21 @@ export default function RecipeDetail({
   const handleReset = () => {
     setMultiplier(1);
     setCustomInput("1");
+  };
+
+  const handleHighlightServings = () => {
+    if (window.innerWidth < 1024) {
+      setDrawerContent('adjust');
+      setIsDrawerOpen(true);
+    } else {
+      setHighlightServings(true);
+      if (servingsPanelRef.current) {
+        servingsPanelRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      setTimeout(() => {
+        setHighlightServings(false);
+      }, 2000);
+    }
   };
 
   const formatQuantity = (val: number) => {
@@ -691,10 +764,48 @@ export default function RecipeDetail({
     return (
       <div className="space-y-6">
         {/* Progreso Semanal / Completar Receta Panel */}
-        {showAdjust && renderCompletionPanel()}
+        {showAdjust && !showOnly && (
+          isPlanActive ? (
+            renderCompletionPanel()
+          ) : (
+            /* Read-only banner for inactive/historical plans */
+            <div className="bg-amber-50 dark:bg-amber-950/25 border border-amber-200/70 dark:border-amber-800/40 rounded-2xl p-5 text-left">
+              <div className="flex items-start gap-3">
+                <span className="material-symbols-outlined text-amber-500 dark:text-amber-400 text-[22px] shrink-0 mt-0.5">history</span>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-xs font-extrabold text-amber-800 dark:text-amber-300 uppercase tracking-wider mb-1">Plan Histórico</h3>
+                  <p className="text-[11px] text-amber-700 dark:text-amber-400 leading-relaxed">
+                    Esta receta pertenece a un plan anterior. Puedes consultar todos los detalles, ajustar raciones y compartirla, pero no podrás marcarla como completada.
+                  </p>
+                  {onRestorePlan && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (window.confirm("¿Deseas restaurar este plan como tu plan activo actual? El plan anterior dejará de estar activo.")) {
+                          onRestorePlan();
+                        }
+                      }}
+                      className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-bold text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/40 hover:bg-amber-200 dark:hover:bg-amber-800/50 border border-amber-300/60 dark:border-amber-700/40 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-[14px]">restore</span>
+                      Restaurar plan
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )
+        )}
 
         {/* Raciones Ajustables */}
-        <div className={`bg-white/40 dark:bg-zinc-900/40 p-5 rounded-2xl border border-zinc-200/50 dark:border-zinc-800/50 shadow-xs text-left ${showAdjust ? "" : "hidden"}`}>
+        <div 
+          ref={showOnly ? undefined : servingsPanelRef}
+          className={`transition-all duration-500 p-5 rounded-2xl border text-left ${showAdjust ? "" : "hidden"} ${
+            highlightServings 
+              ? "bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-500 dark:border-emerald-500 ring-4 ring-emerald-500/25 dark:ring-emerald-500/30 scale-[1.03] shadow-md shadow-emerald-500/10" 
+              : "bg-white/40 dark:bg-zinc-900/40 border-zinc-200/50 dark:border-zinc-800/50 shadow-xs"
+          }`}
+        >
           <h2 className="text-xs font-black text-slate-800 dark:text-zinc-200 mb-2 flex items-center gap-1.5 uppercase tracking-wider">
             <span className="material-symbols-outlined text-emerald-600 dark:text-emerald-400 text-[18px]">calculate</span>
             Raciones Ajustables
@@ -874,6 +985,30 @@ export default function RecipeDetail({
           <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
+              onClick={handleShareTelegram}
+              className="flex items-center justify-center gap-1.5 py-2.5 bg-[#229ED9]/10 hover:bg-[#229ED9]/20 dark:bg-[#229ED9]/15 dark:hover:bg-[#229ED9]/25 text-[#0e7ab8] dark:text-[#5bbfef] rounded-xl transition duration-200 font-bold text-xs border border-[#229ED9]/20 shadow-sm cursor-pointer active:scale-[0.98]"
+            >
+              <svg className="w-[15px] h-[15px] fill-current" viewBox="0 0 24 24">
+                <path d="M11.994 0C5.369 0 0 5.369 0 11.994S5.369 24 11.994 24 24 18.631 24 12.006C24 5.369 18.631 0 11.994 0zm5.935 8.17l-2.006 9.457c-.145.658-.537.818-1.086.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.06 14.549l-2.95-.924c-.641-.203-.654-.641.136-.95l11.533-4.448c.536-.194 1.004.131.16 4.194-.84 3.944z"/>
+              </svg>
+              <span>Telegram</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleShareInstagram}
+              className="flex items-center justify-center gap-1.5 py-2.5 bg-[#E1306C]/10 hover:bg-[#E1306C]/20 dark:bg-[#E1306C]/15 dark:hover:bg-[#E1306C]/25 text-[#b5185a] dark:text-[#f06292] rounded-xl transition duration-200 font-bold text-xs border border-[#E1306C]/20 shadow-sm cursor-pointer active:scale-[0.98]"
+            >
+              <svg className="w-[15px] h-[15px] fill-current" viewBox="0 0 24 24">
+                <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
+              </svg>
+              <span>Instagram</span>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
               onClick={handleExportToKeep}
               className="flex items-center justify-center gap-1.5 py-2.5 bg-amber-500/10 hover:bg-amber-500/20 dark:bg-amber-500/15 dark:hover:bg-amber-500/25 text-amber-700 dark:text-amber-400 rounded-xl transition duration-200 font-bold text-xs border border-amber-500/20 shadow-sm cursor-pointer active:scale-[0.98]"
             >
@@ -900,6 +1035,9 @@ export default function RecipeDetail({
   const renderMealNavigator = (isMobileSticky = false) => {
     if (activeRecipes.length === 0) return null;
 
+    const dayMealsRef = isMobileSticky ? bottomDayMealsDropdownRef : topDayMealsDropdownRef;
+    const allRecipesRef = isMobileSticky ? bottomAllRecipesDropdownRef : topAllRecipesDropdownRef;
+
     return (
       <div className={`flex items-center gap-1.5 p-1.5 rounded-2xl relative shrink-0 transition-all duration-300 ${
         isMobileSticky
@@ -922,7 +1060,7 @@ export default function RecipeDetail({
         </button>
 
         {/* 2. Texto del día actual y tipo de comida */}
-        <div className="relative">
+        <div ref={dayMealsRef} className="relative">
           <button
             type="button"
             onClick={() => {
@@ -972,7 +1110,7 @@ export default function RecipeDetail({
         </div>
 
         {/* 3. Icono de calendario (pegado justo al texto) con dropdown agrupado por dia de la semana */}
-        <div className="relative">
+        <div ref={allRecipesRef} className="relative">
           <button
             type="button"
             onClick={() => {
@@ -990,17 +1128,42 @@ export default function RecipeDetail({
           </button>
 
           {showAllRecipesDropdown && (
-            <div className={`absolute left-1/2 -translate-x-1/2 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2.5xl shadow-xl p-4 w-72 md:w-80 z-50 text-left max-h-[250px] overflow-y-auto ${
+            <div className={`absolute right-[-45px] md:right-auto md:left-1/2 md:-translate-x-1/2 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border border-slate-200 dark:border-zinc-800 rounded-2.5xl shadow-xl p-3 sm:p-4 w-[300px] sm:w-[365px] z-50 text-left max-h-[85vh] overflow-y-auto ${
               isMobileSticky ? "bottom-full mb-2" : "top-full mt-2"
             }`}>
-              <h4 className="text-[10px] font-black text-slate-405 dark:text-zinc-550 uppercase mb-3.5 tracking-widest select-none">Prescripción Semanal</h4>
-              <div className="space-y-3">
+              <h4 className="text-[10px] font-black text-slate-400 dark:text-zinc-500 uppercase mb-3.5 tracking-widest select-none text-center border-b border-slate-100 dark:border-zinc-800/60 pb-2">
+                Prescripción Semanal
+              </h4>
+              <div className="grid grid-cols-2 gap-2">
                 {orderedDays.map((d) => {
                   const dayLabel = dayNames[d];
+                  const isLast = d === "domingo";
+                  const isCurrentDay = d === day;
+                  const isToday = d === dayKeysInOrder[new Date().getDay()];
                   return (
-                    <div key={d} className="border-b border-slate-100 dark:border-zinc-800/40 pb-2.5 last:border-none last:pb-0">
-                      <span className="text-xs font-black text-slate-800 dark:text-zinc-200 block mb-1.5">{dayLabel}</span>
-                      <div className="flex gap-1.5 select-none text-center">
+                    <div 
+                      key={d} 
+                      className={`p-2.5 rounded-xl border flex flex-col items-center justify-between transition-all duration-200 ${
+                        isToday 
+                          ? "bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-500/30 dark:border-emerald-800/80 shadow-xs ring-1 ring-emerald-500/10 scale-[1.02]" 
+                          : "bg-slate-50/50 dark:bg-zinc-800/25 border-slate-100 dark:border-zinc-800/40 hover:border-slate-200 dark:hover:border-zinc-700/50"
+                      } ${
+                        isLast ? "col-span-2" : "col-span-1"
+                      }`}
+                    >
+                      <span className={`text-[10px] font-black mb-1.5 uppercase tracking-wider flex items-center gap-1 ${
+                        isToday 
+                          ? "text-emerald-700 dark:text-emerald-400" 
+                          : "text-slate-700 dark:text-zinc-300"
+                      }`}>
+                        {dayLabel}
+                        {isToday && (
+                          <span className="text-[8px] font-black lowercase text-emerald-600 dark:text-emerald-450 bg-emerald-500/10 dark:bg-emerald-400/20 px-1 py-0.2 rounded-sm select-none">
+                            hoy
+                          </span>
+                        )}
+                      </span>
+                      <div className="flex gap-1 sm:gap-1.5 select-none justify-center">
                         {orderedMeals.map((m) => {
                           const r = plan?.days[d]?.[m];
                           const initials = { desayuno: "D", almuerzo: "A", merienda: "M", cena: "C" };
@@ -1018,10 +1181,10 @@ export default function RecipeDetail({
                                   setShowAllRecipesDropdown(false);
                                 }
                               }}
-                              className={`w-7.5 h-7.5 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center justify-center ${isCurrent
-                                ? "bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-200 dark:ring-emerald-900"
+                              className={`w-7 h-7 sm:w-7.5 sm:h-7.5 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center justify-center ${isCurrent
+                                ? "bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-250 dark:ring-emerald-900 scale-105"
                                 : hasRecipe
-                                  ? "bg-emerald-50 text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-950/45 dark:text-emerald-300 dark:hover:bg-emerald-950"
+                                  ? "bg-emerald-50 text-emerald-800 hover:bg-emerald-100 hover:scale-105 dark:bg-emerald-950/45 dark:text-emerald-300 dark:hover:bg-emerald-950"
                                   : "bg-slate-50 text-slate-300 dark:bg-zinc-950 dark:text-zinc-700 cursor-not-allowed"
                                 }`}
                               title={r ? `${mealNames[m]}: ${r.recipeName}` : `${mealNames[m]}: Sin pautar`}
@@ -1066,10 +1229,10 @@ export default function RecipeDetail({
     >
 
       {/* Recipe Navigation Bar - static header on mobile and desktop */}
-      <div className="flex items-center justify-between gap-4 border-b border-slate-200/50 dark:border-zinc-800 pb-4 no-print select-none">
+      <div className="flex flex-row items-center justify-between gap-4 md:grid md:grid-cols-2 md:gap-y-3.5 md:items-center lg:flex lg:flex-row lg:items-center lg:justify-between lg:gap-4 border-b border-slate-200/50 dark:border-zinc-800 pb-4 no-print select-none">
 
         {/* Go back trigger and Next Meal helper */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 order-1">
           <button
             type="button"
             onClick={onGoBack}
@@ -1101,13 +1264,15 @@ export default function RecipeDetail({
         </div>
 
         {/* Meal Selector - visible on desktop, hidden on mobile in the header */}
-        <div className="hidden md:block">
+        <div className="hidden md:block order-2 md:order-3 lg:order-2 md:col-span-2 md:justify-self-center lg:col-span-1">
           {renderMealNavigator(false)}
         </div>
 
-        <div className="text-xs text-slate-400 md:w-[150px] text-right">
-          Pauta {currentIndex + 1} de {activeRecipes.length}
-        </div>
+        {isPlanActive && (
+          <div className="text-xs text-slate-400 order-3 md:order-2 lg:order-3 md:justify-self-end md:w-[150px] text-right">
+            Pauta {currentIndex + 1} de {activeRecipes.length}
+          </div>
+        )}
       </div>
 
       {/* Hero Header Presentation */}
@@ -1197,11 +1362,19 @@ export default function RecipeDetail({
           </div>
 
           <div className="bg-white dark:bg-zinc-900 p-6 md:p-8 rounded-3xl border border-slate-200/50 dark:border-zinc-800 shadow-sm text-left">
-            <div className="flex justify-between items-baseline mb-6 pb-4 border-b border-slate-100 dark:border-zinc-800 select-text">
+            <div className="flex justify-between items-center mb-6 pb-4 border-b border-slate-100 dark:border-zinc-800 select-text flex-wrap gap-2">
               <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">Ingredientes Pautados</h2>
-              <span className="text-xs text-slate-500 dark:text-zinc-400 bg-slate-50 dark:bg-zinc-800 px-3 py-1 rounded-lg">
-                Mostrando <span className="font-extrabold text-slate-900 dark:text-white">{multiplier}</span> ración(es)
-              </span>
+              <button
+                type="button"
+                onClick={handleHighlightServings}
+                className="text-xs text-slate-500 hover:text-emerald-700 dark:text-zinc-400 dark:hover:text-emerald-400 bg-slate-50 hover:bg-emerald-50/50 dark:bg-zinc-800 dark:hover:bg-zinc-850 px-3 py-1.5 rounded-lg transition-all duration-200 cursor-pointer flex items-center gap-1 border border-slate-200/30 dark:border-zinc-700/30 hover:border-emerald-500/20 active:scale-95 select-none font-medium"
+                title="Ajustar cantidad de raciones"
+              >
+                <span>Mostrando</span>
+                <span className="font-extrabold text-slate-900 dark:text-white">{multiplier}</span>
+                <span>ración(es)</span>
+                <span className="material-symbols-outlined text-[15px] ml-0.5 text-slate-400 dark:text-zinc-500 group-hover:text-emerald-600">tune</span>
+              </button>
             </div>
 
             {/* Selector de categorías de ingredientes (si hay más de una) */}
@@ -1443,60 +1616,69 @@ export default function RecipeDetail({
 
       </div>
 
-      {/* Mobile Drawer (Settings Panel) */}
+      {/* Mobile Settings/Share Modal */}
       {isDrawerOpen && (
         <div 
-          className="fixed inset-0 z-50 bg-slate-900/35 backdrop-blur-xs transition-opacity duration-300 no-print"
-          onClick={() => setIsDrawerOpen(false)}
+          className="modal-overlay fixed inset-0 z-[999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in no-print"
           style={{ marginTop: 0 }}
-        />
-      )}
-      <div 
-        className={`fixed top-4 right-4 z-55 w-[calc(100%-2rem)] sm:w-[385px] max-h-[calc(100vh-2rem)] h-auto bg-white/90 dark:bg-zinc-900/90 backdrop-blur-lg shadow-2xl rounded-2xl border border-slate-200/40 dark:border-zinc-800/55 p-6 overflow-y-auto no-print transition-all duration-300 ease-out ${
-          isDrawerOpen ? "translate-x-0 opacity-100 scale-100" : "translate-x-[110%] opacity-0 scale-95 pointer-events-none"
-        }`}
-        style={{ marginTop: 0 }}
-      >
-        <div className="flex justify-between items-center pb-4 border-b border-slate-150 dark:border-zinc-800/70 mb-6 select-none">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-emerald-500/10 dark:bg-emerald-400/10 flex items-center justify-center border border-emerald-500/20 dark:border-emerald-400/10 shrink-0">
-              <span className="material-symbols-outlined text-emerald-600 dark:text-emerald-400 text-lg">
-                {drawerContent === 'adjust' ? "tune" : "share"}
-              </span>
-            </div>
-            <div>
-              <h3 className="text-sm font-black text-slate-900 dark:text-white tracking-tight leading-tight">
-                {drawerContent === 'adjust' ? "Ajustes de Receta" : "Compartir Receta"}
+        >
+          <div 
+            className="fixed inset-0" 
+            onClick={() => setIsDrawerOpen(false)} 
+          />
+          <div 
+            className="bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 rounded-3xl w-full max-w-lg shadow-2xl flex flex-col max-h-[80vh] overflow-hidden relative z-10 select-none animate-scale-up"
+            style={{ marginTop: 0 }}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-zinc-800/85 bg-gray-50/50 dark:bg-zinc-950/20 shrink-0 select-none">
+              <h3 className="text-lg font-bold text-[#0f5238] dark:text-emerald-400 flex items-center gap-2">
+                <span className="material-symbols-outlined text-[22px]">
+                  {drawerContent === 'adjust' ? "tune" : "share"}
+                </span>
+                <span>
+                  {drawerContent === 'adjust' ? "Ajustes de Receta" : "Compartir Receta"}
+                </span>
               </h3>
-              <p className="text-[9px] text-slate-400 dark:text-zinc-550 font-extrabold uppercase tracking-widest leading-none mt-0.5">Control Panel</p>
+              <button 
+                type="button"
+                onClick={() => setIsDrawerOpen(false)}
+                className="p-1.5 text-gray-400 hover:text-gray-650 dark:hover:text-zinc-200 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-xl transition-colors cursor-pointer flex items-center justify-center"
+              >
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+            
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto flex-grow flex flex-col gap-4 text-left">
+              {renderSidebarContent(drawerContent)}
             </div>
           </div>
-          <button 
-            type="button"
-            onClick={() => setIsDrawerOpen(false)}
-            className="w-8 h-8 rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-zinc-800/50 dark:hover:bg-zinc-800 text-slate-450 hover:text-slate-700 dark:hover:text-zinc-200 transition duration-200 cursor-pointer flex items-center justify-center border border-slate-200/50 dark:border-zinc-700/50 shadow-xs"
-          >
-            <span className="material-symbols-outlined text-[18px]">close</span>
-          </button>
         </div>
-        
-        {/* Drawer Content */}
-        {renderSidebarContent(drawerContent)}
-      </div>
+      )}
+
+
 
       {/* Mobile Sticky Bottom Recipe Switcher - positioned exactly above the mobile appbar (bottom-16) */}
-      <div className="fixed bottom-16 left-0 right-0 z-40 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border-t border-slate-200/50 dark:border-zinc-800 p-2.5 md:hidden shadow-lg flex justify-center no-print">
+      <div className="recipe-bottom-switcher fixed bottom-16 left-0 right-0 z-40 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border-t border-slate-200/50 dark:border-zinc-800 p-2.5 md:hidden shadow-lg flex justify-center no-print">
         {renderMealNavigator(true)}
       </div>
 
       {/* Progress recipes list modal overlay */}
       {showProgressModal && plan && (
-        <div className="fixed inset-0 z-[999] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in no-print">
+        <div 
+          className="modal-overlay fixed inset-0 z-[999] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in no-print !mt-0"
+          style={{ marginTop: 0 }}
+        >
           <div 
             className="fixed inset-0" 
             onClick={() => setShowProgressModal(false)} 
+            style={{ marginTop: 0 }}
           />
-          <div className="bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border border-slate-150 dark:border-zinc-800 rounded-3xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden relative z-10 select-none">
+          <div 
+            className="bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border border-slate-150 dark:border-zinc-800 rounded-3xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden relative z-10 select-none !mt-0"
+            style={{ marginTop: 0 }}
+          >
             {/* Modal Header */}
             <div className="flex items-center justify-between px-6 py-4.5 border-b border-slate-100 dark:border-zinc-800/80 bg-slate-50/50 dark:bg-zinc-950/20 shrink-0">
               <div>

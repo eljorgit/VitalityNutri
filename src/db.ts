@@ -48,6 +48,18 @@ db.exec(`
     completed_json TEXT,
     updated_at TEXT
   );
+
+  CREATE TABLE IF NOT EXISTS search_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    plan_id INTEGER,
+    plan_name TEXT,
+    day TEXT,
+    meal TEXT,
+    recipe_name TEXT,
+    image TEXT,
+    is_active INTEGER DEFAULT 0,
+    clicked_at TEXT
+  );
 `);
 
 /**
@@ -160,7 +172,7 @@ export function updateRecipe(day: string, meal: string, recipe: Recipe | null): 
  */
 export function getHistory(): any[] {
   try {
-    return db.prepare("SELECT id, file_name, saved_file_name, metadata_json, is_active, created_at FROM plans ORDER BY created_at DESC").all();
+    return db.prepare("SELECT id, file_name, saved_file_name, plan_json, metadata_json, is_active, created_at FROM plans ORDER BY created_at DESC").all();
   } catch (error) {
     console.error("Error fetching history from database:", error);
     return [];
@@ -294,6 +306,95 @@ export function saveCompletedRecipes(planId: number, completedRecipes: Record<st
     stmt.run(planId, JSON.stringify(completedRecipes), new Date().toISOString());
   } catch (error) {
     console.error("Error saving completed recipes state to database:", error);
+  }
+}
+
+/**
+ * Retrieves the most recent 10 search history items.
+ */
+export interface SearchHistoryItem {
+  id: number;
+  planId: number;
+  planName: string;
+  day: string;
+  meal: string;
+  recipeName: string;
+  image: string;
+  isActive: boolean;
+  clickedAt: string;
+}
+
+export function getSearchHistory(): SearchHistoryItem[] {
+  try {
+    const rows = db.prepare(
+      "SELECT id, plan_id, plan_name, day, meal, recipe_name, image, is_active, clicked_at FROM search_history ORDER BY clicked_at DESC LIMIT 10"
+    ).all() as any[];
+    return rows.map(r => ({
+      id: r.id,
+      planId: r.plan_id,
+      planName: r.plan_name,
+      day: r.day,
+      meal: r.meal,
+      recipeName: r.recipe_name,
+      image: r.image,
+      isActive: !!r.is_active,
+      clickedAt: r.clicked_at
+    }));
+  } catch (error) {
+    console.error("Error reading search history from database:", error);
+    return [];
+  }
+}
+
+/**
+ * Adds a click to the search history, capping the table at 10 records.
+ */
+export function addSearchHistoryItem(item: Omit<SearchHistoryItem, 'id' | 'clickedAt'>): void {
+  try {
+    db.prepare(`
+      INSERT INTO search_history (plan_id, plan_name, day, meal, recipe_name, image, is_active, clicked_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      item.planId,
+      item.planName,
+      item.day,
+      item.meal,
+      item.recipeName,
+      item.image,
+      item.isActive ? 1 : 0,
+      new Date().toISOString()
+    );
+    // Keep only the 10 most recent entries
+    db.prepare(`
+      DELETE FROM search_history
+      WHERE id NOT IN (
+        SELECT id FROM search_history ORDER BY clicked_at DESC LIMIT 10
+      )
+    `).run();
+  } catch (error) {
+    console.error("Error adding search history item to database:", error);
+  }
+}
+
+/**
+ * Deletes a single search history entry by its ID.
+ */
+export function deleteSearchHistoryItem(id: number): void {
+  try {
+    db.prepare("DELETE FROM search_history WHERE id = ?").run(id);
+  } catch (error) {
+    console.error("Error deleting search history item from database:", error);
+  }
+}
+
+/**
+ * Clears all search history entries.
+ */
+export function clearSearchHistory(): void {
+  try {
+    db.prepare("DELETE FROM search_history").run();
+  } catch (error) {
+    console.error("Error clearing search history from database:", error);
   }
 }
 

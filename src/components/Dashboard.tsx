@@ -75,6 +75,21 @@ export default function Dashboard({
     fetchHistory();
   }, [metadata]);
 
+  // Lock background scroll when history modal is open or when processing with IA
+  useEffect(() => {
+    if (showHistoryModal || isProcessing) {
+      document.body.classList.add("modal-open");
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.classList.remove("modal-open");
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.classList.remove("modal-open");
+      document.body.style.overflow = "";
+    };
+  }, [showHistoryModal, isProcessing]);
+
   const handleCancel = () => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -520,8 +535,14 @@ export default function Dashboard({
 
             {/* Full screen loading overlay during AI compile process */}
             {isProcessing && (
-              <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center z-[9999] animate-fade-in no-print">
-                <div className="bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 rounded-3xl p-8 max-w-md w-full shadow-2xl flex flex-col items-center gap-6">
+              <div 
+                className="modal-overlay fixed inset-0 bg-black/60 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center z-[9999] animate-fade-in no-print !mt-0"
+                style={{ marginTop: 0 }}
+              >
+                <div 
+                  className="bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 rounded-3xl p-8 max-w-md w-full shadow-2xl flex flex-col items-center gap-6"
+                  style={{ marginTop: 0 }}
+                >
                   <div className="relative">
                     {/* Glowing spinner */}
                     <div className="w-20 h-20 rounded-full border-4 border-emerald-100 dark:border-zinc-800 border-t-emerald-600 dark:border-t-emerald-400 animate-spin"></div>
@@ -726,8 +747,14 @@ export default function Dashboard({
 
       {/* History Modal overlay */}
       {showHistoryModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in no-print">
-          <div className="bg-white dark:bg-zinc-900 rounded-3xl w-full max-w-lg border border-gray-100 dark:border-zinc-800 shadow-2xl flex flex-col max-h-[80vh] overflow-hidden">
+        <div 
+          className="modal-overlay fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in no-print !mt-0"
+          style={{ marginTop: 0 }}
+        >
+          <div 
+            className="bg-white dark:bg-zinc-900 rounded-3xl w-full max-w-lg border border-gray-100 dark:border-zinc-800 shadow-2xl flex flex-col max-h-[80vh] overflow-hidden relative z-10 select-none !mt-0"
+            style={{ marginTop: 0 }}
+          >
             {/* Modal Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-zinc-800/85 bg-gray-50/50 dark:bg-zinc-950/20">
               <h3 className="text-lg font-bold text-[#0f5238] dark:text-emerald-400 flex items-center gap-2">
