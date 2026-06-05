@@ -32,20 +32,76 @@ interface SearchHistoryItem {
   clickedAt: string;
 }
 
+// Helper: normalize search text so comparisons ignore case, accents and punctuation.
+function normalizeSearchText(text: string): string {
+  return text
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[\p{P}\p{S}]+/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function compactSearchText(text: string): string {
+  return normalizeSearchText(text).replace(/\s+/g, "");
+}
+
+function buildCompactIndex(text: string): { value: string; sourceIndexes: number[] } {
+  const valueParts: string[] = [];
+  const sourceIndexes: number[] = [];
+
+  let sourceIndex = 0;
+  for (const char of text) {
+    const normalizedChar = char
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[\p{P}\p{S}\s]+/gu, "");
+
+    for (const normalizedPart of Array.from(normalizedChar)) {
+      valueParts.push(normalizedPart);
+      sourceIndexes.push(sourceIndex);
+    }
+    sourceIndex += char.length;
+  }
+
+  return { value: valueParts.join(""), sourceIndexes };
+}
+
+function matchesSearchText(text: string, normalizedQuery: string, compactQuery: string): boolean {
+  const normalizedText = normalizeSearchText(text);
+  return normalizedText.includes(normalizedQuery) || compactSearchText(text).includes(compactQuery);
+}
+
+function getRecipeNameSearchScore(recipeName: string, normalizedQuery: string, compactQuery: string): number {
+  const normalizedName = normalizeSearchText(recipeName);
+  const compactName = compactSearchText(recipeName);
+
+  if (normalizedName === normalizedQuery || compactName === compactQuery) return 100;
+  if (normalizedName.startsWith(normalizedQuery) || compactName.startsWith(compactQuery)) return 80;
+  if (normalizedName.includes(normalizedQuery) || compactName.includes(compactQuery)) return 50;
+  return 0;
+}
+
 // Helper: split text and wrap matching parts in emerald span
 function highlightText(text: string, query: string): React.ReactNode {
-  if (!query.trim()) return text;
-  const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const parts = text.split(new RegExp(`(${escapedQuery})`, "gi"));
+  const compactQuery = compactSearchText(query);
+  if (!compactQuery) return text;
+
+  const compactText = buildCompactIndex(text);
+  const matchStart = compactText.value.indexOf(compactQuery);
+  if (matchStart === -1) return text;
+
+  const matchEnd = matchStart + compactQuery.length - 1;
+  const sourceStart = compactText.sourceIndexes[matchStart];
+  const sourceEnd = compactText.sourceIndexes[matchEnd] + 1;
+
   return (
     <>
-      {parts.map((part, i) =>
-        part.toLowerCase() === query.toLowerCase() ? (
-          <mark key={i} className="bg-transparent text-emerald-600 dark:text-emerald-400 font-extrabold not-italic">{part}</mark>
-        ) : (
-          <span key={i}>{part}</span>
-        )
-      )}
+      <span>{text.slice(0, sourceStart)}</span>
+      <mark className="bg-transparent text-emerald-600 dark:text-emerald-400 font-extrabold not-italic">{text.slice(sourceStart, sourceEnd)}</mark>
+      <span>{text.slice(sourceEnd)}</span>
     </>
   );
 }
@@ -489,22 +545,18 @@ export default function App() {
   };
 
   const getSearchResults = useCallback((): GroupedSearchResult[] => {
-    const q = searchQuery.trim().toLowerCase();
-    if (!q) return [];
+    const q = normalizeSearchText(searchQuery);
+    const compactQuery = compactSearchText(searchQuery);
+    if (!q || !compactQuery) return [];
 
     // Score every item
     const scored: (SearchRecipeItem & { score: number; matchedIngredient?: string })[] = [];
     for (const item of searchPool) {
-      let score = 0;
+      let score = getRecipeNameSearchScore(item.recipeName, q, compactQuery);
       let matchedIngredient: string | undefined;
-      const name = item.recipeName.toLowerCase();
-      const tag = (item.tag || "").toLowerCase();
-      if (name === q) score += 100;
-      else if (name.startsWith(q)) score += 80;
-      else if (name.includes(q)) score += 50;
-      if (tag.includes(q)) score += 10;
+      if (matchesSearchText(item.tag || "", q, compactQuery)) score += 10;
       for (const ing of item.ingredientNames) {
-        if (ing.includes(q)) {
+        if (matchesSearchText(ing, q, compactQuery)) {
           score += 2;
           if (!matchedIngredient) matchedIngredient = ing;
         }
@@ -515,7 +567,8 @@ export default function App() {
     // Group by recipeName + sorted ingredient fingerprint
     const groupMap = new Map<string, GroupedSearchResult>();
     for (const item of scored) {
-      const fingerprint = `${item.recipeName.toLowerCase()}||${[...item.ingredientNames].sort().join(",")}`;
+      const normalizedIngredients = [...item.ingredientNames].map(normalizeSearchText).sort().join(",");
+      const fingerprint = `${normalizeSearchText(item.recipeName)}||${normalizedIngredients}`;
       if (groupMap.has(fingerprint)) {
         const existing = groupMap.get(fingerprint)!;
         existing.occurrences.push({ day: item.day, meal: item.meal, isActive: item.isActive, planId: item.planId });
