@@ -77,9 +77,10 @@ export default function GroceryList({ plan }: GroceryListProps) {
 
 
   // Opciones de formato de compartido
-  const [shareIncludeCheckboxes, setShareIncludeCheckboxes] = useState(true);
+  const [shareIncludeCheckboxes, setShareIncludeCheckboxes] = useState(false);
   const [shareGroupByCategories, setShareGroupByCategories] = useState(true);
   const [shareExcludeCompleted, setShareExcludeCompleted] = useState(false);
+  const [shareIncludeQuantities, setShareIncludeQuantities] = useState(true);
 
   // Filtros de Comida y Raciones (Multiplicadores)
   const [globalMultiplier, setGlobalMultiplier] = useState<number>(1);
@@ -342,7 +343,7 @@ export default function GroceryList({ plan }: GroceryListProps) {
             amountText = `${pri.amount} ${pri.unit}`;
           }
 
-          text += `${prefix}${item.name} (${amountText})\n`;
+          text += `${prefix}${item.name}${shareIncludeQuantities ? ` (${amountText})` : ""}\n`;
         });
         text += `\n`;
       });
@@ -362,7 +363,7 @@ export default function GroceryList({ plan }: GroceryListProps) {
           amountText = `${pri.amount} ${pri.unit}`;
         }
 
-        text += `${prefix}${item.name} (${amountText})\n`;
+        text += `${prefix}${item.name}${shareIncludeQuantities ? ` (${amountText})` : ""}\n`;
       });
       text += `\n`;
     }
@@ -850,7 +851,7 @@ export default function GroceryList({ plan }: GroceryListProps) {
               className="flex items-center justify-between p-5 bg-slate-50/50 dark:bg-zinc-950/20 cursor-pointer hover:bg-slate-100/50 dark:hover:bg-zinc-950/40 transition duration-150 select-none border-b border-slate-100 dark:border-zinc-800/60"
             >
               <div className="flex items-center gap-3">
-                <span className="material-symbols-outlined text-[#0f5238] dark:text-emerald-450" style={{ fontSize: "20px" }}>filter_alt</span>
+                <span className="material-symbols-outlined text-emerald-700 dark:text-emerald-400" style={{ fontSize: "20px" }}>filter_alt</span>
                 <div>
                   <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
                     Configuración de Comidas y Raciones
@@ -925,7 +926,7 @@ export default function GroceryList({ plan }: GroceryListProps) {
                         type="number"
                         step="0.5"
                         min="0.5"
-                        className="w-full text-xs font-extrabold text-emerald-800 dark:text-emerald-450 text-center bg-transparent focus:outline-none focus:ring-0 border-none p-0"
+                        className="w-full text-xs font-extrabold text-emerald-600 dark:text-emerald-400 text-center bg-transparent focus:outline-none focus:ring-0 border-none p-0"
                         value={globalMultiplier}
                         onChange={(e) => {
                           const val = parseFloat(e.target.value);
@@ -981,7 +982,7 @@ export default function GroceryList({ plan }: GroceryListProps) {
                                 >
                                   -
                                 </button>
-                                <span className="w-8 text-center text-emerald-800 dark:text-emerald-400 font-extrabold">
+                                <span className="w-8 text-center text-emerald-600 dark:text-emerald-400 font-extrabold">
                                   x{dayMult.toFixed(1)}
                                 </span>
                                 <button
@@ -1054,7 +1055,7 @@ export default function GroceryList({ plan }: GroceryListProps) {
                                     >
                                       -
                                     </button>
-                                    <span className="w-7 text-center font-extrabold text-emerald-800 dark:text-emerald-450">
+                                    <span className="w-7 text-center font-extrabold text-emerald-600 dark:text-emerald-400">
                                       x{mealMult.toFixed(1)}
                                     </span>
                                     <button
@@ -1097,11 +1098,10 @@ export default function GroceryList({ plan }: GroceryListProps) {
                 </h3>
                 <ul className="space-y-3">
                   {categorizedGroups[groupName]
-                    .filter((item) => !(shareExcludeCompleted && checkedItems[item.name]))
                     .map((item) => {
                       const isChecked = !!checkedItems[item.name];
                       return (
-                      <div key={item.name} className="space-y-1.5">
+                      <div key={item.name} className={`space-y-1.5 ${isChecked && shareExcludeCompleted ? "print:hidden" : ""}`}>
                         <li
                           onClick={() => toggleChecked(item.name)}
                           className={`flex items-center gap-3.5 p-3 rounded-xl border transition-all duration-150 cursor-pointer ${isChecked
@@ -1130,14 +1130,14 @@ export default function GroceryList({ plan }: GroceryListProps) {
                               <button
                                 type="button"
                                 onClick={(e) => toggleRecipesExpanded(e, item.name)}
-                                className="text-[9px] font-extrabold text-slate-400 dark:text-zinc-500 hover:text-emerald-650 dark:hover:text-emerald-400 bg-slate-50 dark:bg-zinc-800 px-1.5 py-0.5 rounded border border-slate-200/50 dark:border-zinc-700/50 cursor-pointer transition active:scale-95 no-print"
+                                className="text-[9px] font-extrabold text-slate-400 dark:text-zinc-500 hover:text-emerald-600 dark:hover:text-emerald-400 bg-slate-50 dark:bg-zinc-800 px-1.5 py-0.5 rounded border border-slate-200/50 dark:border-zinc-700/50 cursor-pointer transition active:scale-95 no-print"
                                 title="Ver recetas en las que se usa"
                               >
                                 {item.recipes.length === 1 ? "1 receta" : `${item.recipes.length} recetas`}
                               </button>
                             )}
                           </div>
-                          <span className={`text-xs md:text-sm font-bold px-2.5 py-1 rounded-md shrink-0 transition duration-150 ${isChecked ? "bg-gray-100 dark:bg-zinc-800 text-gray-400 dark:text-zinc-500" : "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-350"
+                          <span className={`text-xs md:text-sm font-bold px-2.5 py-1 rounded-md shrink-0 transition duration-150 ${isChecked ? "bg-gray-100 dark:bg-zinc-800 text-gray-400 dark:text-zinc-500" : "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400"
                             }`}>
                             {(() => {
                               if (item.secondaryTotal && item.secondaryUnit) {
@@ -1193,10 +1193,10 @@ export default function GroceryList({ plan }: GroceryListProps) {
                                         {mealNames[recRef.meal] || recRef.meal}
                                       </span>
                                     </div>
-                                    <span className="text-xs font-bold text-gray-700 dark:text-zinc-300 group-hover:text-emerald-700 dark:group-hover:text-emerald-450 truncate text-left">
+                                    <span className="text-xs font-bold text-gray-700 dark:text-zinc-300 group-hover:text-emerald-700 dark:group-hover:text-emerald-400 truncate text-left">
                                       {recRef.recipeName}
                                     </span>
-                                    <span className="text-xs font-extrabold text-emerald-800 dark:text-emerald-400 bg-emerald-50/60 dark:bg-emerald-950/30 px-2.5 py-0.5 rounded border border-emerald-100/50 dark:border-emerald-900/30 shrink-0 text-right">
+                                    <span className="text-xs font-extrabold text-emerald-600 dark:text-emerald-400 bg-emerald-50/60 dark:bg-emerald-950/30 px-2.5 py-0.5 rounded border border-emerald-100/50 dark:border-emerald-900/30 shrink-0 text-right">
                                       {(() => {
                                         if (recRef.secondaryAmount && recRef.secondaryUnit) {
                                           const sec = formatAmountAndUnit(recRef.secondaryAmount, recRef.secondaryUnit);
@@ -1226,9 +1226,9 @@ export default function GroceryList({ plan }: GroceryListProps) {
 
           {/* Right sidebar quick helpers */}
           <aside className="space-y-6">
-            <div className="bg-white dark:bg-zinc-900 w-full p-6 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm space-y-4 no-print animate-fade-in">
+            <div id="share-section" className="bg-white dark:bg-zinc-900 w-full p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm space-y-4 no-print animate-fade-in">
               <h3 className="text-md font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <span className="material-symbols-outlined text-[#0f5238] dark:text-emerald-450" style={{ fontSize: "20px" }}>content_paste_search</span>
+                <span className="material-symbols-outlined text-emerald-700 dark:text-emerald-400" style={{ fontSize: "20px" }}>content_paste_search</span>
                 Gestionar y Compartir Lista
               </h3>
               <p className="text-xs text-[#404943] dark:text-zinc-400 leading-relaxed">
@@ -1254,7 +1254,7 @@ export default function GroceryList({ plan }: GroceryListProps) {
                   </span>
                   {/* Tooltip */}
                   <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-48 p-2 bg-zinc-950 text-white text-[10px] rounded-lg opacity-0 pointer-events-none group-hover/tooltip:opacity-100 transition-opacity duration-150 shadow-md z-30 leading-normal font-medium text-center">
-                    Los ingredientes marcados como completados no se mostrarán en la pantalla ni al imprimir la lista.
+                    Los ingredientes marcados como completados se omitirán al exportar, imprimir o compartir la lista.
                   </span>
                 </label>
 
@@ -1289,6 +1289,23 @@ export default function GroceryList({ plan }: GroceryListProps) {
                   {/* Tooltip */}
                   <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-48 p-2 bg-zinc-950 text-white text-[10px] rounded-lg opacity-0 pointer-events-none group-hover/tooltip:opacity-100 transition-opacity duration-150 shadow-md z-30 leading-normal font-medium text-center">
                     Agrupa los ingredientes en secciones (verduras, carnes, lácteos...) al exportar o compartir.
+                  </span>
+                </label>
+
+                <label className="flex items-center gap-2.5 cursor-pointer text-xs text-gray-700 dark:text-zinc-200 select-none relative group/tooltip">
+                  <input
+                    type="checkbox"
+                    checked={shareIncludeQuantities}
+                    onChange={(e) => setShareIncludeQuantities(e.target.checked)}
+                    className="w-4 h-4 rounded border-gray-300 dark:border-zinc-700 text-emerald-600 focus:ring-emerald-500 cursor-pointer dark:bg-zinc-900"
+                  />
+                  <span className="flex items-center gap-1">
+                    Incluir cantidades
+                    <span className="material-symbols-outlined text-zinc-400 dark:text-zinc-500 cursor-help" style={{ fontSize: "14px" }}>info</span>
+                  </span>
+                  {/* Tooltip */}
+                  <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-48 p-2 bg-zinc-950 text-white text-[10px] rounded-lg opacity-0 pointer-events-none group-hover/tooltip:opacity-100 transition-opacity duration-150 shadow-md z-30 leading-normal font-medium text-center">
+                    Añade las cantidades y unidades a los ingredientes al exportar o compartir la lista.
                   </span>
                 </label>
               </div>
@@ -1374,7 +1391,7 @@ export default function GroceryList({ plan }: GroceryListProps) {
 
             <div className="bg-slate-50 dark:bg-zinc-900 w-full p-6 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm text-left">
               <h3 className="text-md font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-[#0f5238] dark:text-emerald-450" style={{ fontSize: "18px" }}>fact_check</span> Consejos de Compra
+                <span className="material-symbols-outlined text-emerald-700 dark:text-emerald-400" style={{ fontSize: "18px" }}>fact_check</span> Consejos de Compra
               </h3>
               <p className="text-xs text-[#404943] dark:text-zinc-300 leading-relaxed mb-4">
                 Optimiza tus visitas al supermercado comprando alimentos a granel o congelando carnes y pescados para preservar sus propiedades nutrientes intactas.

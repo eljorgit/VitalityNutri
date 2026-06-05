@@ -520,9 +520,9 @@ export default function RecipeDetail({
     return (
       <div className="space-y-6">
         {/* Raciones Ajustables */}
-        <div className={`bg-white/40 dark:bg-zinc-900/40 p-5 rounded-2xl border border-slate-200/50 dark:border-zinc-800/50 shadow-xs text-left ${showAdjust ? "" : "hidden"}`}>
+        <div className={`bg-white/40 dark:bg-zinc-900/40 p-5 rounded-2xl border border-zinc-200/50 dark:border-zinc-800/50 shadow-xs text-left ${showAdjust ? "" : "hidden"}`}>
           <h2 className="text-xs font-black text-slate-800 dark:text-zinc-200 mb-2 flex items-center gap-1.5 uppercase tracking-wider">
-            <span className="material-symbols-outlined text-emerald-600 dark:text-emerald-450 text-[18px]">calculate</span>
+            <span className="material-symbols-outlined text-emerald-600 dark:text-emerald-400 text-[18px]">calculate</span>
             Raciones Ajustables
           </h2>
           <p className="text-[11px] text-slate-500 dark:text-zinc-400 leading-relaxed mb-4">
@@ -531,7 +531,7 @@ export default function RecipeDetail({
 
           <div className="space-y-4">
             {/* Presets Grid */}
-            <div className="bg-slate-100/80 dark:bg-zinc-950/45 p-1 rounded-xl border border-slate-200/30 dark:border-zinc-850/50 grid grid-cols-4 gap-1 select-none">
+            <div className="bg-zinc-100/85 dark:bg-zinc-950/45 p-1 rounded-xl border border-zinc-200/30 dark:border-zinc-800/40 grid grid-cols-4 gap-1 select-none">
               {[1, 2, 3, 4].map((factor) => {
                 const isActive = multiplier === factor;
                 return (
@@ -541,7 +541,7 @@ export default function RecipeDetail({
                     onClick={() => handleSetPreset(factor)}
                     className={`py-1.5 rounded-lg text-xs font-black transition duration-200 cursor-pointer ${isActive
                       ? "bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-600/10"
-                      : "bg-white/90 hover:bg-slate-50 dark:bg-zinc-800 dark:hover:bg-zinc-750 text-zinc-700 dark:text-zinc-300 border border-slate-200/50 dark:border-zinc-700/50"
+                      : "bg-white/90 hover:bg-zinc-50 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 border border-zinc-200/50 dark:border-zinc-800/40"
                       }`}
                   >
                     x{factor}
@@ -560,14 +560,14 @@ export default function RecipeDetail({
                   <button
                     type="button"
                     onClick={handleReset}
-                    className="text-emerald-600 hover:text-emerald-700 dark:text-emerald-450 dark:hover:text-emerald-450 font-bold text-[10px] hover:underline cursor-pointer transition-all duration-150"
+                    className="text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 font-bold text-[10px] hover:underline cursor-pointer transition-all duration-150"
                   >
                     Resetear
                   </button>
                 )}
               </div>
 
-              <div className="flex items-center justify-between gap-2.5 bg-slate-100/60 dark:bg-zinc-950/40 p-2 rounded-xl border border-slate-200/50 dark:border-zinc-850 w-full shadow-inner-sm">
+              <div className="flex items-center justify-between gap-2.5 bg-zinc-100/60 dark:bg-zinc-950/40 p-2 rounded-xl border border-zinc-200/40 dark:border-zinc-800/50 w-full shadow-inner-sm">
                 <button
                   type="button"
                   onClick={() => {
@@ -575,18 +575,18 @@ export default function RecipeDetail({
                     setMultiplier(newMult);
                     setCustomInput(newMult.toString());
                   }}
-                  className="w-9 h-9 rounded-lg bg-white dark:bg-zinc-800 border border-slate-200/55 dark:border-zinc-700/60 flex items-center justify-center font-black text-sm hover:bg-slate-50 dark:hover:bg-zinc-750 cursor-pointer text-slate-700 dark:text-zinc-300 shadow-sm active:scale-95 transition-all"
+                  className="w-9 h-9 rounded-lg bg-white dark:bg-zinc-800 border border-zinc-200/50 dark:border-zinc-800/60 flex items-center justify-center font-black text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800 cursor-pointer text-slate-700 dark:text-zinc-300 shadow-sm active:scale-95 transition-all"
                 >
                   -
                 </button>
-                <div className="flex items-center gap-1 bg-white dark:bg-zinc-900 border border-slate-200/40 dark:border-zinc-800 rounded-lg px-3 py-1.5 flex-1 shadow-sm justify-center">
+                <div className="flex items-center gap-1 bg-white dark:bg-zinc-900 border border-zinc-200/40 dark:border-zinc-800 rounded-lg px-3 py-1.5 flex-1 shadow-sm justify-center">
                   <span className="text-[11px] font-bold text-zinc-400 select-none">x</span>
                   <input
                     id="custom-factor"
                     type="number"
                     step="0.5"
                     min="0.5"
-                    className="w-full text-xs font-black text-emerald-800 dark:text-emerald-450 text-center bg-transparent focus:outline-none focus:ring-0 border-none p-0"
+                    className="w-full text-xs font-black text-emerald-600 dark:text-emerald-400 text-center bg-transparent focus:outline-none focus:ring-0 border-none p-0"
                     value={customInput}
                     onChange={(e) => {
                       setCustomInput(e.target.value);
@@ -607,7 +607,7 @@ export default function RecipeDetail({
                     setMultiplier(newMult);
                     setCustomInput(newMult.toString());
                   }}
-                  className="w-9 h-9 rounded-lg bg-white dark:bg-zinc-800 border border-slate-200/55 dark:border-zinc-700/60 flex items-center justify-center font-black text-sm hover:bg-slate-50 dark:hover:bg-zinc-750 cursor-pointer text-slate-700 dark:text-zinc-300 shadow-sm active:scale-95 transition-all"
+                  className="w-9 h-9 rounded-lg bg-white dark:bg-zinc-800 border border-zinc-200/55 dark:border-zinc-800/60 flex items-center justify-center font-black text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800 cursor-pointer text-slate-700 dark:text-zinc-300 shadow-sm active:scale-95 transition-all"
                 >
                   +
                 </button>
@@ -641,17 +641,17 @@ export default function RecipeDetail({
         </div>
 
         {/* Compartir Receta Panel */}
-        <div className={`bg-white/40 dark:bg-zinc-900/40 p-5 rounded-2xl border border-slate-200/50 dark:border-zinc-800/50 shadow-xs space-y-4 no-print text-left ${showShare ? "" : "hidden"}`}>
+        <div className={`bg-white/40 dark:bg-zinc-900/40 p-5 rounded-2xl border border-zinc-200/50 dark:border-zinc-800/50 shadow-xs space-y-4 no-print text-left ${showShare ? "" : "hidden"}`}>
           <h2 className="text-xs font-black text-slate-800 dark:text-zinc-200 flex items-center gap-1.5 uppercase tracking-wider">
             <span className="material-symbols-outlined text-emerald-600 dark:text-emerald-400 text-[18px]">share</span>
             Compartir Receta
           </h2>
-          <p className="text-[11px] text-slate-500 dark:text-zinc-400 leading-relaxed">
+          <p className="text-[11px] text-slate-550 dark:text-zinc-400 leading-relaxed">
             Comparte esta prescripción nutricional o envíala a tus aplicaciones de notas preferidas.
           </p>
 
           {/* Checkbox selector */}
-          <div className="bg-slate-50/70 dark:bg-zinc-950/40 p-3 rounded-xl border border-slate-200/35 dark:border-zinc-850 select-none">
+          <div className="bg-zinc-50/70 dark:bg-zinc-950/40 p-3 rounded-xl border border-zinc-200/30 dark:border-zinc-800/40 select-none">
             <label className="flex items-center gap-2 cursor-pointer text-xs text-gray-750 dark:text-zinc-300 relative group/tooltip flex-wrap">
               <input
                 type="checkbox"
@@ -729,7 +729,7 @@ export default function RecipeDetail({
     return (
       <div className={`flex items-center gap-1.5 p-1.5 rounded-2xl relative shrink-0 transition-all duration-300 ${
         isMobileSticky
-          ? "bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-850 shadow-lg scale-95"
+          ? "bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 shadow-lg scale-95"
           : "bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 shadow-sm"
       }`}>
 
@@ -784,7 +784,7 @@ export default function RecipeDetail({
                       setShowDayMealsDropdown(false);
                     }}
                     className={`w-full px-4 py-2.5 text-xs text-left transition flex flex-col ${isCurrent
-                      ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-850 dark:text-emerald-300 font-extrabold"
+                      ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 font-extrabold"
                       : "text-slate-700 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-zinc-800"
                       }`}
                   >
@@ -946,7 +946,7 @@ export default function RecipeDetail({
           />
         </div>
         <div className="w-full md:w-7/12 p-6 md:p-8 flex flex-col justify-center bg-white dark:bg-zinc-900">
-          <span className="inline-flex items-center gap-1 text-[10px] font-bold tracking-widest bg-emerald-50 dark:bg-emerald-900/30 text-emerald-850 dark:text-emerald-400 px-3 py-1 rounded-full w-max mb-3 uppercase">
+          <span className="inline-flex items-center gap-1 text-[10px] font-bold tracking-widest bg-emerald-50 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-400 px-3 py-1 rounded-full w-max mb-3 uppercase">
             {recipe.tag || "Saludable"}
           </span>
           <h1 className="text-2xl md:text-3.5xl font-extrabold text-slate-900 dark:text-white leading-tight mb-4 select-all">
@@ -959,7 +959,7 @@ export default function RecipeDetail({
             </div>
             <div className="flex items-center gap-1.5 text-sm text-slate-500 dark:text-zinc-400 font-bold">
               <span className="material-symbols-outlined text-emerald-600">fitness_center</span>
-              <span className="font-semibold text-emerald-750 dark:text-emerald-400">Alta densidad nutricional</span>
+              <span className="font-semibold text-emerald-700 dark:text-emerald-400">Alta densidad nutricional</span>
             </div>
           </div>
 
@@ -971,7 +971,7 @@ export default function RecipeDetail({
                 setDrawerContent('adjust');
                 setIsDrawerOpen(true);
               }}
-              className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-800 dark:text-emerald-350 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-950/60 px-3.5 py-2 rounded-xl transition duration-200 border border-emerald-100/50 dark:border-emerald-900/40 cursor-pointer shadow-sm active:scale-95"
+              className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-950/60 px-3.5 py-2 rounded-xl transition duration-200 border border-emerald-100/50 dark:border-emerald-900/40 cursor-pointer shadow-sm active:scale-95"
             >
               <span className="material-symbols-outlined text-[15px]">calculate</span>
               Raciones (x{multiplier}) • {Math.round(recipe.calories * multiplier)} kcal
@@ -1018,7 +1018,7 @@ export default function RecipeDetail({
                   onClick={() => setSelectedIngCategory("Todo")}
                   className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer ${selectedIngCategory === "Todo"
                     ? "bg-emerald-600 text-white shadow-sm"
-                    : "text-slate-600 hover:text-emerald-600 dark:text-zinc-400 dark:hover:text-emerald-450 hover:bg-white dark:hover:bg-zinc-900"
+                    : "text-slate-600 hover:text-emerald-600 dark:text-zinc-400 dark:hover:text-emerald-400 hover:bg-white dark:hover:bg-zinc-900"
                     }`}
                 >
                   Todo
@@ -1030,7 +1030,7 @@ export default function RecipeDetail({
                     onClick={() => setSelectedIngCategory(catKey)}
                     className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer ${selectedIngCategory === catKey
                       ? "bg-emerald-600 text-white shadow-sm"
-                      : "text-slate-600 hover:text-emerald-600 dark:text-zinc-400 dark:hover:text-emerald-450 hover:bg-white dark:hover:bg-zinc-900"
+                      : "text-slate-600 hover:text-emerald-600 dark:text-zinc-400 dark:hover:text-emerald-400 hover:bg-white dark:hover:bg-zinc-900"
                       }`}
                   >
                     {categoryNames[catKey] || catKey}
@@ -1168,7 +1168,7 @@ export default function RecipeDetail({
                   onClick={() => setSelectedStepCategory("Todo")}
                   className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer ${selectedStepCategory === "Todo"
                     ? "bg-emerald-600 text-white shadow-sm"
-                    : "text-slate-600 hover:text-emerald-600 dark:text-zinc-400 dark:hover:text-emerald-450 hover:bg-white dark:hover:bg-zinc-900"
+                    : "text-slate-600 hover:text-emerald-600 dark:text-zinc-400 dark:hover:text-emerald-400 hover:bg-white dark:hover:bg-zinc-900"
                     }`}
                 >
                   Todo
@@ -1180,7 +1180,7 @@ export default function RecipeDetail({
                     onClick={() => setSelectedStepCategory(catKey)}
                     className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer ${selectedStepCategory === catKey
                       ? "bg-emerald-600 text-white shadow-sm"
-                      : "text-slate-600 hover:text-emerald-600 dark:text-zinc-400 dark:hover:text-emerald-450 hover:bg-white dark:hover:bg-zinc-900"
+                      : "text-slate-600 hover:text-emerald-600 dark:text-zinc-400 dark:hover:text-emerald-400 hover:bg-white dark:hover:bg-zinc-900"
                       }`}
                   >
                     {categoryNames[catKey] || catKey}
@@ -1217,7 +1217,7 @@ export default function RecipeDetail({
                     <div className="text-left flex-1 select-all">
                       {selectedStepCategory === "Todo" && activeStepCategories.length > 1 && (
                         <div className="mb-1">
-                          <span className="inline-block text-[9px] font-extrabold uppercase tracking-wider bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-450 px-2 py-0.5 rounded-md">
+                          <span className="inline-block text-[9px] font-extrabold uppercase tracking-wider bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-400 px-2 py-0.5 rounded-md">
                             {categoryNames[catKey] || catKey}
                           </span>
                         </div>
@@ -1286,7 +1286,7 @@ export default function RecipeDetail({
       </div>
 
       {/* Mobile Sticky Bottom Recipe Switcher - positioned exactly above the mobile appbar (bottom-16) */}
-      <div className="fixed bottom-16 left-0 right-0 z-40 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border-t border-slate-200/50 dark:border-zinc-850 p-2.5 md:hidden shadow-lg flex justify-center no-print">
+      <div className="fixed bottom-16 left-0 right-0 z-40 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border-t border-slate-200/50 dark:border-zinc-800 p-2.5 md:hidden shadow-lg flex justify-center no-print">
         {renderMealNavigator(true)}
       </div>
 

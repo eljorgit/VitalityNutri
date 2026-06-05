@@ -386,7 +386,7 @@ export default function Dashboard({
           {/* File Upload card component */}
           <div className="lg:col-span-8 bg-white dark:bg-zinc-900 rounded-2xl p-6 md:p-8 border border-[#bfc9c1]/40 dark:border-zinc-800 shadow-sm relative">
             <div className="flex items-center gap-3 mb-6">
-              <div className="bg-emerald-100 dark:bg-zinc-800 text-[#0f5238] dark:text-emerald-450 p-2.5 rounded-xl">
+              <div className="bg-emerald-100 dark:bg-zinc-800 text-[#0f5238] dark:text-emerald-400 p-2.5 rounded-xl">
                 <span className="material-symbols-outlined block">description</span>
               </div>
               <div>
@@ -524,15 +524,15 @@ export default function Dashboard({
                 <div className="bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 rounded-3xl p-8 max-w-md w-full shadow-2xl flex flex-col items-center gap-6">
                   <div className="relative">
                     {/* Glowing spinner */}
-                    <div className="w-20 h-20 rounded-full border-4 border-emerald-100 dark:border-zinc-850 border-t-emerald-600 dark:border-t-emerald-450 animate-spin"></div>
+                    <div className="w-20 h-20 rounded-full border-4 border-emerald-100 dark:border-zinc-800 border-t-emerald-600 dark:border-t-emerald-400 animate-spin"></div>
                     <div className="absolute inset-0 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
                       <span className="material-symbols-outlined text-2xl animate-pulse">auto_awesome</span>
                     </div>
                   </div>
 
                   <div>
-                    <h3 className="text-xl font-bold text-[#0f5238] dark:text-emerald-450 mb-2 animate-pulse">Procesando Plan Nutricional</h3>
-                    <p className="text-xs text-gray-550 dark:text-zinc-400 leading-relaxed">
+                    <h3 className="text-xl font-bold text-[#0f5238] dark:text-emerald-400 mb-2 animate-pulse">Procesando Plan Nutricional</h3>
+                    <p className="text-xs text-gray-500 dark:text-zinc-400 leading-relaxed">
                       Nuestra red neuronal está extrayendo y estructurando las comidas, ingredientes y pasos secuenciales del plan.
                     </p>
                   </div>
@@ -547,7 +547,7 @@ export default function Dashboard({
                     </div>
                     <div className="w-full h-2.5 bg-gray-100 dark:bg-zinc-800 rounded-full overflow-hidden">
                       <div 
-                        className="h-full bg-emerald-600 dark:bg-emerald-450 transition-all duration-300 ease-out rounded-full" 
+                        className="h-full bg-emerald-600 dark:bg-emerald-400 transition-all duration-300 ease-out rounded-full" 
                         style={{ width: `${progress}%` }}
                       ></div>
                     </div>
@@ -564,7 +564,7 @@ export default function Dashboard({
                   <button
                     type="button"
                     onClick={handleCancel}
-                    className="mt-2 px-6 py-2.5 bg-red-50 dark:bg-red-950/30 text-red-750 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-950 transition-colors cursor-pointer flex items-center justify-center gap-1.5 border border-red-100 dark:border-red-900/30 font-bold text-xs rounded-xl"
+                    className="mt-2 px-6 py-2.5 bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-950 transition-colors cursor-pointer flex items-center justify-center gap-1.5 border border-red-100 dark:border-red-900/30 font-bold text-xs rounded-xl"
                   >
                     <span className="material-symbols-outlined text-[15px]">cancel</span>
                     Cancelar Proceso
@@ -607,7 +607,7 @@ export default function Dashboard({
               </div>
 
               <div className="mt-6 pt-6 border-t border-emerald-800/60 dark:border-emerald-900/50 flex items-center justify-between">
-                <span className="text-xs text-emerald-250">Impulsado por Gemini 3.5</span>
+                <span className="text-xs text-emerald-200">Impulsado por Gemini 3.5</span>
                 <span className="text-xs font-bold bg-emerald-900/80 dark:bg-emerald-900/60 text-emerald-100 px-2.5 py-1 rounded-md">VITALITY AI</span>
               </div>
             </div>
@@ -617,7 +617,7 @@ export default function Dashboard({
               <div className="bg-white dark:bg-zinc-900 rounded-2xl p-5 border border-gray-200 dark:border-zinc-800/80 shadow-sm relative flex flex-col gap-3">
                 <div className="flex items-center justify-between text-xs tracking-wider text-gray-400 dark:text-zinc-500 font-bold uppercase">
                   <span>Plan de Alimentación Activo</span>
-                  <span className="text-[#0f5238] dark:text-emerald-450 flex items-center gap-0.5 font-bold">
+                  <span className="text-[#0f5238] dark:text-emerald-400 flex items-center gap-0.5 font-bold">
                     <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> COMPARTIDO
                   </span>
                 </div>
@@ -637,7 +637,7 @@ export default function Dashboard({
                     <button 
                       type="button"
                       onClick={() => setActiveTab("calendar")}
-                      className="py-2.5 px-4 bg-emerald-50 dark:bg-emerald-950/30 text-[#0f5238] dark:text-emerald-450 font-bold text-xs rounded-xl hover:bg-emerald-100 dark:hover:bg-emerald-950 transition-colors cursor-pointer flex items-center justify-center gap-1"
+                      className="py-2.5 px-4 bg-emerald-50 dark:bg-emerald-950/30 text-[#0f5238] dark:text-emerald-400 font-bold text-xs rounded-xl hover:bg-emerald-100 dark:hover:bg-emerald-950 transition-colors cursor-pointer flex items-center justify-center gap-1"
                     >
                       <span className="material-symbols-outlined text-[14px]">calendar_month</span> Ver Calendario
                     </button>
@@ -680,7 +680,7 @@ export default function Dashboard({
                 <button
                   type="button"
                   onClick={() => setShowHistoryModal(true)}
-                  className="w-full py-2.5 px-4 bg-emerald-50 dark:bg-emerald-950/30 hover:bg-emerald-100 dark:hover:bg-emerald-950 text-[#0f5238] dark:text-emerald-450 font-bold text-xs rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5 border border-emerald-100 dark:border-emerald-900/40"
+                  className="w-full py-2.5 px-4 bg-emerald-50 dark:bg-emerald-950/30 hover:bg-emerald-100 dark:hover:bg-emerald-950 text-[#0f5238] dark:text-emerald-400 font-bold text-xs rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5 border border-emerald-100 dark:border-emerald-900/40"
                 >
                   <span className="material-symbols-outlined text-[16px]">history</span>
                   Ver Historial de Planes
@@ -730,7 +730,7 @@ export default function Dashboard({
           <div className="bg-white dark:bg-zinc-900 rounded-3xl w-full max-w-lg border border-gray-100 dark:border-zinc-800 shadow-2xl flex flex-col max-h-[80vh] overflow-hidden">
             {/* Modal Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-zinc-800/85 bg-gray-50/50 dark:bg-zinc-950/20">
-              <h3 className="text-lg font-bold text-[#0f5238] dark:text-emerald-450 flex items-center gap-2">
+              <h3 className="text-lg font-bold text-[#0f5238] dark:text-emerald-400 flex items-center gap-2">
                 <span className="material-symbols-outlined text-[22px]">history</span> Historial de Planes
               </h3>
               <button
@@ -762,7 +762,7 @@ export default function Dashboard({
                       key={item.id} 
                       className={`p-4 rounded-2xl border transition-all duration-200 flex flex-col gap-3.5 ${
                         item.isActive 
-                          ? "bg-emerald-50/45 dark:bg-emerald-950/10 border-emerald-250 dark:border-emerald-900/40" 
+                          ? "bg-emerald-50/45 dark:bg-emerald-950/10 border-emerald-200 dark:border-emerald-900/40" 
                           : "bg-[#f8f9fa] dark:bg-zinc-950/20 border-gray-100 dark:border-zinc-800/60 hover:border-gray-200 dark:hover:border-zinc-700"
                       }`}
                     >
@@ -782,13 +782,13 @@ export default function Dashboard({
                           </p>
                         </div>
                         {item.isActive && (
-                          <span className="text-[10px] bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-350 font-bold px-2.5 py-0.5 rounded-full select-none shrink-0 flex items-center gap-1 border border-emerald-250 dark:border-emerald-800">
+                          <span className="text-[10px] bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 font-bold px-2.5 py-0.5 rounded-full select-none shrink-0 flex items-center gap-1 border border-emerald-200 dark:border-emerald-800">
                             <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Activo
                           </span>
                         )}
                       </div>
 
-                      <div className="flex justify-end gap-2 border-t border-gray-100/60 dark:border-zinc-850/50 pt-3 mt-0.5">
+                      <div className="flex justify-end gap-2 border-t border-gray-100/60 dark:border-zinc-800/50 pt-3 mt-0.5">
                         {!item.isActive && (
                           <button
                             type="button"

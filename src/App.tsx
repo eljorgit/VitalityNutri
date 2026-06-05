@@ -30,6 +30,35 @@ export default function App() {
     }
   }, [darkMode]);
 
+  // Scroll navigation visibility states
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const [showScrollBottom, setShowScrollBottom] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 300);
+
+      if (activeTab === "grocery") {
+        const threshold = 300;
+        const totalHeight = document.documentElement.scrollHeight;
+        const viewHeight = window.innerHeight;
+        const scrolled = window.scrollY;
+        setShowScrollBottom(totalHeight - viewHeight - scrolled > threshold);
+      } else {
+        setShowScrollBottom(false);
+      }
+    };
+
+    handleScroll();
+    window.addEventListener("scroll", handleScroll);
+    window.addEventListener("resize", handleScroll);
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", handleScroll);
+    };
+  }, [activeTab]);
+
   // Detail view parameters
   const [selectedRecipeDetail, setSelectedRecipeDetail] = useState<{
     day: DayType;
@@ -219,7 +248,7 @@ export default function App() {
               onClick={() => {
                 navigate("/dashboard");
               }}
-              className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-450 tracking-tight hover:opacity-85 select-none text-left cursor-pointer transition-opacity"
+              className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 tracking-tight hover:opacity-85 select-none text-left cursor-pointer transition-opacity"
             >
               VitalityNutri
             </button>
@@ -320,7 +349,7 @@ export default function App() {
       <main className="flex-grow w-full max-w-container-max mx-auto px-6 pt-6 pb-36 md:py-12">
         {isLoading ? (
           <div className="py-24 text-center">
-            <div className="w-12 h-12 rounded-full border-4 border-emerald-100 dark:border-zinc-850 border-t-emerald-600 dark:border-t-emerald-450 animate-spin mx-auto mb-4"></div>
+            <div className="w-12 h-12 rounded-full border-4 border-emerald-100 dark:border-zinc-800 border-t-emerald-600 dark:border-t-emerald-400 animate-spin mx-auto mb-4"></div>
             <p className="text-sm font-semibold text-gray-550 dark:text-zinc-400">Descargando base de pautas compartidas...</p>
           </div>
         ) : errorMsg ? (
@@ -468,6 +497,41 @@ export default function App() {
           <span className="text-[10px] tracking-tight mt-0.5 font-bold">Lista Compra</span>
         </button>
       </nav>
+
+      {/* Scroll Navigation Floating Buttons */}
+      <div className={`fixed right-4 ${activeTab === "recipe-detail" ? "bottom-36" : "bottom-20"} md:right-8 md:bottom-8 z-40 flex flex-col gap-2.5 no-print select-none`}>
+        {showScrollTop && (
+          <button
+            type="button"
+            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+            className="w-11 h-11 rounded-full bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border border-slate-200 dark:border-zinc-800 text-slate-700 dark:text-zinc-350 hover:text-emerald-600 dark:hover:text-emerald-400 hover:border-emerald-500/30 dark:hover:border-emerald-500/30 shadow-lg hover:shadow-emerald-500/10 active:scale-95 transition-all duration-200 cursor-pointer flex items-center justify-center font-bold"
+            title="Volver arriba"
+          >
+            <span className="material-symbols-outlined text-xl">arrow_upward</span>
+          </button>
+        )}
+        {showScrollBottom && (
+          <button
+            type="button"
+            onClick={() => {
+              if (activeTab === "grocery") {
+                const element = document.getElementById("share-section");
+                if (element) {
+                  element.scrollIntoView({ behavior: "smooth", block: "start" });
+                } else {
+                  window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "smooth" });
+                }
+              } else {
+                window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "smooth" });
+              }
+            }}
+            className="w-11 h-11 rounded-full bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border border-slate-200 dark:border-zinc-800 text-slate-700 dark:text-zinc-350 hover:text-emerald-600 dark:hover:text-emerald-400 hover:border-emerald-500/30 dark:hover:border-emerald-500/30 shadow-lg hover:shadow-emerald-500/10 active:scale-95 transition-all duration-200 cursor-pointer flex items-center justify-center font-bold md:hidden"
+            title="Bajar al final"
+          >
+            <span className="material-symbols-outlined text-xl">arrow_downward</span>
+          </button>
+        )}
+      </div>
 
     </div>
   );

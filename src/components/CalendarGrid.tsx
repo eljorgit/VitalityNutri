@@ -128,9 +128,11 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab }: Cal
     cena: "Cena",
   };
 
-  // Helper to count planned meals out of 28 total possible slots
+  // Helper to count planned meals and calculate weekly completion percentage
   const getPlannedStats = () => {
     if (!plan) return { planned: 0, total: 28, percentage: 0 };
+    
+    // Total planned meals in the calendar
     let planned = 0;
     daysKeys.forEach((day) => {
       mealsKeys.forEach((meal) => {
@@ -139,10 +141,35 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab }: Cal
         }
       });
     });
+
+    const today = new Date();
+    const dayOfWeek = today.getDay(); // 0 is Sunday, 1 is Monday, etc.
+    const hour = today.getHours();
+    
+    const dayNum = dayOfWeek === 0 ? 7 : dayOfWeek;
+    const pastDaysMeals = (dayNum - 1) * 4;
+    
+    let todayMeals = 0;
+    if (hour >= 22) {
+      todayMeals = 4;
+    } else if (hour >= 19) {
+      todayMeals = 3;
+    } else if (hour >= 15) {
+      todayMeals = 2;
+    } else if (hour >= 11) {
+      todayMeals = 1;
+    } else {
+      todayMeals = 0;
+    }
+    
+    const elapsedSlots = pastDaysMeals + todayMeals;
+    const percentage = Math.round((elapsedSlots / 28) * 100);
+
     return {
       planned,
       total: 28,
-      percentage: Math.round((planned / 28) * 100),
+      elapsedSlots,
+      percentage,
     };
   };
 
@@ -160,15 +187,7 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab }: Cal
         <>
           {/* Main Desktop Grid Scrollable - Hidden on mobile, shown on desktop/print */}
           <div className="hidden md:block print:block bg-white dark:bg-zinc-900 rounded-3xl p-6 border border-slate-100 dark:border-zinc-800 shadow-sm overflow-x-auto print-area-container">
-            <div className="min-w-[1000px] grid grid-cols-[135px_repeat(7,1fr)] gap-4">
-              
-              {/* Desktop Row Title Headers */}
-              <div className="flex flex-col gap-4 text-right pr-4 font-semibold text-gray-400 dark:text-zinc-500 text-xs uppercase tracking-wider pt-10 select-none">
-                <div className="h-28 flex items-center justify-end font-semibold text-gray-600 dark:text-zinc-300">Desayuno</div>
-                <div className="h-28 flex items-center justify-end font-semibold text-gray-600 dark:text-zinc-300">Almuerzo</div>
-                <div className="h-28 flex items-center justify-end font-semibold text-gray-600 dark:text-zinc-300">Merienda</div>
-                <div className="h-28 flex items-center justify-end font-semibold text-gray-600 dark:text-zinc-300">Cena</div>
-              </div>
+            <div className="min-w-[1076px] w-full grid grid-cols-7 gap-4">
 
               {/* Days Columns without Day numbers - showing weekday names Spanish directly */}
               {daysKeys.map((day) => {
@@ -195,17 +214,17 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab }: Cal
                       const recipe = plan.days[day]?.[meal];
 
                       const mealBorders: Record<MealType, string> = {
-                        desayuno: "border-l-4 border-l-amber-450 dark:border-l-amber-500 border-slate-100 dark:border-zinc-800",
-                        almuerzo: "border-l-4 border-l-emerald-450 dark:border-l-emerald-500 border-slate-100 dark:border-zinc-800",
-                        merienda: "border-l-4 border-l-blue-450 dark:border-l-blue-500 border-slate-100 dark:border-zinc-800",
-                        cena: "border-l-4 border-l-indigo-450 dark:border-l-indigo-500 border-slate-100 dark:border-zinc-800",
+                        desayuno: "border-l-4 border-l-amber-500 border-slate-100 dark:border-zinc-800",
+                        almuerzo: "border-l-4 border-l-emerald-500 border-slate-100 dark:border-zinc-800",
+                        merienda: "border-l-4 border-l-blue-500 border-slate-100 dark:border-zinc-800",
+                        cena: "border-l-4 border-l-indigo-500 border-slate-100 dark:border-zinc-800",
                       };
 
                       const mealLabelColors: Record<MealType, string> = {
-                        desayuno: "text-amber-600 dark:text-amber-450",
-                        almuerzo: "text-emerald-600 dark:text-emerald-450",
-                        merienda: "text-blue-600 dark:text-blue-450",
-                        cena: "text-indigo-600 dark:text-indigo-450",
+                        desayuno: "text-amber-600 dark:text-amber-400",
+                        almuerzo: "text-emerald-600 dark:text-emerald-400",
+                        merienda: "text-blue-600 dark:text-blue-400",
+                        cena: "text-indigo-600 dark:text-indigo-400",
                       };
 
                       if (recipe) {
@@ -216,19 +235,19 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab }: Cal
                             onClick={() => onSelectRecipe(day, meal, recipe)}
                             className={`group h-28 p-3 rounded-xl transition-all duration-300 cursor-pointer flex flex-col justify-between text-left relative ${
                               isFocused
-                                ? "bg-emerald-50/90 dark:bg-emerald-950/40 border-2 border-emerald-500 shadow-md ring-2 ring-emerald-250 dark:ring-emerald-900/60 ring-offset-2 dark:ring-offset-zinc-950 scale-[1.03] z-10"
+                                ? "bg-emerald-50/90 dark:bg-emerald-950/40 border-2 border-emerald-500 shadow-md ring-2 ring-emerald-500/20 dark:ring-emerald-900/60 ring-offset-2 dark:ring-offset-zinc-950 scale-[1.03] z-10"
                                 : "bg-white dark:bg-zinc-900 border border-slate-200/60 dark:border-zinc-800/80 shadow-sm hover:shadow-md hover:border-slate-350 dark:hover:border-zinc-700 text-slate-800 dark:text-zinc-100"
                             } ${mealBorders[meal]}`}
                           >
                             <div>
-                              <div className="flex justify-between items-start gap-1">
-                                <span className={`block text-[10px] font-bold uppercase tracking-wider mb-1 select-none ${
-                                  isFocused ? "text-emerald-800 dark:text-emerald-300 font-extrabold" : mealLabelColors[meal]
+                              <div className="flex justify-between items-center gap-1 mb-1">
+                                <span className={`block text-[9.5px] font-black uppercase tracking-wider select-none ${
+                                  isFocused ? "text-emerald-800 dark:text-emerald-300 font-black" : mealLabelColors[meal]
                                 }`}>
                                   {mealLabels[meal]}
                                 </span>
                                 {isFocused && (
-                                  <span className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-extrabold text-[9px] px-2 py-0.5 rounded-full select-none animate-pulse shadow-sm">
+                                  <span className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-extrabold text-[7.5px] px-1.5 py-0.5 rounded-full select-none animate-pulse shadow-sm shrink-0">
                                     PRÓXIMA
                                   </span>
                                 )}
@@ -246,15 +265,15 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab }: Cal
                                 {recipe.calories > 350 && <span className="w-2 h-2 rounded-full bg-orange-400" title="Alto aporte energético"></span>}
                               </div>
                               <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded select-all ${
-                                isFocused ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-350" : "bg-slate-50 dark:bg-zinc-800 text-slate-500 dark:text-zinc-405"
+                                isFocused ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300" : "bg-slate-50 dark:bg-zinc-800 text-slate-500 dark:text-zinc-405"
                               }`}>
                                 {recipe.calories} kcal
                               </span>
                             </div>
                             
-                            {/* Hover indicators */}
-                            <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity no-print">
-                              <span className="material-symbols-outlined text-[13px] text-emerald-700 bg-emerald-100 p-0.5 rounded select-none">
+                            {/* Hover indicators - vertically centered on the right edge */}
+                            <div className="absolute right-2.5 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity no-print z-20">
+                              <span className="material-symbols-outlined text-[13px] text-emerald-700 bg-emerald-100 dark:bg-zinc-800 dark:text-emerald-300 p-0.5 rounded-lg select-none shadow-sm border border-emerald-500/15">
                                 arrow_forward
                               </span>
                             </div>
@@ -266,12 +285,15 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab }: Cal
                           <div
                             key={meal}
                             className="bg-slate-50/50 dark:bg-zinc-900/30 hover:bg-slate-100/70 dark:hover:bg-zinc-800/50 border-2 border-dashed border-slate-200 dark:border-zinc-800 hover:border-emerald-500/30 rounded-xl h-28 flex flex-col items-center justify-center p-3 text-center transition-all duration-200 cursor-help"
-                            title="Haz clic o utiliza un PDF para añadir una comida pautada en este slot."
+                            title={`Haz clic o utiliza un PDF para añadir una comida pautada en este slot de ${mealLabels[meal]}.`}
                           >
+                            <span className={`block text-[9px] font-bold uppercase tracking-wider mb-1 select-none ${mealLabelColors[meal]}`}>
+                              {mealLabels[meal]}
+                            </span>
                             <span className="material-symbols-outlined text-slate-300 dark:text-zinc-600 group-hover:text-emerald-500 text-lg select-none">
                               add_circle
                             </span>
-                            <span className="text-[10px] text-slate-400 dark:text-zinc-500 font-semibold mt-1 select-none">Sin Pautar</span>
+                            <span className="text-[9px] text-slate-400 dark:text-zinc-500 font-semibold mt-0.5 select-none">Sin Pautar</span>
                           </div>
                         );
                       }
@@ -302,8 +324,8 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab }: Cal
                       isSelected
                         ? "bg-[#0f5238] border-[#0f5238] text-white shadow-sm font-bold scale-[1.02]"
                         : isToday
-                          ? "bg-emerald-50/70 dark:bg-emerald-950/20 border-emerald-350 dark:border-emerald-900 text-emerald-800 dark:text-emerald-300 font-bold"
-                          : "bg-white dark:bg-zinc-900 border-slate-100 dark:border-zinc-800/80 text-slate-500 dark:text-zinc-400"
+                           ? "bg-emerald-50/70 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-900 text-emerald-800 dark:text-emerald-300 font-bold"
+                           : "bg-white dark:bg-zinc-900 border-slate-100 dark:border-zinc-800/80 text-slate-500 dark:text-zinc-400"
                     }`}
                   >
                     <span className="text-[8px] font-black uppercase tracking-wider">
@@ -322,19 +344,19 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab }: Cal
               {mealsKeys.map((meal) => {
                 const recipe = plan.days[activeMobileDay]?.[meal];
                 
-                const mealBorders: Record<MealType, string> = {
-                  desayuno: "border-l-4 border-l-amber-450 dark:border-l-amber-500",
-                  almuerzo: "border-l-4 border-l-emerald-450 dark:border-l-emerald-500",
-                  merienda: "border-l-4 border-l-blue-450 dark:border-l-blue-500",
-                  cena: "border-l-4 border-l-indigo-450 dark:border-l-indigo-500",
-                };
+                 const mealBorders: Record<MealType, string> = {
+                   desayuno: "border-l-4 border-l-amber-500 dark:border-l-amber-500",
+                   almuerzo: "border-l-4 border-l-emerald-500 dark:border-l-emerald-500",
+                   merienda: "border-l-4 border-l-blue-500 dark:border-l-blue-500",
+                   cena: "border-l-4 border-l-indigo-500 dark:border-l-indigo-500",
+                 };
 
-                const mealLabelColors: Record<MealType, string> = {
-                  desayuno: "text-amber-600 dark:text-amber-450",
-                  almuerzo: "text-emerald-600 dark:text-emerald-450",
-                  merienda: "text-blue-600 dark:text-blue-450",
-                  cena: "text-indigo-600 dark:text-indigo-450",
-                };
+                 const mealLabelColors: Record<MealType, string> = {
+                   desayuno: "text-amber-600 dark:text-amber-400",
+                   almuerzo: "text-emerald-600 dark:text-emerald-400",
+                   merienda: "text-blue-600 dark:text-blue-400",
+                   cena: "text-indigo-600 dark:text-indigo-400",
+                 };
 
                 const isFocused = activeMobileDay === nextMeal.day && meal === nextMeal.meal;
 
@@ -345,7 +367,7 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab }: Cal
                       onClick={() => onSelectRecipe(activeMobileDay, meal, recipe)}
                       className={`group p-4 rounded-2xl transition-all duration-200 cursor-pointer flex items-center justify-between gap-4 border text-left ${
                         isFocused
-                          ? "bg-emerald-50/90 dark:bg-emerald-950/40 border-emerald-500 shadow-md ring-2 ring-emerald-250 dark:ring-emerald-900/40"
+                          ? "bg-emerald-50/90 dark:bg-emerald-950/40 border-emerald-500 shadow-md ring-2 ring-emerald-500/20 dark:ring-emerald-900/40"
                           : "bg-white dark:bg-zinc-900 border-slate-200/80 dark:border-zinc-800/80 hover:border-slate-350 dark:hover:border-zinc-700"
                       } ${mealBorders[meal]}`}
                     >
@@ -369,7 +391,7 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab }: Cal
                         </h3>
                         <div className="flex items-center gap-2 mt-2 select-none">
                           <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                            isFocused ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-350" : "bg-slate-50 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400"
+                            isFocused ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300" : "bg-slate-50 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400"
                           }`}>
                             {recipe.calories} kcal
                           </span>
@@ -410,7 +432,7 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab }: Cal
             {/* Weekly progress card details */}
             <div className="bg-white/80 dark:bg-zinc-900 p-6 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm flex flex-col justify-between select-text">
               <div className="flex items-center justify-between mb-4">
-                <h4 className="text-sm font-bold text-gray-700 dark:text-zinc-200">Porcentaje de Completitud</h4>
+                <h4 className="text-sm font-bold text-gray-700 dark:text-zinc-200">Porcentaje de Completitud Semanal</h4>
                 <span className="text-sm font-bold text-emerald-800 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-0.5 rounded-full">
                   {stats.percentage}%
                 </span>
@@ -422,7 +444,7 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab }: Cal
                 ></div>
               </div>
               <p className="mt-4 text-xs text-[#404943] dark:text-zinc-400 leading-relaxed text-left">
-                ¡Excelente progreso! Tienes <span className="font-bold text-gray-900 dark:text-white">{stats.planned} de 28 comidas</span> pautadas y vinculadas con las métricas nutricionales en tu calendario.
+                ¡Excelente progreso! Tienes <span className="font-bold text-gray-900 dark:text-white">{stats.elapsedSlots} de {stats.total} comidas</span> pautadas y vinculadas con las métricas nutricionales en tu calendario.
               </p>
             </div>
 
