@@ -92,5 +92,39 @@ body:has(.modal-overlay) .recipe-bottom-switcher {
   margin-top: 0 !important;
 }
 
+/*
+ * Recipe modals are mounted from inside the recipe view, while the mobile app
+ * can run in iOS safe-area / standalone modes.  In those cases a plain
+ * `fixed inset-0` overlay can leave the top safe-area visually unfiltered even
+ * though the invisible click target still closes the dialog.  Extend the
+ * overlay into the safe areas and size it from the dynamic viewport so the
+ * tinted blur and the dismissible backdrop always share the same full-screen
+ * bounds.
+ */
+.recipe-modal-overlay {
+  position: fixed !important;
+  top: calc(0px - env(safe-area-inset-top, 0px)) !important;
+  right: 0 !important;
+  bottom: calc(0px - env(safe-area-inset-bottom, 0px)) !important;
+  left: 0 !important;
+  width: 100vw;
+  width: 100dvw;
+  min-height: calc(100vh + env(safe-area-inset-top, 0px) + env(safe-area-inset-bottom, 0px));
+  min-height: calc(100dvh + env(safe-area-inset-top, 0px) + env(safe-area-inset-bottom, 0px));
+  margin: 0 !important;
+  padding-top: calc(1rem + env(safe-area-inset-top, 0px)) !important;
+  padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px)) !important;
+  isolation: isolate;
+}
+
+.recipe-modal-backdrop {
+  position: fixed !important;
+  top: calc(0px - env(safe-area-inset-top, 0px)) !important;
+  right: 0 !important;
+  bottom: calc(0px - env(safe-area-inset-bottom, 0px)) !important;
+  left: 0 !important;
+  margin: 0 !important;
+}
+
 
 

@@ -1619,11 +1619,11 @@ export default function RecipeDetail({
       {/* Mobile Settings/Share Modal */}
       {isDrawerOpen && (
         <div 
-          className="modal-overlay fixed inset-0 z-[999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in no-print"
+          className="modal-overlay recipe-modal-overlay fixed inset-0 z-[999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in no-print"
           style={{ marginTop: 0 }}
         >
           <div 
-            className="fixed inset-0" 
+            className="recipe-modal-backdrop fixed inset-0" 
             onClick={() => setIsDrawerOpen(false)} 
           />
           <div 
@@ -1667,11 +1667,11 @@ export default function RecipeDetail({
       {/* Progress recipes list modal overlay */}
       {showProgressModal && plan && (
         <div 
-          className="modal-overlay fixed inset-0 z-[999] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in no-print !mt-0"
+          className="modal-overlay recipe-modal-overlay fixed inset-0 z-[999] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in no-print !mt-0"
           style={{ marginTop: 0 }}
         >
           <div 
-            className="fixed inset-0" 
+            className="recipe-modal-backdrop fixed inset-0" 
             onClick={() => setShowProgressModal(false)} 
             style={{ marginTop: 0 }}
           />
