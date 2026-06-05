@@ -1019,14 +1019,14 @@ export default function App() {
       {/* 1.1 Mobile Search Overlay/Modal */}
       {mobileSearchOpen && (
         <div 
-          className="modal-overlay fixed inset-0 z-[999] bg-slate-900/10 dark:bg-black/20 backdrop-blur-md md:hidden flex flex-col p-4 pt-16 !mt-0"
+          className="modal-overlay fixed inset-0 z-[999] bg-black/60 backdrop-blur-md md:hidden flex flex-col p-4 pt-16 !mt-0 animate-fade-in"
           style={{ marginTop: 0 }}
         >
           {/* Backdrop click to close */}
           <div className="absolute inset-0 -z-10 cursor-pointer" onClick={() => { setMobileSearchOpen(false); setSearchQuery(""); }} />
           
           {/* Floating Search Panel */}
-          <div className="bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 rounded-2xl shadow-2xl flex flex-col max-h-[70vh] overflow-hidden transition-all duration-300">
+          <div className="bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 rounded-2xl shadow-2xl flex flex-col max-h-[70vh] overflow-hidden transition-all duration-300 animate-scale-up">
             {/* Header area with input and Close button */}
             <div className="p-3 border-b border-slate-100 dark:border-zinc-800 flex items-center gap-2.5 shrink-0 transition-colors">
               <div className="flex-1 flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-800 focus-within:border-emerald-500/60 dark:focus-within:border-emerald-500/40 focus-within:bg-white dark:focus-within:bg-zinc-850 transition-all duration-200">
