@@ -241,6 +241,26 @@ export default function App() {
     }
   };
 
+  const handleToggleDayComplete = async (day: DayType, meals: MealType[], targetState: boolean) => {
+    const newCompleted = { ...completedRecipes };
+    meals.forEach(meal => {
+      newCompleted[`${day}-${meal}`] = targetState;
+    });
+    setCompletedRecipes(newCompleted);
+
+    try {
+      await fetch("/api/completed-recipes", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ completedRecipes: newCompleted })
+      });
+    } catch (err) {
+      console.error("Error al guardar el estado de recetas completadas del día:", err);
+    }
+  };
+
   const handlePlanProcessed = (newPlan: MealPlan, newMetadata: PlanMetadata) => {
     setPlan(newPlan);
     setMetadata(newMetadata);
@@ -417,6 +437,8 @@ export default function App() {
                 onSelectRecipe={handleSelectRecipe} 
                 setActiveTab={handleSetActiveTab}
                 completedRecipes={completedRecipes}
+                onToggleComplete={handleToggleCompleteRecipe}
+                onToggleDayComplete={handleToggleDayComplete}
               />
             )}
 
@@ -433,6 +455,7 @@ export default function App() {
                 }}
                 completedRecipes={completedRecipes}
                 onToggleComplete={handleToggleCompleteRecipe}
+                onToggleDayComplete={handleToggleDayComplete}
               />
             )}
 

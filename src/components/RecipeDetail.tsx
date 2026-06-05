@@ -39,6 +39,7 @@ interface RecipeDetailProps {
   onNavigate?: (day: DayType, meal: MealType, recipe: Recipe) => void;
   completedRecipes: Record<string, boolean>;
   onToggleComplete: (day: DayType, meal: MealType) => void;
+  onToggleDayComplete: (day: DayType, meals: MealType[], targetState: boolean) => void;
 }
 
 export default function RecipeDetail({
@@ -51,7 +52,8 @@ export default function RecipeDetail({
   metadata,
   onNavigate,
   completedRecipes,
-  onToggleComplete
+  onToggleComplete,
+  onToggleDayComplete
 }: RecipeDetailProps) {
   // Ratio defaults to 1 ración (base)
   const [multiplier, setMultiplier] = useState<number>(1);
@@ -70,6 +72,99 @@ export default function RecipeDetail({
   const [touchEndX, setTouchEndX] = useState<number | null>(null);
   const [touchStartY, setTouchStartY] = useState<number | null>(null);
   const [touchEndY, setTouchEndY] = useState<number | null>(null);
+
+  const [showProgressModal, setShowProgressModal] = useState<boolean>(false);
+
+  const daysKeys: DayType[] = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"];
+  const mealsKeys: MealType[] = ["desayuno", "almuerzo", "merienda", "cena"];
+
+  const mealLabels: Record<MealType, string> = {
+    desayuno: "Desayuno",
+    almuerzo: "Almuerzo",
+    merienda: "Merienda",
+    cena: "Cena",
+  };
+
+  const getCurrentWeekDates = () => {
+    const today = new Date();
+    const dayOfWeek = today.getDay();
+    const distanceToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    const mondayVal = new Date(today);
+    mondayVal.setDate(today.getDate() + distanceToMonday);
+
+    const datesMap: Record<DayType, { short: string; long: string; num: number; isToday: boolean; dateString: string }> = {} as any;
+    const dayKeys: DayType[] = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"];
+    const labels = {
+      lunes: { short: "LUN", long: "Lunes" },
+      martes: { short: "MAR", long: "Martes" },
+      miercoles: { short: "MIÉ", long: "Miércoles" },
+      jueves: { short: "JUE", long: "Jueves" },
+      viernes: { short: "VIE", long: "Viernes" },
+      sabado: { short: "SÁB", long: "Sábado" },
+      domingo: { short: "DOM", long: "Domingo" }
+    };
+
+    const monthNames = [
+      "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+      "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+    ];
+
+    dayKeys.forEach((key, idx) => {
+      const current = new Date(mondayVal);
+      current.setDate(mondayVal.getDate() + idx);
+      
+      const num = current.getDate();
+      const month = monthNames[current.getMonth()];
+      
+      const isToday =
+        current.getDate() === today.getDate() &&
+        current.getMonth() === today.getMonth() &&
+        current.getFullYear() === today.getFullYear();
+
+      datesMap[key] = {
+        short: labels[key].short,
+        long: labels[key].long,
+        num: num,
+        dateString: `${num} de ${month}`,
+        isToday
+      };
+    });
+
+    return { datesMap };
+  };
+
+  const { datesMap } = getCurrentWeekDates();
+
+  const getUpcomingMeal = (): { day: DayType; meal: MealType } => {
+    const today = new Date();
+    const dayOfWeek = today.getDay();
+    const hour = today.getHours();
+
+    const daysMap: DayType[] = ["domingo", "lunes", "martes", "miercoles", "jueves", "viernes", "sabado"];
+    const currentDay = daysMap[dayOfWeek];
+
+    let meal: MealType = "desayuno";
+    let targetDay = currentDay;
+
+    if (hour < 11) {
+      meal = "desayuno";
+    } else if (hour < 15) {
+      meal = "almuerzo";
+    } else if (hour < 19) {
+      meal = "merienda";
+    } else if (hour < 22) {
+      meal = "cena";
+    } else {
+      meal = "desayuno";
+      const tomorrowIndex = (dayOfWeek + 1) % 7;
+      targetDay = daysMap[tomorrowIndex];
+    }
+
+    const safeDay = (targetDay === "domingo" ? "domingo" : targetDay) as DayType;
+    return { day: safeDay, meal };
+  };
+
+  const upcomingMeal = getUpcomingMeal();
 
   // Scroll lock effect when drawer is open
   React.useEffect(() => {
@@ -557,21 +652,27 @@ export default function RecipeDetail({
           onClick={() => onToggleComplete(day, meal)}
           className={`w-full py-3 font-extrabold text-sm rounded-xl transition duration-200 cursor-pointer shadow-sm flex items-center justify-center gap-2 active:scale-[0.98] ${
             isRecipeCompleted
-              ? "bg-emerald-600 text-white hover:bg-emerald-700"
+              ? "bg-emerald-600 text-white border border-emerald-600 hover:bg-emerald-750 hover:border-emerald-750"
               : "bg-white hover:bg-slate-50 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-200 border border-slate-200/60 dark:border-zinc-700/50"
           }`}
         >
-          <span className="material-symbols-outlined text-[18px]">
-            {isRecipeCompleted ? "task_alt" : "circle"}
+          <span className="w-5 h-5 flex items-center justify-center shrink-0">
+            <span className="material-symbols-outlined text-[18px]">
+              {isRecipeCompleted ? "task_alt" : "circle"}
+            </span>
           </span>
-          <span>{isRecipeCompleted ? "Receta Completada ✓" : "Completar Receta"}</span>
+          <span>Marcar como completado</span>
         </button>
 
         {/* Weekly progress summary bar */}
-        <div className="pt-2 border-t border-zinc-200/40 dark:border-zinc-800/60">
+        <div 
+          onClick={() => setShowProgressModal(true)}
+          className="pt-2 border-t border-zinc-200/40 dark:border-zinc-800/60 cursor-pointer hover:opacity-80 transition duration-200 group/weekly"
+          title="Haz clic para ver el progreso semanal de recetas y marcarlas"
+        >
           <div className="flex justify-between items-center text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1.5 select-none">
-            <span>Completadas esta Semana</span>
-            <span className="text-emerald-600 dark:text-emerald-400">{weeklyStats.completed} de {weeklyStats.total} ({weeklyStats.percentage}%)</span>
+            <span className="group-hover/weekly:text-emerald-700 dark:group-hover/weekly:text-emerald-400 transition-colors">Completadas esta Semana</span>
+            <span className="text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded-md">{weeklyStats.completed} de {weeklyStats.total} ({weeklyStats.percentage}%)</span>
           </div>
           <div className="w-full bg-zinc-100 dark:bg-zinc-800 h-1.5 rounded-full overflow-hidden">
             <div
@@ -1082,14 +1183,16 @@ export default function RecipeDetail({
               onClick={() => onToggleComplete(day, meal)}
               className={`w-full py-4 px-5 font-black text-sm rounded-2xl transition duration-200 cursor-pointer shadow-sm flex items-center justify-center gap-2 active:scale-[0.98] ${
                 isRecipeCompleted
-                  ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                  ? "bg-emerald-600 text-white border border-emerald-600 hover:bg-emerald-750 hover:border-emerald-750"
                   : "bg-white hover:bg-slate-50 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-200 border border-slate-200 dark:border-zinc-800"
               }`}
             >
-              <span className="material-symbols-outlined text-[20px] font-black">
-                {isRecipeCompleted ? "check_circle" : "circle"}
+              <span className="w-6 h-6 flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-[20px] font-black">
+                  {isRecipeCompleted ? "check_circle" : "circle"}
+                </span>
               </span>
-              <span>{isRecipeCompleted ? "Completado ✓ (Desmarcar)" : "Marcar como completado / Completar"}</span>
+              <span>Marcar como completado</span>
             </button>
           </div>
 
@@ -1385,6 +1488,136 @@ export default function RecipeDetail({
       <div className="fixed bottom-16 left-0 right-0 z-40 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border-t border-slate-200/50 dark:border-zinc-800 p-2.5 md:hidden shadow-lg flex justify-center no-print">
         {renderMealNavigator(true)}
       </div>
+
+      {/* Progress recipes list modal overlay */}
+      {showProgressModal && plan && (
+        <div className="fixed inset-0 z-[999] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in no-print">
+          <div 
+            className="fixed inset-0" 
+            onClick={() => setShowProgressModal(false)} 
+          />
+          <div className="bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border border-slate-150 dark:border-zinc-800 rounded-3xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden relative z-10 select-none">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4.5 border-b border-slate-100 dark:border-zinc-800/80 bg-slate-50/50 dark:bg-zinc-950/20 shrink-0">
+              <div>
+                <h3 className="text-base md:text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[22px] text-emerald-600 dark:text-emerald-400">task_alt</span>
+                  Progreso Semanal de Recetas
+                </h3>
+                <p className="text-[9.5px] text-zinc-400 dark:text-zinc-500 uppercase tracking-widest font-extrabold mt-0.5">
+                  Haz clic sobre una receta para completarla o desmarcarla
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowProgressModal(false)}
+                className="w-8 h-8 rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-zinc-800/50 dark:hover:bg-zinc-850 text-slate-450 hover:text-slate-700 dark:hover:text-zinc-200 transition duration-200 cursor-pointer flex items-center justify-center border border-slate-200/50 dark:border-zinc-700/50 shadow-xs"
+              >
+                <span className="material-symbols-outlined text-[18px]">close</span>
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto flex-grow space-y-6">
+              {daysKeys.map((dKey) => {
+                const dayRecipes = mealsKeys.map(mKey => ({ meal: mKey, recipe: plan.days[dKey]?.[mKey] })).filter(item => !!item.recipe);
+                if (dayRecipes.length === 0) return null;
+                
+                const label = datesMap[dKey];
+                const dayMeals = dayRecipes.map(item => item.meal);
+                const allCompleted = dayRecipes.every(({ meal }) => !!completedRecipes[`${dKey}-${meal}`]);
+
+                return (
+                  <div key={dKey} className="space-y-3">
+                    <h4 className="text-xs font-black text-slate-400 dark:text-zinc-500 uppercase tracking-widest flex items-center justify-between border-b border-slate-100 dark:border-zinc-800/60 pb-1.5 select-none">
+                      <div className="flex items-center gap-2">
+                        <span>{label.long}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => onToggleDayComplete(dKey, dayMeals, !allCompleted)}
+                        className="text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors uppercase tracking-wider cursor-pointer bg-transparent border-0 outline-none"
+                      >
+                        {allCompleted ? "Desmarcar todo" : "Marcar todo"}
+                      </button>
+                    </h4>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      {dayRecipes.map(({ meal: mKey, recipe: rObj }) => {
+                        const isCompleted = !!completedRecipes[`${dKey}-${mKey}`];
+                        const isFocused = dKey === upcomingMeal.day && mKey === upcomingMeal.meal;
+                        return (
+                          <button
+                            key={mKey}
+                            type="button"
+                            onClick={() => onToggleComplete(dKey, mKey)}
+                            className={`flex items-center gap-3 p-3 rounded-2xl border text-left transition duration-150 cursor-pointer w-full group/item ${
+                              isFocused
+                                ? "bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-500 ring-2 ring-emerald-500/20 shadow-xs"
+                                : isCompleted
+                                  ? "bg-emerald-50/20 dark:bg-emerald-950/10 border-emerald-500/20 text-slate-855 dark:text-zinc-250"
+                                  : "bg-slate-50/50 hover:bg-slate-100/50 dark:bg-zinc-950/20 dark:hover:bg-zinc-800/40 border-transparent hover:border-emerald-600/10 text-slate-700 dark:text-zinc-350"
+                            }`}
+                          >
+                            {/* Circle toggle checkmark button */}
+                            {isCompleted ? (
+                              <span className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0 border border-emerald-500/20 shadow-sm transition duration-150">
+                                <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" strokeWidth="4.5" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                </svg>
+                              </span>
+                            ) : (
+                              <span className="w-5 h-5 rounded-full border border-slate-350 dark:border-zinc-700 shrink-0 group-hover/item:border-emerald-500 transition duration-150 flex items-center justify-center bg-white dark:bg-zinc-900">
+                                <svg className="w-2.5 h-2.5 text-transparent group-hover/item:text-emerald-500/30" fill="none" stroke="currentColor" strokeWidth="4.5" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                </svg>
+                              </span>
+                            )}
+
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5 mb-1 select-none">
+                                <span className={`block text-[8px] font-black uppercase tracking-widest leading-none ${
+                                  isCompleted ? "text-emerald-600/70 dark:text-emerald-400/70" : "text-slate-400 dark:text-zinc-555"
+                                }`}>
+                                  {mealLabels[mKey]}
+                                </span>
+                                {isFocused && !isCompleted && (
+                                  <span className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-extrabold text-[7px] px-1.5 py-0.5 rounded-full select-none animate-pulse shadow-sm leading-none">
+                                    PRÓXIMA
+                                  </span>
+                                )}
+                              </div>
+                              <span className={`block text-[11px] font-bold truncate ${
+                                isCompleted ? "line-through text-slate-400 dark:text-zinc-500 opacity-70" : "text-slate-800 dark:text-zinc-200"
+                              }`} title={rObj!.recipeName}>
+                                {rObj!.recipeName}
+                              </span>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4.5 border-t border-slate-100 dark:border-zinc-800/80 bg-slate-50/50 dark:bg-zinc-950/20 shrink-0 flex items-center justify-between">
+              <span className="text-[10px] font-bold text-zinc-450 dark:text-zinc-500 uppercase tracking-widest">
+                Completadas: {weeklyStats.completed} de {weeklyStats.total} ({weeklyStats.percentage}%)
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowProgressModal(false)}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-sm transition active:scale-95 cursor-pointer"
+              >
+                Listo
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

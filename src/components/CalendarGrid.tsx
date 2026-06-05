@@ -6,9 +6,11 @@ interface CalendarGridProps {
   onSelectRecipe: (day: DayType, meal: MealType, recipe: Recipe) => void;
   setActiveTab: (tab: string) => void;
   completedRecipes: Record<string, boolean>;
+  onToggleComplete: (day: DayType, meal: MealType) => void;
+  onToggleDayComplete: (day: DayType, meals: MealType[], targetState: boolean) => void;
 }
 
-export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, completedRecipes }: CalendarGridProps) {
+export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, completedRecipes, onToggleComplete, onToggleDayComplete }: CalendarGridProps) {
   const daysKeys: DayType[] = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"];
   const mealsKeys: MealType[] = ["desayuno", "almuerzo", "merienda", "cena"];
 
@@ -17,6 +19,48 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, compl
   const currentDayOfWeekName = todayNameMap[new Date().getDay()];
   const initialMobileDay = daysKeys.includes(currentDayOfWeekName as DayType) ? (currentDayOfWeekName as DayType) : "lunes";
   const [activeMobileDay, setActiveMobileDay] = React.useState<DayType>(initialMobileDay);
+  const [showProgressModal, setShowProgressModal] = React.useState<boolean>(false);
+
+  // Touch gesture states for mobile swiping
+  const [touchStartX, setTouchStartX] = React.useState<number | null>(null);
+  const [touchStartY, setTouchStartY] = React.useState<number | null>(null);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStartX(e.targetTouches[0].clientX);
+    setTouchStartY(e.targetTouches[0].clientY);
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX === null || touchStartY === null) return;
+    
+    const touchEndX = e.changedTouches[0].clientX;
+    const touchEndY = e.changedTouches[0].clientY;
+    
+    const diffX = touchStartX - touchEndX;
+    const diffY = touchStartY - touchEndY;
+    
+    // Threshold in pixels to define a swipe
+    const threshold = 60;
+    
+    // Only trigger if horizontal movement is dominant and exceeds the threshold
+    if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > threshold) {
+      const currentIndex = daysKeys.indexOf(activeMobileDay);
+      if (diffX > 0) {
+        // Swiped left -> show next day
+        if (currentIndex < daysKeys.length - 1) {
+          setActiveMobileDay(daysKeys[currentIndex + 1]);
+        }
+      } else {
+        // Swiped right -> show previous day
+        if (currentIndex > 0) {
+          setActiveMobileDay(daysKeys[currentIndex - 1]);
+        }
+      }
+    }
+    
+    setTouchStartX(null);
+    setTouchStartY(null);
+  };
 
   // Dynamic calculation of current week dates
   const getCurrentWeekDates = () => {
@@ -374,11 +418,8 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, compl
                            : "bg-white dark:bg-zinc-900 border-slate-100 dark:border-zinc-800/80 text-slate-500 dark:text-zinc-400"
                     }`}
                   >
-                    <span className="text-[8px] font-black uppercase tracking-wider">
-                      {label.short.slice(0, 2)}
-                    </span>
-                    <span className="text-sm font-black mt-0.5">
-                      {label.num}
+                    <span className="text-xs font-black uppercase tracking-wider">
+                      {label.short}
                     </span>
                   </button>
                 );
@@ -386,7 +427,11 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, compl
             </div>
 
             {/* Selected Day Meals Vertical Stack */}
-            <div className="space-y-3.5">
+            <div 
+              className="space-y-3.5"
+              onTouchStart={handleTouchStart}
+              onTouchEnd={handleTouchEnd}
+            >
               {mealsKeys.map((meal) => {
                 const recipe = plan.days[activeMobileDay]?.[meal];
                 
@@ -490,11 +535,16 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, compl
           <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 no-print">
             
             {/* Weekly progress card details */}
-            <div className="bg-white/80 dark:bg-zinc-900 p-6 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm flex flex-col justify-between select-text">
+            <div 
+              onClick={() => setShowProgressModal(true)}
+              className="bg-white/80 dark:bg-zinc-900 p-6 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm flex flex-col justify-between select-text cursor-pointer hover:shadow-md hover:border-emerald-500/25 transition-all duration-200 group/card"
+              title="Haz clic para ver la lista semanal de recetas y marcarlas"
+            >
               <div className="flex items-center justify-between mb-4">
-                <h4 className="text-sm font-bold text-gray-700 dark:text-zinc-200">Porcentaje de Completitud Semanal</h4>
-                <span className="text-sm font-bold text-emerald-800 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-0.5 rounded-full">
+                <h4 className="text-sm font-bold text-gray-700 dark:text-zinc-200 group-hover/card:text-emerald-700 dark:group-hover/card:text-emerald-400 transition-colors">Porcentaje de Completitud Semanal</h4>
+                <span className="text-sm font-bold text-emerald-800 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-0.5 rounded-full flex items-center gap-1">
                   {stats.percentage}%
+                  <span className="material-symbols-outlined text-[14px]">list_alt</span>
                 </span>
               </div>
               <div className="w-full bg-gray-100 dark:bg-zinc-800 h-2.5 rounded-full overflow-hidden">
@@ -509,11 +559,16 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, compl
             </div>
 
             {/* Completed recipes card details */}
-            <div className="bg-white/80 dark:bg-zinc-900 p-6 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm flex flex-col justify-between select-text">
+            <div 
+              onClick={() => setShowProgressModal(true)}
+              className="bg-white/80 dark:bg-zinc-900 p-6 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm flex flex-col justify-between select-text cursor-pointer hover:shadow-md hover:border-emerald-500/25 transition-all duration-200 group/card"
+              title="Haz clic para ver la lista semanal de recetas y marcarlas"
+            >
               <div className="flex items-center justify-between mb-4">
-                <h4 className="text-sm font-bold text-gray-700 dark:text-zinc-200">Recetas Completadas</h4>
-                <span className="text-sm font-bold text-emerald-800 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-0.5 rounded-full">
+                <h4 className="text-sm font-bold text-gray-700 dark:text-zinc-200 group-hover/card:text-emerald-700 dark:group-hover/card:text-emerald-400 transition-colors">Recetas Completadas</h4>
+                <span className="text-sm font-bold text-emerald-800 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-0.5 rounded-full flex items-center gap-1">
                   {completedStats.percentage}%
+                  <span className="material-symbols-outlined text-[14px]">list_alt</span>
                 </span>
               </div>
               <div className="w-full bg-gray-100 dark:bg-zinc-800 h-2.5 rounded-full overflow-hidden">
@@ -576,6 +631,136 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, compl
           >
             Volver al Dashboard
           </button>
+        </div>
+      )}
+
+      {/* Progress recipes list modal overlay */}
+      {showProgressModal && plan && (
+        <div className="fixed inset-0 z-[999] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in no-print">
+          <div 
+            className="fixed inset-0" 
+            onClick={() => setShowProgressModal(false)} 
+          />
+          <div className="bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border border-slate-150 dark:border-zinc-800 rounded-3xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden relative z-10 select-none">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4.5 border-b border-slate-100 dark:border-zinc-800/80 bg-slate-50/50 dark:bg-zinc-950/20 shrink-0">
+              <div>
+                <h3 className="text-base md:text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[22px] text-emerald-600 dark:text-emerald-400">task_alt</span>
+                  Progreso Semanal de Recetas
+                </h3>
+                <p className="text-[9.5px] text-zinc-400 dark:text-zinc-500 uppercase tracking-widest font-extrabold mt-0.5">
+                  Haz clic sobre una receta para completarla o desmarcarla
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowProgressModal(false)}
+                className="w-8 h-8 rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-zinc-800/50 dark:hover:bg-zinc-850 text-slate-450 hover:text-slate-700 dark:hover:text-zinc-200 transition duration-200 cursor-pointer flex items-center justify-center border border-slate-200/50 dark:border-zinc-700/50 shadow-xs"
+              >
+                <span className="material-symbols-outlined text-[18px]">close</span>
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto flex-grow space-y-6">
+              {daysKeys.map((day) => {
+                const dayRecipes = mealsKeys.map(meal => ({ meal, recipe: plan.days[day]?.[meal] })).filter(item => !!item.recipe);
+                if (dayRecipes.length === 0) return null;
+                
+                const label = datesMap[day];
+                const dayMeals = dayRecipes.map(item => item.meal);
+                const allCompleted = dayRecipes.every(({ meal }) => !!completedRecipes[`${day}-${meal}`]);
+
+                return (
+                  <div key={day} className="space-y-3">
+                    <h4 className="text-xs font-black text-slate-400 dark:text-zinc-500 uppercase tracking-widest flex items-center justify-between border-b border-slate-100 dark:border-zinc-800/60 pb-1.5 select-none">
+                      <div className="flex items-center gap-2">
+                        <span>{label.long}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => onToggleDayComplete(day, dayMeals, !allCompleted)}
+                        className="text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors uppercase tracking-wider cursor-pointer bg-transparent border-0 outline-none"
+                      >
+                        {allCompleted ? "Desmarcar todo" : "Marcar todo"}
+                      </button>
+                    </h4>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      {dayRecipes.map(({ meal, recipe }) => {
+                        const isCompleted = !!completedRecipes[`${day}-${meal}`];
+                        const isFocused = day === nextMeal.day && meal === nextMeal.meal;
+                        return (
+                          <button
+                            key={meal}
+                            type="button"
+                            onClick={() => onToggleComplete(day, meal)}
+                            className={`flex items-center gap-3 p-3 rounded-2xl border text-left transition duration-150 cursor-pointer w-full group/item ${
+                              isFocused
+                                ? "bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-500 ring-2 ring-emerald-500/20 shadow-xs"
+                                : isCompleted
+                                  ? "bg-emerald-50/20 dark:bg-emerald-950/10 border-emerald-500/20 text-slate-855 dark:text-zinc-250"
+                                  : "bg-slate-50/50 hover:bg-slate-100/50 dark:bg-zinc-950/20 dark:hover:bg-zinc-800/40 border-transparent hover:border-emerald-600/10 text-slate-700 dark:text-zinc-350"
+                            }`}
+                          >
+                            {/* Circle toggle checkmark button */}
+                            {isCompleted ? (
+                              <span className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0 border border-emerald-500/20 shadow-sm transition duration-150">
+                                <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" strokeWidth="4.5" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                </svg>
+                              </span>
+                            ) : (
+                              <span className="w-5 h-5 rounded-full border border-slate-350 dark:border-zinc-700 shrink-0 group-hover/item:border-emerald-500 transition duration-150 flex items-center justify-center bg-white dark:bg-zinc-900">
+                                <svg className="w-2.5 h-2.5 text-transparent group-hover/item:text-emerald-500/30" fill="none" stroke="currentColor" strokeWidth="4.5" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                </svg>
+                              </span>
+                            )}
+
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5 mb-1 select-none">
+                                <span className={`block text-[8px] font-black uppercase tracking-widest leading-none ${
+                                  isCompleted ? "text-emerald-600/70 dark:text-emerald-400/70" : "text-slate-400 dark:text-zinc-550"
+                                }`}>
+                                  {mealLabels[meal]}
+                                </span>
+                                {isFocused && !isCompleted && (
+                                  <span className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-extrabold text-[7px] px-1.5 py-0.5 rounded-full select-none animate-pulse shadow-sm leading-none">
+                                    PRÓXIMA
+                                  </span>
+                                )}
+                              </div>
+                              <span className={`block text-[11px] font-bold truncate ${
+                                isCompleted ? "line-through text-slate-400 dark:text-zinc-500 opacity-70" : "text-slate-800 dark:text-zinc-200"
+                              }`} title={recipe!.recipeName}>
+                                {recipe!.recipeName}
+                              </span>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4.5 border-t border-slate-100 dark:border-zinc-800/80 bg-slate-50/50 dark:bg-zinc-950/20 shrink-0 flex items-center justify-between">
+              <span className="text-[10px] font-bold text-zinc-450 dark:text-zinc-500 uppercase tracking-widest">
+                Completadas: {completedStats.completed} de {completedStats.totalPlanned} ({completedStats.percentage}%)
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowProgressModal(false)}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-sm transition active:scale-95 cursor-pointer"
+              >
+                Listo
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
