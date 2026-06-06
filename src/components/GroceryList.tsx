@@ -31,9 +31,11 @@ const formatAmountAndUnit = (amount: number, unit: string) => {
 
 interface GroceryListProps {
   plan: MealPlan | null;
+  completedRecipes?: Record<string, boolean>;
 }
-export default function GroceryList({ plan }: GroceryListProps) {
+export default function GroceryList({ plan, completedRecipes }: GroceryListProps) {
   const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
+  const [excludeCompletedRecipes, setExcludeCompletedRecipes] = useState<boolean>(false);
 
   const getSearchParams = () => {
     return new URLSearchParams(window.location.search);
@@ -574,6 +576,11 @@ export default function GroceryList({ plan }: GroceryListProps) {
             return;
           }
 
+          // Omit if excludeCompletedRecipes is true and this recipe is completed in the calendar
+          if (excludeCompletedRecipes && completedRecipes && completedRecipes[mealId]) {
+            return;
+          }
+
           if (recipe && recipe.ingredients) {
             // Determine the active multiplier for this specific meal.
             // Hierarchy: Meal multiplier (if customized, i.e. not 1) > Day multiplier (if customized, i.e. not 1) > Global multiplier.
@@ -641,7 +648,7 @@ export default function GroceryList({ plan }: GroceryListProps) {
     });
 
     return Object.values(map);
-  }, [plan, daysToAggregate, excludedMeals, globalMultiplier, dayMultipliers, mealMultipliers]);
+  }, [plan, daysToAggregate, excludedMeals, globalMultiplier, dayMultipliers, mealMultipliers, excludeCompletedRecipes, completedRecipes]);
 
   // Categorize ingredient by matching names with basic keywords
   const categorizeIngredient = (name: string, itemCategory?: string): string => {
@@ -1284,9 +1291,26 @@ export default function GroceryList({ plan }: GroceryListProps) {
 
               {/* Opciones de Filtro y Exportación */}
               <div className="bg-zinc-50 dark:bg-zinc-800/40 p-3.5 rounded-xl border border-zinc-200/60 dark:border-zinc-800/80 space-y-2.5">
-                <span className="text-[10px] font-extrabold uppercase text-zinc-400 dark:text-zinc-550 tracking-wider block mb-1">
+                <span className="text-[10px] font-extrabold uppercase text-zinc-400 dark:text-zinc-500 tracking-wider block mb-1">
                   Opciones de Filtro
                 </span>
+
+                <label className="flex items-center gap-2.5 cursor-pointer text-xs text-gray-700 dark:text-zinc-200 select-none relative group/tooltip">
+                  <input
+                    type="checkbox"
+                    checked={excludeCompletedRecipes}
+                    onChange={(e) => setExcludeCompletedRecipes(e.target.checked)}
+                    className="w-4 h-4 rounded border-gray-300 dark:border-zinc-700 text-emerald-600 focus:ring-emerald-500 cursor-pointer dark:bg-zinc-900"
+                  />
+                  <span className="flex items-center gap-1">
+                    Excluir recetas completadas
+                    <span className="material-symbols-outlined text-zinc-400 dark:text-zinc-550 cursor-help" style={{ fontSize: "14px" }}>info</span>
+                  </span>
+                  {/* Tooltip */}
+                  <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-48 p-2 bg-zinc-950 text-white text-[10px] rounded-lg opacity-0 pointer-events-none group-hover/tooltip:opacity-100 transition-opacity duration-150 shadow-md z-30 leading-normal font-medium text-center">
+                    Los ingredientes correspondientes a las comidas marcadas como realizadas en el calendario no se sumarán a la lista de compra.
+                  </span>
+                </label>
 
                 <label className="flex items-center gap-2.5 cursor-pointer text-xs text-gray-700 dark:text-zinc-200 select-none relative group/tooltip">
                   <input
@@ -1297,7 +1321,7 @@ export default function GroceryList({ plan }: GroceryListProps) {
                   />
                   <span className="flex items-center gap-1">
                     Omitir completados
-                    <span className="material-symbols-outlined text-zinc-400 dark:text-zinc-500 cursor-help" style={{ fontSize: "14px" }}>info</span>
+                    <span className="material-symbols-outlined text-zinc-400 dark:text-zinc-550 cursor-help" style={{ fontSize: "14px" }}>info</span>
                   </span>
                   {/* Tooltip */}
                   <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-48 p-2 bg-zinc-950 text-white text-[10px] rounded-lg opacity-0 pointer-events-none group-hover/tooltip:opacity-100 transition-opacity duration-150 shadow-md z-30 leading-normal font-medium text-center">

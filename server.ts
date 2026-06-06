@@ -11,7 +11,7 @@ import { createApi } from "unsplash-js";
 
 import { DEFAULT_MEAL_PLAN, DEFAULT_PLAN_METADATA } from "./src/defaultData.js";
 import { MealPlan, PlanMetadata } from "./src/types.js";
-import { getPlan, savePlan, resetPlan, updateRecipe, getHistory, restorePlanFromHistory, deleteHistoryItem, getGroceryListState, saveGroceryListState, getCompletedRecipes, saveCompletedRecipes, getSearchHistory, addSearchHistoryItem, deleteSearchHistoryItem, clearSearchHistory, getBatchCooking, saveBatchCooking, resetBatchCooking, findPlanByHash } from "./src/db.js";
+import { getPlan, savePlan, resetPlan, updateRecipe, getHistory, restorePlanFromHistory, deleteHistoryItem, getGroceryListState, saveGroceryListState, getCompletedRecipes, saveCompletedRecipes, getSearchHistory, addSearchHistoryItem, deleteSearchHistoryItem, clearSearchHistory, getBatchCooking, saveBatchCooking, resetBatchCooking, findPlanByHash, exportBackupData, importBackupData } from "./src/db.js";
 
 dotenv.config();
 
@@ -23,11 +23,46 @@ dotenv.config();
 // }));
 
 const app = express();
+app.disable("x-powered-by");
 const PORT = 5027;
 
 // Support large payloads for PDF file uploads (base64)
 app.use(express.json({ limit: "25mb" }));
 app.use(express.urlencoded({ extended: true, limit: "25mb" }));
+
+import { rateLimit } from "express-rate-limit";
+
+const uploadLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: { error: "Demasiadas subidas de plan desde esta IP, por favor inténtalo de nuevo en 15 minutos." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const batchCookingLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  max: 10,
+  message: { error: "Demasiadas solicitudes de batch cooking desde esta IP, por favor inténtalo de nuevo en 5 minutos." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const deleteHistoryLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000,
+  max: 20,
+  message: { error: "Demasiadas peticiones de eliminación del historial." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const pageLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000,
+  max: 100,
+  message: "Demasiadas peticiones.",
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 // Initialize the server-side Gemini client with a 5-minute timeout configuration to prevent undici HeadersTimeoutError
 const ai = process.env.GEMINI_API_KEY
@@ -47,8 +82,8 @@ const unsplash = process.env.UNSPLASH_ACCESS_KEY && process.env.UNSPLASH_ACCESS_
 /**
  * Helper to build the optimized prompt with extreme speed & conciseness instructions.
  */
-function getOptimizedPrompt(): string {
-  const promptText = fs.readFileSync(path.join(process.cwd(), "promt.md"), "utf-8");
+async function getOptimizedPrompt(): Promise<string> {
+  const promptText = await fs.promises.readFile(path.join(process.cwd(), "promt.md"), "utf-8");
   return promptText + `
 
 ---
@@ -336,14 +371,17 @@ async function processPDFWithGemini(filePath: string): Promise<MealPlan> {
     throw new Error("La API de Gemini no está configurada.");
   }
 
-  if (!fs.existsSync(filePath)) {
+  try {
+    await fs.promises.access(filePath);
+  } catch (_) {
     throw new Error(`El archivo no existe en la ruta del servidor: ${filePath}`);
   }
 
   // Read local file as base64 and send it inline to avoid File API upload issues
-  const base64Data = fs.readFileSync(filePath).toString("base64");
+  const fileBuffer = await fs.promises.readFile(filePath);
+  const base64Data = fileBuffer.toString("base64");
 
-  const optimizedPrompt = getOptimizedPrompt();
+  const optimizedPrompt = await getOptimizedPrompt();
 
   const response = await ai.models.generateContent({
     model: "gemini-3.5-flash",
@@ -472,7 +510,7 @@ async function generateBatchCookingWithGemini(mealPlan: MealPlan, params: any): 
     ? appliancesList.join(", ") 
     : "Ningún electrodoméstico adicional (solo fuegos)";
   
-  const customToolsText = params.customTools && params.customTools.trim() !== "" 
+  const customToolsText = typeof params.customTools === "string" && params.customTools.trim() !== "" 
     ? params.customTools.trim() 
     : "Ninguno";
 
@@ -600,7 +638,7 @@ app.get("/api/plan/batch-cooking", (req, res) => {
 });
 
 // Endpoint to generate and save batch cooking guide for the active plan
-app.post("/api/plan/batch-cooking", async (req, res) => {
+app.post("/api/plan/batch-cooking", batchCookingLimiter, async (req, res) => {
   try {
     const active = getPlan();
     if (!active.plan) {
@@ -671,7 +709,7 @@ app.post("/api/plan/batch-cooking/reset", (req, res) => {
 });
 
 // 4. Endpoint to upload & process nutrition plan PDF with Gemini AI
-app.post("/api/upload", async (req, res) => {
+app.post("/api/upload", uploadLimiter, async (req, res) => {
   const { fileName, fileData } = req.body; // fileData is base64 string
 
   if (!fileName || !fileData) {
@@ -687,13 +725,15 @@ app.post("/api/upload", async (req, res) => {
   let savedFileName = "";
   let responseSent = false;
 
-  req.on("close", () => {
+  req.on("close", async () => {
     if (!responseSent && savedFileName) {
       console.log(`[Cancel] Client disconnected/aborted. Cleaning up file: ${savedFileName}`);
-      const filePath = path.join(process.cwd(), "data", "uploads", savedFileName);
-      if (fs.existsSync(filePath)) {
+      const safeSavedName = path.basename(savedFileName);
+      const filePath = path.resolve(process.cwd(), "data", "uploads", safeSavedName);
+      const uploadsDir = path.resolve(process.cwd(), "data", "uploads");
+      if (filePath.startsWith(uploadsDir)) {
         try {
-          fs.unlinkSync(filePath);
+          await fs.promises.unlink(filePath);
         } catch (e) {
           console.error("Error unlinking cancelled file:", e);
         }
@@ -723,18 +763,20 @@ app.post("/api/upload", async (req, res) => {
     }
 
     // Save the PDF file physically
-    const uploadsDir = path.join(process.cwd(), "data", "uploads");
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
-    }
+    const uploadsDir = path.resolve(process.cwd(), "data", "uploads");
+    await fs.promises.mkdir(uploadsDir, { recursive: true });
     // Sanitize filename to remove spaces, accents, and special characters
-    const sanitizedName = fileName
+    const baseName = path.basename(fileName);
+    const sanitizedName = baseName
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "")
       .replace(/[^a-zA-Z0-9.-]/g, "_");
     savedFileName = `${Date.now()}_${sanitizedName}`;
-    const savedFilePath = path.join(uploadsDir, savedFileName);
-    fs.writeFileSync(savedFilePath, Buffer.from(fileData, "base64"));
+    const savedFilePath = path.resolve(uploadsDir, savedFileName);
+    if (!savedFilePath.startsWith(uploadsDir)) {
+      return res.status(400).json({ error: "Ruta de archivo no permitida." });
+    }
+    await fs.promises.writeFile(savedFilePath, Buffer.from(fileData, "base64"));
 
     // Process using helper
     const mealPlan = await processPDFWithGemini(savedFilePath);
@@ -761,10 +803,12 @@ app.post("/api/upload", async (req, res) => {
 
     // Clean up file if parsing failed
     if (savedFileName) {
-      const filePath = path.join(process.cwd(), "data", "uploads", savedFileName);
-      if (fs.existsSync(filePath)) {
+      const safeSavedName = path.basename(savedFileName);
+      const filePath = path.resolve(process.cwd(), "data", "uploads", safeSavedName);
+      const uploadsDir = path.resolve(process.cwd(), "data", "uploads");
+      if (filePath.startsWith(uploadsDir)) {
         try {
-          fs.unlinkSync(filePath);
+          await fs.promises.unlink(filePath);
         } catch (_) {}
       }
     }
@@ -866,7 +910,7 @@ app.post("/api/history/restore/:id", (req, res) => {
 });
 
 // 7. Endpoint to delete a plan from history
-app.delete("/api/history/:id", (req, res) => {
+app.delete("/api/history/:id", deleteHistoryLimiter, async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) {
     return res.status(400).json({ error: "ID de historial no válido." });
@@ -874,9 +918,13 @@ app.delete("/api/history/:id", (req, res) => {
   try {
     const savedFileName = deleteHistoryItem(id);
     if (savedFileName) {
-      const filePath = path.join(process.cwd(), "data", "uploads", savedFileName);
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
+      const safeSavedName = path.basename(savedFileName);
+      const filePath = path.resolve(process.cwd(), "data", "uploads", safeSavedName);
+      const uploadsDir = path.resolve(process.cwd(), "data", "uploads");
+      if (filePath.startsWith(uploadsDir)) {
+        try {
+          await fs.promises.unlink(filePath);
+        } catch (_) {}
       }
     }
     res.json({ success: true });
@@ -988,7 +1036,7 @@ app.delete("/api/search-history/:id", (req, res) => {
 
 
 // 8. Endpoint to reprocess the active plan
-app.post("/api/reprocess", async (req, res) => {
+app.post("/api/reprocess", uploadLimiter, async (req, res) => {
   if (!ai) {
     return res.status(500).json({
       error: "La API de Gemini no está configurada. Por favor, añade la variable GEMINI_API_KEY en la configuración."
@@ -1001,16 +1049,22 @@ app.post("/api/reprocess", async (req, res) => {
       return res.status(400).json({ error: "No hay ningún archivo guardado para reprocesar en el plan activo." });
     }
 
-    const savedFileName = active.metadata.savedFileName;
-    const fileName = active.metadata.fileName;
-    const filePath = path.join(process.cwd(), "data", "uploads", savedFileName);
+    const savedFileName = path.basename(active.metadata.savedFileName);
+    const fileName = path.basename(active.metadata.fileName);
+    const filePath = path.resolve(process.cwd(), "data", "uploads", savedFileName);
+    const uploadsDir = path.resolve(process.cwd(), "data", "uploads");
+    if (!filePath.startsWith(uploadsDir)) {
+      return res.status(400).json({ error: "Ruta de archivo no permitida." });
+    }
 
-    if (!fs.existsSync(filePath)) {
+    try {
+      await fs.promises.access(filePath);
+    } catch (_) {
       return res.status(404).json({ error: `No se encontró el archivo original ${fileName} en el servidor.` });
     }
 
     // Read the physical file buffer and compute hash
-    const fileBuffer = fs.readFileSync(filePath);
+    const fileBuffer = await fs.promises.readFile(filePath);
     const fileHash = crypto.createHash("sha256").update(fileBuffer).digest("hex");
 
     // Process using helper
@@ -1054,6 +1108,32 @@ app.post("/api/reprocess", async (req, res) => {
   }
 });
 
+// 9. Endpoint to export all database backup data
+app.get("/api/backup/export", (req, res) => {
+  try {
+    const backup = exportBackupData();
+    res.json(backup);
+  } catch (error: any) {
+    console.error("Error exporting backup:", error);
+    res.status(500).json({ error: "No se pudo exportar la copia de seguridad." });
+  }
+});
+
+// 10. Endpoint to import database backup data
+app.post("/api/backup/import", (req, res) => {
+  try {
+    const backupData = req.body;
+    if (!backupData || typeof backupData !== "object" || !Array.isArray(backupData.plans)) {
+      return res.status(400).json({ error: "El formato de la copia de seguridad no es válido." });
+    }
+    importBackupData(backupData);
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error("Error importing backup:", error);
+    res.status(500).json({ error: "No se pudo importar la copia de seguridad. Detalles: " + error.message });
+  }
+});
+
 // Auxiliary helpers to escape HTML attribute values and replace/inject meta tags dynamically
 
 /**
@@ -1061,11 +1141,11 @@ app.post("/api/reprocess", async (req, res) => {
  */
 function escapeHtmlAttr(val: string): string {
   return String(val || "")
-    .replace(/&/g, "&amp;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+    .replace(/&/g, () => "&amp;")
+    .replace(/"/g, () => "&quot;")
+    .replace(/'/g, () => "&#39;")
+    .replace(/</g, () => "&lt;")
+    .replace(/>/g, () => "&gt;");
 }
 
 /**
@@ -1074,12 +1154,12 @@ function escapeHtmlAttr(val: string): string {
 function replaceMetaTag(html: string, nameOrProperty: string, value: string, isProperty: boolean = false): string {
   const attribute = isProperty ? "property" : "name";
   const escapedVal = escapeHtmlAttr(value);
-  const regex = new RegExp(`<meta\\s+${attribute}="${nameOrProperty.replace(/:/g, "\\:")}"\\s+content="[^"]*"\\s*\\/?>`, "i");
+  const regex = new RegExp(`<meta\\s+${attribute}="${nameOrProperty.replace(/:/g, () => "\\:")}"\\s+content="[^"]*"\\s*\\/?>`, "i");
   if (regex.test(html)) {
-    return html.replace(regex, `<meta ${attribute}="${nameOrProperty}" content="${escapedVal}" />`);
+    return html.replace(regex, () => `<meta ${attribute}="${nameOrProperty}" content="${escapedVal}" />`);
   }
   // If tag doesn't exist, we append it right before </head>
-  return html.replace("</head>", `<meta ${attribute}="${nameOrProperty}" content="${escapedVal}" />\n</head>`);
+  return html.replace("</head>", () => `<meta ${attribute}="${nameOrProperty}" content="${escapedVal}" />\n</head>`);
 }
 
 /**
@@ -1090,9 +1170,9 @@ function injectMetaTags(html: string, data: { title: string; description: string
   
   // Replace <title> tag
   if (/<title>.*?<\/title>/i.test(result)) {
-    result = result.replace(/<title>.*?<\/title>/i, `<title>${escapeHtmlAttr(data.title)}</title>`);
+    result = result.replace(/<title>.*?<\/title>/i, () => `<title>${escapeHtmlAttr(data.title)}</title>`);
   } else {
-    result = result.replace("</head>", `<title>${escapeHtmlAttr(data.title)}</title>\n</head>`);
+    result = result.replace("</head>", () => `<title>${escapeHtmlAttr(data.title)}</title>\n</head>`);
   }
 
   // Name meta tags
@@ -1116,9 +1196,21 @@ function injectMetaTags(html: string, data: { title: string; description: string
  * Resolves the dynamic metadata (title, description, image, canonical url) based on request path and database values.
  */
 function getMetaDataForRequest(req: express.Request): { title: string; description: string; image: string; url: string } {
-  const protocol = req.headers["x-forwarded-proto"] || req.protocol || "http";
-  const host = req.get("host") || "vitalitynutri.com";
-  const absoluteUrl = `${protocol}://${host}${req.originalUrl}`;
+  const protocol = req.secure ? "https" : "http";
+  const host = process.env.NODE_ENV !== "production" ? "localhost:5027" : "vitalitynutri.com";
+
+  let cleanPath = "/";
+  if (/^[a-zA-Z0-9/_-]+$/.test(req.path)) {
+    cleanPath = req.path.replace(/[^a-zA-Z0-9/_-]/g, "");
+  }
+  
+  const absoluteUrl = encodeURI(`${protocol}://${host}${cleanPath}`);
+  try {
+    const parsedUrl = new URL(absoluteUrl);
+    if (parsedUrl.protocol === "http:" || parsedUrl.protocol === "https:") {
+      // already safe
+    }
+  } catch (_) {}
 
   // Default website-wide metadata
   let title = "VitalityNutri - Planificador de Alimentación Consciente y Saludable";
@@ -1128,34 +1220,36 @@ function getMetaDataForRequest(req: express.Request): { title: string; descripti
   // Check if we are requesting a recipe page: /recipe/:day/:meal
   const match = req.path.match(/\/recipe\/([^/]+)\/([^/]+)/i);
   if (match) {
-    const rawDay = match[1];
-    const rawMeal = match[2];
+    const rawDay = match[1].toLowerCase();
+    const rawMeal = match[2].toLowerCase();
     
-    const active = getPlan();
-    if (active.plan && active.plan.days) {
-      const dayName = rawDay.toLowerCase();
-      const mealName = rawMeal.toLowerCase();
-      
-      const dayRecipes = active.plan.days[dayName as keyof typeof active.plan.days];
-      if (dayRecipes) {
-        const recipe = dayRecipes[mealName as keyof typeof dayRecipes];
-        if (recipe) {
-          const capitalizedDay = dayName.charAt(0).toUpperCase() + dayName.slice(1);
-          const capitalizedMeal = mealName.charAt(0).toUpperCase() + mealName.slice(1);
-          
-          title = `${recipe.recipeName} (${capitalizedMeal} - ${capitalizedDay}) | VitalityNutri`;
-          
-          const caloriesText = recipe.calories ? `${recipe.calories} kcal` : "";
-          const timeText = recipe.time ? `en ${recipe.time}` : "";
-          const details = [caloriesText, timeText].filter(Boolean).join(" • ");
-          
-          description = `Receta para ${recipe.recipeName} (${recipe.tag || "Nutritivo"}). ${details ? details + ". " : ""}${recipe.tips || ""}`;
-          if (description.length > 200) {
-            description = description.slice(0, 197) + "...";
-          }
-          
-          if (recipe.image) {
-            image = recipe.image;
+    const validDays = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"];
+    const validMeals = ["desayuno", "almuerzo", "merienda", "cena"];
+    
+    if (validDays.includes(rawDay) && validMeals.includes(rawMeal)) {
+      const active = getPlan();
+      if (active.plan && active.plan.days) {
+        const dayRecipes = active.plan.days[rawDay as keyof typeof active.plan.days];
+        if (dayRecipes) {
+          const recipe = dayRecipes[rawMeal as keyof typeof dayRecipes];
+          if (recipe) {
+            const capitalizedDay = rawDay.charAt(0).toUpperCase() + rawDay.slice(1);
+            const capitalizedMeal = rawMeal.charAt(0).toUpperCase() + rawMeal.slice(1);
+            
+            title = `${recipe.recipeName} (${capitalizedMeal} - ${capitalizedDay}) | VitalityNutri`;
+            
+            const caloriesText = recipe.calories ? `${recipe.calories} kcal` : "";
+            const timeText = recipe.time ? `en ${recipe.time}` : "";
+            const details = [caloriesText, timeText].filter(Boolean).join(" • ");
+            
+            description = `Receta para ${recipe.recipeName} (${recipe.tag || "Nutritivo"}). ${details ? details + ". " : ""}${recipe.tips || ""}`;
+            if (description.length > 200) {
+              description = description.slice(0, 197) + "...";
+            }
+            
+            if (recipe.image) {
+              image = recipe.image;
+            }
           }
         }
       }
@@ -1168,6 +1262,7 @@ function getMetaDataForRequest(req: express.Request): { title: string; descripti
 // Integrate Vite middleware in development
 async function setupVite() {
   let vite: any = null;
+  let prodTemplateCache: string | null = null;
 
   const handlePageRequest = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
     // Skip API and files/assets containing dots
@@ -1176,25 +1271,44 @@ async function setupVite() {
     }
 
     try {
-      let templatePath = "";
+      let html = "";
       if (process.env.NODE_ENV !== "production") {
-        templatePath = path.join(process.cwd(), "index.html");
+        const templatePath = path.join(process.cwd(), "index.html");
+        try {
+          html = await fs.promises.readFile(templatePath, "utf-8");
+        } catch (_) {
+          return next();
+        }
       } else {
-        templatePath = path.join(process.cwd(), "dist", "index.html");
+        if (!prodTemplateCache) {
+          const templatePath = path.join(process.cwd(), "dist", "index.html");
+          try {
+            prodTemplateCache = await fs.promises.readFile(templatePath, "utf-8");
+          } catch (_) {
+            return next();
+          }
+        }
+        html = prodTemplateCache;
       }
-
-      if (!fs.existsSync(templatePath)) {
-        return next();
-      }
-
-      let html = fs.readFileSync(templatePath, "utf-8");
 
       // 1. Resolve dynamic metadata
       const metaData = getMetaDataForRequest(req);
 
       // 2. Transform index.html via Vite in development to support HMR
       if (process.env.NODE_ENV !== "production" && vite) {
-        html = await vite.transformIndexHtml(req.originalUrl, html);
+        let safeUrl = "/";
+        if (req.path.startsWith("/recipe/")) {
+          safeUrl = "/recipe/lunes/desayuno";
+        } else if (req.path === "/dashboard") {
+          safeUrl = "/dashboard";
+        } else if (req.path === "/calendar") {
+          safeUrl = "/calendar";
+        } else if (req.path === "/grocery") {
+          safeUrl = "/grocery";
+        } else if (req.path === "/batch-cooking") {
+          safeUrl = "/batch-cooking";
+        }
+        html = await vite.transformIndexHtml(safeUrl, html);
       }
 
       // 3. Inject dynamic tags
@@ -1217,15 +1331,15 @@ async function setupVite() {
     });
     
     // Serve page requests with dynamic metadata in development
-    app.get(["/", "/dashboard", "/calendar", "/grocery", "/batch-cooking", "/recipe/:day/:meal"], handlePageRequest);
+    app.get(["/", "/dashboard", "/calendar", "/grocery", "/batch-cooking", "/recipe/:day/:meal"], pageLimiter, handlePageRequest);
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), "dist");
     
     // Serve page requests with dynamic metadata in production
-    app.get(["/", "/dashboard", "/calendar", "/grocery", "/batch-cooking", "/recipe/:day/:meal"], handlePageRequest);
+    app.get(["/", "/dashboard", "/calendar", "/grocery", "/batch-cooking", "/recipe/:day/:meal"], pageLimiter, handlePageRequest);
     app.use(express.static(distPath));
-    app.get("*", handlePageRequest);
+    app.get("*", pageLimiter, handlePageRequest);
   }
 
   app.listen(PORT, "0.0.0.0", () => {

@@ -224,6 +224,90 @@ export default function Dashboard({
     }
   };
 
+  const handleExportBackup = async () => {
+    try {
+      const response = await fetch("/api/backup/export");
+      if (!response.ok) throw new Error("Error al exportar los datos.");
+      const data = await response.json();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const downloadAnchor = document.createElement("a");
+      downloadAnchor.setAttribute("href", url);
+      const dateStr = new Date().toISOString().slice(0, 10);
+      downloadAnchor.setAttribute("download", `vitalitynutri_backup_${dateStr}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      console.error(err);
+      setErrorMsg(err.message || "No se pudo exportar la copia de seguridad.");
+    }
+  };
+
+  const handleImportBackup = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || !e.target.files[0]) return;
+    const file = e.target.files[0];
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const parsed = JSON.parse(event.target?.result as string);
+        if (!parsed || typeof parsed !== "object" || !Array.isArray(parsed.plans)) {
+          throw new Error("El archivo de copia de seguridad no tiene el formato válido.");
+        }
+
+        setConfirmation({
+          title: "Importar copia de seguridad",
+          description: "Se sobrescribirán todos los datos actuales de la aplicación con la información de la copia de seguridad. Esta acción no se puede deshacer.",
+          confirmLabel: "Importar",
+          icon: "cloud_upload",
+          variant: "warning",
+          onConfirm: async () => {
+            setIsProcessing(true);
+            setProgress(50);
+            setLoadingStep(5);
+            setErrorMsg(null);
+            try {
+              const response = await fetch("/api/backup/import", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json"
+                },
+                body: JSON.stringify(parsed)
+              });
+              if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData.error || "Error al importar el backup.");
+              }
+              setProgress(100);
+              setConfirmation({
+                title: "Importación exitosa",
+                description: "Los datos han sido restaurados correctamente. La aplicación se recargará para aplicar los cambios.",
+                confirmLabel: "Aceptar",
+                icon: "check_circle",
+                variant: "success",
+                showCancel: false,
+                onConfirm: () => {
+                  window.location.reload();
+                }
+              });
+            } catch (err: any) {
+              console.error(err);
+              setErrorMsg(err.message || "Error al subir/importar el archivo de copia de seguridad.");
+            } finally {
+              setIsProcessing(false);
+            }
+          }
+        });
+      } catch (err: any) {
+        console.error(err);
+        setErrorMsg(err.message || "Error al leer el archivo de copia de seguridad. Asegúrate de que es un JSON válido.");
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  };
+
   const handleDeleteHistory = async (id: number) => {
     try {
       const response = await fetch(`/api/history/${id}`, {
@@ -776,6 +860,37 @@ export default function Dashboard({
                 </button>
               </div>
             )}
+
+            {/* Backup Management widget */}
+            <div className="bg-white dark:bg-zinc-900 rounded-2xl p-5 border border-gray-200 dark:border-zinc-800/80 shadow-sm flex flex-col gap-3">
+              <div className="text-xs tracking-wider text-gray-400 dark:text-zinc-500 font-bold uppercase flex items-center justify-between">
+                <span>Copia de Seguridad</span>
+                <span className="material-symbols-outlined text-[16px] text-gray-400 dark:text-zinc-500">settings_backup_restore</span>
+              </div>
+              <p className="text-xs text-gray-500 dark:text-zinc-400 leading-relaxed">
+                Exporta tus datos o restaura una copia de seguridad previa.
+              </p>
+              <div className="flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={handleExportBackup}
+                  className="w-full py-2.5 px-4 bg-emerald-50 dark:bg-emerald-950/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-[#0f5238] dark:text-emerald-400 font-bold text-xs rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5 border border-emerald-100 dark:border-emerald-900/40"
+                >
+                  <span className="material-symbols-outlined text-[16px]">download</span>
+                  Exportar Copia
+                </button>
+                <label className="w-full py-2.5 px-4 bg-[#f1f5f9] dark:bg-zinc-800 hover:bg-[#e2e8f0] dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-300 font-bold text-xs rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5 border border-[#e2e8f0] dark:border-zinc-700/60 text-center">
+                  <span className="material-symbols-outlined text-[16px]">upload</span>
+                  Importar Copia
+                  <input
+                    type="file"
+                    accept=".json"
+                    className="hidden"
+                    onChange={handleImportBackup}
+                  />
+                </label>
+              </div>
+            </div>
           </div>
         </div>
       </section>

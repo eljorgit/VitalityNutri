@@ -63,35 +63,43 @@ db.exec(`
   );
 `);
 
-// Dynamic migrations to add batch cooking columns
-try {
-  db.exec("ALTER TABLE plans ADD COLUMN batch_cooking_json TEXT;");
-  console.log("[Migration] Added batch_cooking_json column to plans table.");
-} catch (error: any) {
-  if (!error.message.includes("duplicate column name")) {
-    console.error("Migration error adding batch_cooking_json:", error);
-  }
-}
-
-try {
-  db.exec("ALTER TABLE plans ADD COLUMN batch_cooking_params TEXT;");
-  console.log("[Migration] Added batch_cooking_params column to plans table.");
-} catch (error: any) {
-  if (!error.message.includes("duplicate column name")) {
-    console.error("Migration error adding batch_cooking_params:", error);
-  }
-}
-
-// Add file_hash column if it doesn't exist (backward compatibility)
+// Dynamic migrations to add columns safely by checking PRAGMA table_info
 try {
   const tableInfo = db.prepare("PRAGMA table_info(plans)").all() as any[];
+  
+  const hasBatchCookingJson = tableInfo.some(col => col.name === "batch_cooking_json");
+  if (!hasBatchCookingJson) {
+    db.exec("ALTER TABLE plans ADD COLUMN batch_cooking_json TEXT;");
+    console.log("[Migration] Added batch_cooking_json column to plans table.");
+  }
+
+  const hasBatchCookingParams = tableInfo.some(col => col.name === "batch_cooking_params");
+  if (!hasBatchCookingParams) {
+    db.exec("ALTER TABLE plans ADD COLUMN batch_cooking_params TEXT;");
+    console.log("[Migration] Added batch_cooking_params column to plans table.");
+  }
+
   const hasHashColumn = tableInfo.some(col => col.name === "file_hash");
   if (!hasHashColumn) {
     db.exec("ALTER TABLE plans ADD COLUMN file_hash TEXT;");
     console.log("Database migrated: added 'file_hash' column to 'plans' table.");
   }
 } catch (error) {
-  console.error("Error migrating plans table schema:", error);
+  console.error("Error migrating plans table schema columns:", error);
+}
+
+// Create database indexes to optimize read/query performance
+try {
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_plans_active ON plans(is_active);
+    CREATE INDEX IF NOT EXISTS idx_plans_hash ON plans(file_hash);
+    CREATE INDEX IF NOT EXISTS idx_completed_recipes_plan ON completed_recipes_state(plan_id);
+    CREATE INDEX IF NOT EXISTS idx_search_history_plan ON search_history(plan_id);
+    CREATE INDEX IF NOT EXISTS idx_search_history_clicked ON search_history(clicked_at DESC);
+  `);
+  console.log("[Migration] Database indexes verified and created.");
+} catch (error) {
+  console.error("Error creating database indexes:", error);
 }
 
 // Migrate existing plans without hashes by hashing their stored physical files
@@ -516,6 +524,124 @@ export function resetBatchCooking(): void {
     db.prepare("UPDATE plans SET batch_cooking_json = NULL, batch_cooking_params = NULL WHERE is_active = 1").run();
   } catch (error) {
     console.error("Error resetting batch cooking in SQLite database:", error);
+  }
+}
+
+/**
+ * Exports all database tables to a single JSON structure.
+ */
+export function exportBackupData(): any {
+  try {
+    const plans = db.prepare("SELECT * FROM plans").all();
+    const groceryListState = db.prepare("SELECT * FROM grocery_list_state").all();
+    const completedRecipesState = db.prepare("SELECT * FROM completed_recipes_state").all();
+    const searchHistory = db.prepare("SELECT * FROM search_history").all();
+    return {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      plans,
+      groceryListState,
+      completedRecipesState,
+      searchHistory
+    };
+  } catch (error) {
+    console.error("Error exporting backup data:", error);
+    throw error;
+  }
+}
+
+/**
+ * Restores the database from a backup JSON structure.
+ */
+export function importBackupData(data: any): void {
+  const transaction = db.transaction(() => {
+    // 1. Clear existing tables
+    db.prepare("DELETE FROM plans").run();
+    db.prepare("DELETE FROM grocery_list_state").run();
+    db.prepare("DELETE FROM completed_recipes_state").run();
+    db.prepare("DELETE FROM search_history").run();
+
+    // 2. Insert plans
+    if (Array.isArray(data.plans)) {
+      const stmt = db.prepare(`
+        INSERT INTO plans (id, file_name, saved_file_name, plan_json, metadata_json, is_active, created_at, file_hash, batch_cooking_json, batch_cooking_params)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      for (const p of data.plans) {
+        stmt.run(
+          p.id,
+          p.file_name,
+          p.saved_file_name,
+          p.plan_json,
+          p.metadata_json,
+          p.is_active,
+          p.created_at,
+          p.file_hash,
+          p.batch_cooking_json,
+          p.batch_cooking_params
+        );
+      }
+    }
+
+    // 3. Insert grocery list state
+    if (Array.isArray(data.groceryListState)) {
+      const stmt = db.prepare(`
+        INSERT INTO grocery_list_state (id, checked_items_json, list_type, selected_single_day, selected_3days_start, excluded_meals_json, multipliers_json, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      for (const g of data.groceryListState) {
+        stmt.run(
+          g.id,
+          g.checked_items_json,
+          g.list_type,
+          g.selected_single_day,
+          g.selected_3days_start,
+          g.excluded_meals_json,
+          g.multipliers_json,
+          g.updated_at
+        );
+      }
+    }
+
+    // 4. Insert completed recipes state
+    if (Array.isArray(data.completedRecipesState)) {
+      const stmt = db.prepare(`
+        INSERT INTO completed_recipes_state (plan_id, completed_json, updated_at)
+        VALUES (?, ?, ?)
+      `);
+      for (const c of data.completedRecipesState) {
+        stmt.run(c.plan_id, c.completed_json, c.updated_at);
+      }
+    }
+
+    // 5. Insert search history
+    if (Array.isArray(data.searchHistory)) {
+      const stmt = db.prepare(`
+        INSERT INTO search_history (id, plan_id, plan_name, day, meal, recipe_name, image, is_active, clicked_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      for (const s of data.searchHistory) {
+        stmt.run(
+          s.id,
+          s.plan_id,
+          s.plan_name,
+          s.day,
+          s.meal,
+          s.recipe_name,
+          s.image,
+          s.is_active,
+          s.clicked_at
+        );
+      }
+    }
+  });
+
+  try {
+    transaction();
+    console.log("Database successfully restored from backup.");
+  } catch (error) {
+    console.error("Error importing backup data:", error);
+    throw error;
   }
 }
 
