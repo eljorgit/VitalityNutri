@@ -555,6 +555,14 @@ export default function RecipeDetail({
   const [selectedIngCategory, setSelectedIngCategory] = useState<string>("Todo");
   const [selectedStepCategory, setSelectedStepCategory] = useState<string>("Todo");
 
+  // Reset selected categories and checklists when recipe changes
+  React.useEffect(() => {
+    setSelectedIngCategory("Todo");
+    setSelectedStepCategory("Todo");
+    setCheckedIngredients({});
+    setCheckedSteps({});
+  }, [recipe, day, meal]);
+
   const categoryNames: Record<string, string> = {
     primerPlato: "Primer Plato",
     segundoPlato: "Segundo Plato",

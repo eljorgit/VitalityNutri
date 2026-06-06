@@ -42,30 +42,46 @@ interface KitchenParams {
 }
 
 export default function BatchCooking({ plan, metadata, onSelectRecipe }: BatchCookingProps) {
+  // Helper to normalize strings for comparison (remove accents, lowercase, remove spaces/punctuation)
+  const normalizeForComparison = (str: string) => {
+    return str
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]/g, "")
+      .trim();
+  };
+
   // Find recipe day and meal from name
   const findRecipeDayMeal = (recipeName: string): { day: DayType; meal: MealType; recipe: Recipe } | null => {
     if (!plan) return null;
     const daysKeys = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"] as const;
     const mealsKeys = ["almuerzo", "cena"] as const;
     
-    // Exact match
+    const normalizedTarget = normalizeForComparison(recipeName);
+    if (!normalizedTarget) return null;
+
+    // Exact normalized match
     for (const day of daysKeys) {
       for (const meal of mealsKeys) {
         const rec = plan.days[day]?.[meal];
-        if (rec && rec.recipeName.trim().toLowerCase() === recipeName.trim().toLowerCase()) {
+        if (rec && normalizeForComparison(rec.recipeName) === normalizedTarget) {
           return { day, meal, recipe: rec };
         }
       }
     }
-    // Sub-string/Fuzzy match
+    // Sub-string/Fuzzy normalized match
     for (const day of daysKeys) {
       for (const meal of mealsKeys) {
         const rec = plan.days[day]?.[meal];
-        if (rec && (
-          rec.recipeName.toLowerCase().includes(recipeName.toLowerCase()) || 
-          recipeName.toLowerCase().includes(rec.recipeName.toLowerCase())
-        )) {
-          return { day, meal, recipe: rec };
+        if (rec) {
+          const normalizedRecName = normalizeForComparison(rec.recipeName);
+          if (
+            normalizedRecName &&
+            (normalizedRecName.includes(normalizedTarget) || normalizedTarget.includes(normalizedRecName))
+          ) {
+            return { day, meal, recipe: rec };
+          }
         }
       }
     }
@@ -336,7 +352,7 @@ export default function BatchCooking({ plan, metadata, onSelectRecipe }: BatchCo
       {!plan ? (
         <div className="bg-white dark:bg-zinc-900 rounded-3xl p-12 text-center border border-gray-100 dark:border-zinc-800 max-w-lg mx-auto">
           <span className="material-symbols-outlined text-4xl text-gray-300 dark:text-zinc-650 mb-4 font-light">outdoor_grill</span>
-          <p className="text-slate-955 dark:text-white font-bold text-lg mb-1">No hay ningún plan cargado</p>
+          <p className="text-slate-950 dark:text-white font-bold text-lg mb-1">No hay ningún plan cargado</p>
           <p className="text-sm text-[#404943] dark:text-zinc-400 leading-relaxed mb-6">
             Por favor, vuelve al Dashboard principal y sube un plan semanal de alimentación en formato PDF de forma instantánea.
           </p>
@@ -420,10 +436,14 @@ export default function BatchCooking({ plan, metadata, onSelectRecipe }: BatchCo
                             className={`flex items-center gap-2 p-3 rounded-2xl border text-left font-semibold text-xs cursor-pointer transition-all ${
                               checked
                                 ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-500/30 text-emerald-800 dark:text-emerald-300"
-                                : "bg-white dark:bg-zinc-900 border-slate-200/60 dark:border-zinc-800/80 hover:border-slate-350 dark:hover:border-zinc-750 text-slate-700 dark:text-zinc-350"
+                                : "bg-white dark:bg-zinc-900 border-slate-200/60 dark:border-zinc-800/80 hover:border-slate-350 dark:hover:border-zinc-700 text-slate-700 dark:text-zinc-350"
                             }`}
                           >
-                            <span className="material-symbols-outlined text-[16px] text-slate-400 dark:text-zinc-500 shrink-0">
+                            <span className={`material-symbols-outlined text-[16px] shrink-0 transition-colors ${
+                              checked 
+                                ? "text-emerald-600 dark:text-emerald-400" 
+                                : "text-slate-400 dark:text-zinc-500"
+                            }`}>
                               {checked ? "check_box" : "check_box_outline_blank"}
                             </span>
                             <span>{item.label}</span>
@@ -443,7 +463,7 @@ export default function BatchCooking({ plan, metadata, onSelectRecipe }: BatchCo
                     id="custom-tools"
                     type="text"
                     placeholder="Escribe herramientas adicionales separadas por comas"
-                    className="w-full px-4 py-3 rounded-2xl border border-slate-200/80 dark:border-zinc-800/80 bg-[#f8f9fa] dark:bg-zinc-955 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-slate-700 dark:text-zinc-300"
+                    className="w-full px-4 py-3 rounded-2xl border border-slate-200/80 dark:border-zinc-800/80 bg-[#f8f9fa] dark:bg-zinc-950 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-slate-700 dark:text-zinc-300"
                     value={params.customTools}
                     onChange={(e) => setParams(p => ({ ...p, customTools: e.target.value }))}
                   />
@@ -548,7 +568,7 @@ export default function BatchCooking({ plan, metadata, onSelectRecipe }: BatchCo
                             className={`w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition shadow-md border ${
                               isCompleted
                                 ? "bg-emerald-600 border-emerald-600 text-white hover:bg-emerald-700"
-                                : "bg-white dark:bg-zinc-900 border-slate-300 dark:border-zinc-700 hover:border-emerald-500 text-slate-555 dark:text-zinc-455"
+                                : "bg-white dark:bg-zinc-900 border-slate-300 dark:border-zinc-700 hover:border-emerald-500 text-slate-550 dark:text-zinc-450"
                             }`}
                             title={isCompleted ? "Marcar paso como pendiente" : "Marcar paso como completado"}
                           >
@@ -585,7 +605,7 @@ export default function BatchCooking({ plan, metadata, onSelectRecipe }: BatchCo
                               </span>
                               {/* Utensils Badges */}
                               {step.utensils.map(u => (
-                                <span key={u} className="bg-slate-100/60 dark:bg-zinc-800/40 text-slate-500 dark:text-zinc-455 text-[10px] font-semibold px-2.5 py-0.5 rounded-lg">
+                                <span key={u} className="bg-slate-100/60 dark:bg-zinc-800/40 text-slate-500 dark:text-zinc-450 text-[10px] font-semibold px-2.5 py-0.5 rounded-lg">
                                   {u}
                                 </span>
                               ))}
@@ -600,7 +620,7 @@ export default function BatchCooking({ plan, metadata, onSelectRecipe }: BatchCo
 
                           {/* Step Ingredients Panel */}
                           {step.ingredients && step.ingredients.length > 0 && (
-                            <div className={`mb-4 bg-slate-55/40 dark:bg-zinc-950/20 border border-slate-100 dark:border-zinc-800/40 rounded-2xl p-3 text-left transition-all duration-150 ${isCompleted ? "opacity-60" : ""}`}>
+                            <div className={`mb-4 bg-slate-50/40 dark:bg-zinc-950/20 border border-slate-100 dark:border-zinc-800/40 rounded-2xl p-3 text-left transition-all duration-150 ${isCompleted ? "opacity-60" : ""}`}>
                               <span className="text-[10px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-widest block mb-2.5 flex items-center gap-1.5 select-none">
                                 <span className="material-symbols-outlined text-[14px]">shopping_basket</span>
                                 Ingredientes necesarios para este paso
@@ -766,7 +786,7 @@ export default function BatchCooking({ plan, metadata, onSelectRecipe }: BatchCo
                 <button
                   type="button"
                   onClick={() => setShowReprocessConfirm(true)}
-                  className="w-full py-2.5 px-4 bg-amber-50 hover:bg-amber-100 dark:bg-amber-955 dark:hover:bg-amber-950 text-amber-800 dark:text-amber-300 font-extrabold text-xs rounded-xl border border-amber-200/50 dark:border-amber-900/35 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                  className="w-full py-2.5 px-4 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/30 dark:hover:bg-amber-950 text-amber-800 dark:text-amber-300 font-extrabold text-xs rounded-xl border border-amber-200/50 dark:border-amber-900/35 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
                 >
                   <span className="material-symbols-outlined text-[16px]">refresh</span>
                   Reprocesar Guía con IA
@@ -775,7 +795,7 @@ export default function BatchCooking({ plan, metadata, onSelectRecipe }: BatchCo
                 <button
                   type="button"
                   onClick={() => setShowDeleteConfirm(true)}
-                  className="w-full py-2.5 px-4 bg-red-50 hover:bg-red-100 dark:bg-red-955 dark:hover:bg-red-950 text-red-700 dark:text-red-400 font-extrabold text-xs rounded-xl border border-red-200/40 dark:border-red-900/30 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                  className="w-full py-2.5 px-4 bg-red-50 hover:bg-red-100 dark:bg-red-950/30 dark:hover:bg-red-950 text-red-700 dark:text-red-400 font-extrabold text-xs rounded-xl border border-red-200/40 dark:border-red-900/30 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
                 >
                   <span className="material-symbols-outlined text-[16px]">delete</span>
                   Eliminar Guía
@@ -850,7 +870,7 @@ export default function BatchCooking({ plan, metadata, onSelectRecipe }: BatchCo
               <button
                 type="button"
                 onClick={() => setShowDeleteConfirm(false)}
-                className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-205 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-350 font-extrabold text-xs rounded-xl cursor-pointer transition active:scale-95 border-none"
+                className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-350 font-extrabold text-xs rounded-xl cursor-pointer transition active:scale-95 border-none"
               >
                 Cancelar
               </button>
@@ -884,7 +904,7 @@ export default function BatchCooking({ plan, metadata, onSelectRecipe }: BatchCo
               <button
                 type="button"
                 onClick={() => setShowReprocessConfirm(false)}
-                className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-205 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-355 font-extrabold text-xs rounded-xl cursor-pointer transition active:scale-95 border-none"
+                className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-350 font-extrabold text-xs rounded-xl cursor-pointer transition active:scale-95 border-none"
               >
                 Cancelar
               </button>

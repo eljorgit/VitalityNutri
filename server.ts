@@ -479,12 +479,24 @@ async function generateBatchCookingWithGemini(mealPlan: MealPlan, params: any): 
   // Filter only almuerzo and cena (lunches and dinners) for each day
   const daysKeys = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"] as const;
   const filteredDays: any = {};
+  const recipeNamesList: string[] = [];
+  
   for (const d of daysKeys) {
     filteredDays[d] = {
       almuerzo: mealPlan.days[d]?.almuerzo,
       cena: mealPlan.days[d]?.cena
     };
+    
+    for (const m of ["almuerzo", "cena"] as const) {
+      const rec = mealPlan.days[d]?.[m];
+      if (rec && rec.recipeName) {
+        recipeNamesList.push(rec.recipeName.trim());
+      }
+    }
   }
+
+  // Keep unique non-empty recipe names
+  const uniqueRecipeNames = Array.from(new Set(recipeNamesList)).filter(name => name.length > 0);
 
   const prompt = `
 Eres un Chef Profesional y Asesor Experto en "Batch Cooking" (cocinado por lotes).
@@ -500,6 +512,10 @@ INFORMACIÓN DE LA COCINA DEL USUARIO (CRÍTICO: Debes adaptarte estrictamente a
 EL PLAN DE COMIDAS A PREPARAR ES:
 ${JSON.stringify(filteredDays)}
 
+LISTA DE RECETAS EN EL PLAN (ESTRICTAMENTE OBLIGATORIO PARA "recipesAffected"):
+Las únicas recetas válidas en este plan con sus nombres exactos son:
+${JSON.stringify(uniqueRecipeNames)}
+
 INSTRUCCIONES DE DISEÑO DE LA GUÍA (CRÍTICO Y DETALLADO):
 1. Sé extremadamente específico y descriptivo en las instrucciones de cada paso.
    * EVITA terminantemente frases genéricas como "lava todos los vegetales", "corta las verduras de la semana" o "pica las cebollas y ajos necesarios".
@@ -511,7 +527,7 @@ INSTRUCCIONES DE DISEÑO DE LA GUÍA (CRÍTICO Y DETALLADO):
    - "description" (descripción muy detallada y paso a paso indicando tiempos, temperaturas de cocción, etc.).
    - "duration" (ej. "15 min").
    - "utensils" (utensilios y electrodomésticos usados).
-   - "recipesAffected" (nombres exactos de las recetas afectadas).
+   - "recipesAffected" (nombres de las recetas afectadas). IMPORTANTE: Los strings en esta lista deben pertenecer de forma obligatoria y exacta a la LISTA DE RECETAS EN EL PLAN provista arriba. No inventes nombres, no los acortes, ni los traduzcas. Deben coincidir letra por letra con los nombres indicados en esa lista para que el sistema pueda enlazarlos. Si un paso no corresponde directamente a ninguna receta de la lista, deja la lista "recipesAffected" vacía [].
    - "ingredients" (un array de strings con los ingredientes y cantidades que se manipulan o cocinan específicamente en este paso, ej. ["2 cebollas medianas", "4 dientes de ajo", "500g de calabacín", "1 cda de aceite de oliva"]).
 3. Diseña una línea de tiempo fluida y coordinada para optimizar los tiempos de espera (Mise en Place al inicio, luego cocciones lentas/horno, y cocciones rápidas al final).
 4. Genera una lista estructurada de consejos de almacenamiento y envasado ("storageTips") detallando cómo conservar cada preparación principal resultante.
