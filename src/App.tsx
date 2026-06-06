@@ -3,6 +3,7 @@ import Dashboard from "./components/Dashboard";
 import CalendarGrid from "./components/CalendarGrid";
 import RecipeDetail from "./components/RecipeDetail";
 import GroceryList from "./components/GroceryList";
+import ConfirmationModal, { ConfirmationVariant } from "./components/ConfirmationModal";
 import { MealPlan, PlanMetadata, DayType, MealType, Recipe } from "./types";
 
 // --- Search Types ---
@@ -125,6 +126,13 @@ const DAY_LABELS: Record<string, string> = {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<string>("dashboard");
+  const [showResetPlanConfirmation, setShowResetPlanConfirmation] = useState(false);
+  const [appNotification, setAppNotification] = useState<{
+    title: string;
+    description: string;
+    icon: string;
+    variant: ConfirmationVariant;
+  } | null>(null);
   const [plan, setPlan] = useState<MealPlan | null>(null);
   const [metadata, setMetadata] = useState<PlanMetadata | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -830,9 +838,6 @@ export default function App() {
 
 
   const handleResetPlan = async () => {
-    if (!window.confirm("¿Seguro que deseas eliminar el plan de alimentación activo de la base de datos? Se requerirá subir un nuevo archivo PDF para poder acceder a las planificaciones.")) {
-      return;
-    }
     try {
       setIsLoading(true);
       const res = await fetch("/api/plan/reset", { method: "POST" });
@@ -844,7 +849,12 @@ export default function App() {
       setSelectedRecipeDetail(null);
       navigate("/dashboard");
     } catch {
-      alert("No se pudo eliminar el plan.");
+      setAppNotification({
+        title: "No se pudo eliminar el plan",
+        description: "Inténtalo de nuevo en unos segundos. Si el problema continúa, revisa la conexión con el servidor.",
+        icon: "error",
+        variant: "danger"
+      });
     } finally {
       setIsLoading(false);
     }
@@ -1103,7 +1113,13 @@ export default function App() {
                 metadata={metadata} 
                 onPlanProcessed={handlePlanProcessed} 
                 setActiveTab={handleSetActiveTab}
-                onResetPlan={handleResetPlan}
+                onResetPlan={(options) => {
+                  if (options?.skipConfirmation) {
+                    handleResetPlan();
+                  } else {
+                    setShowResetPlanConfirmation(true);
+                  }
+                }}
               />
             )}
 
@@ -1194,12 +1210,6 @@ export default function App() {
           <div className="flex flex-col items-center md:items-start gap-1">
             <span className="font-extrabold text-emerald-600 text-lg">VitalityNutri</span>
             <p className="text-xs text-gray-450 dark:text-zinc-550">© 2026 VitalityNutri. Alimentación consciente, viva y pautada.</p>
-          </div>
-          <div className="flex flex-wrap justify-center gap-6 text-xs font-semibold text-gray-500 dark:text-zinc-400">
-            <button type="button" onClick={() => alert("Políticas de Privacidad:")} className="hover:text-emerald-800 dark:hover:text-emerald-400 transition duration-150 cursor-pointer">Política de Privacidad</button>
-            <button type="button" onClick={() => alert("Términos del Servicio:")} className="hover:text-emerald-800 dark:hover:text-emerald-400 transition duration-150 cursor-pointer">Términos de Servicio</button>
-            <button type="button" onClick={() => alert("Centro de Soporte:")} className="hover:text-emerald-800 dark:hover:text-emerald-400 transition duration-150 cursor-pointer">Centro de Ayuda</button>
-            <button type="button" onClick={() => alert("Vías de contacto abiertas en jorgi200.12@gmail.com")} className="hover:text-emerald-800 dark:hover:text-emerald-400 transition duration-150 cursor-pointer">Contacto</button>
           </div>
         </div>
       </footer>
@@ -1315,6 +1325,32 @@ export default function App() {
           </button>
         )}
       </div>
+
+      <ConfirmationModal
+        isOpen={showResetPlanConfirmation}
+        title="Eliminar plan activo"
+        description="Se eliminará el plan de alimentación activo de la base de datos. Tendrás que subir un nuevo PDF para volver a acceder a las planificaciones."
+        confirmLabel="Eliminar plan"
+        icon="delete"
+        variant="danger"
+        onCancel={() => setShowResetPlanConfirmation(false)}
+        onConfirm={() => {
+          setShowResetPlanConfirmation(false);
+          handleResetPlan();
+        }}
+      />
+
+      <ConfirmationModal
+        isOpen={!!appNotification}
+        title={appNotification?.title || ""}
+        description={appNotification?.description || ""}
+        confirmLabel="Entendido"
+        icon={appNotification?.icon}
+        variant={appNotification?.variant}
+        showCancel={false}
+        onCancel={() => setAppNotification(null)}
+        onConfirm={() => setAppNotification(null)}
+      />
 
     </div>
   );

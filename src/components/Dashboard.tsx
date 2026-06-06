@@ -1,11 +1,12 @@
 import React, { useState, useRef, useEffect } from "react";
 import { PlanMetadata, MealPlan } from "../types";
+import ConfirmationModal from "./ConfirmationModal";
 
 interface DashboardProps {
   metadata: PlanMetadata | null;
   onPlanProcessed: (newPlan: MealPlan, newMetadata: PlanMetadata) => void;
   setActiveTab: (tab: string) => void;
-  onResetPlan: () => void;
+  onResetPlan: (options?: { skipConfirmation?: boolean }) => void;
 }
 
 export default function Dashboard({ 
@@ -38,6 +39,15 @@ export default function Dashboard({
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [progress, setProgress] = useState(0);
   const [elapsedTime, setElapsedTime] = useState(0);
+  const [confirmation, setConfirmation] = useState<{
+    title: string;
+    description: string;
+    confirmLabel: string;
+    icon: string;
+    variant: "danger" | "warning" | "success" | "info";
+    showCancel?: boolean;
+    onConfirm: () => void;
+  } | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -97,6 +107,19 @@ export default function Dashboard({
     }
     setIsProcessing(false);
     setProgress(0);
+  };
+
+  const requestReprocessConfirmation = () => {
+    if (!metadata || !metadata.savedFileName) return;
+
+    setConfirmation({
+      title: "Reprocesar plan",
+      description: "Se volverá a analizar el PDF guardado con IA y se reemplazará la planificación activa con el nuevo resultado.",
+      confirmLabel: "Reprocesar plan",
+      icon: "refresh",
+      variant: "warning",
+      onConfirm: handleReprocess
+    });
   };
 
   const handleReprocess = async () => {
@@ -198,11 +221,7 @@ export default function Dashboard({
     }
   };
 
-  const handleDeleteHistory = async (id: number, name: string) => {
-    if (!window.confirm(`¿Seguro que deseas eliminar "${name}" del historial? Esta acción borrará permanentemente el PDF y la planificación de la base de datos.`)) {
-      return;
-    }
-
+  const handleDeleteHistory = async (id: number) => {
     try {
       const response = await fetch(`/api/history/${id}`, {
         method: "DELETE"
@@ -213,14 +232,33 @@ export default function Dashboard({
       }
 
       if (metadata && metadata.id === id) {
-        onResetPlan();
+        onResetPlan({ skipConfirmation: true });
       } else {
         fetchHistory();
       }
     } catch (err: any) {
       console.error(err);
-      alert(err.message || "Error al intentar eliminar el plan del historial.");
+      setConfirmation({
+        title: "No se pudo eliminar el plan",
+        description: err.message || "Error al intentar eliminar el plan del historial.",
+        confirmLabel: "Entendido",
+        icon: "error",
+        variant: "danger",
+        showCancel: false,
+        onConfirm: () => undefined
+      });
     }
+  };
+
+  const requestDeleteHistoryConfirmation = (id: number, name: string) => {
+    setConfirmation({
+      title: "Eliminar plan",
+      description: `Se eliminará "${name}" del historial. Esta acción borrará permanentemente el PDF y la planificación de la base de datos.`,
+      confirmLabel: "Eliminar plan",
+      icon: "delete",
+      variant: "danger",
+      onConfirm: () => handleDeleteHistory(id)
+    });
   };
 
   const handleDrag = (e: React.DragEvent) => {
@@ -673,7 +711,7 @@ export default function Dashboard({
                   {metadata.savedFileName && (
                     <button 
                       type="button"
-                      onClick={handleReprocess}
+                      onClick={requestReprocessConfirmation}
                       className="w-full py-2.5 px-4 bg-amber-50 dark:bg-amber-950/30 hover:bg-amber-100 dark:hover:bg-amber-900/40 text-amber-800 dark:text-amber-300 font-bold text-xs rounded-xl border border-amber-200 dark:border-amber-900/50 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
                     >
                       <span className="material-symbols-outlined text-[16px]">refresh</span>
@@ -831,7 +869,7 @@ export default function Dashboard({
                         )}
                         <button
                           type="button"
-                          onClick={() => handleDeleteHistory(item.id, item.fileName)}
+                          onClick={() => requestDeleteHistoryConfirmation(item.id, item.fileName)}
                           className="py-1.5 px-3 bg-red-50 dark:bg-red-950/30 text-red-750 dark:text-red-400 font-bold text-xs rounded-xl hover:bg-red-100 dark:hover:bg-red-950 transition-colors cursor-pointer flex items-center gap-1"
                           title="Eliminar del historial"
                         >
@@ -857,6 +895,22 @@ export default function Dashboard({
           </div>
         </div>
       )}
+
+      <ConfirmationModal
+        isOpen={!!confirmation}
+        title={confirmation?.title || ""}
+        description={confirmation?.description || ""}
+        confirmLabel={confirmation?.confirmLabel || "Confirmar"}
+        icon={confirmation?.icon}
+        variant={confirmation?.variant}
+        showCancel={confirmation?.showCancel}
+        onCancel={() => setConfirmation(null)}
+        onConfirm={() => {
+          const action = confirmation?.onConfirm;
+          setConfirmation(null);
+          action?.();
+        }}
+      />
     </div>
   );
 }

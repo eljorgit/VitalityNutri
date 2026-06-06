@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { MealPlan, Ingredient, DayType, MealType } from "../types";
+import ConfirmationModal, { ConfirmationVariant } from "./ConfirmationModal";
 
 const formatAmountAndUnit = (amount: number, unit: string) => {
   let normalizedUnit = unit.trim().toLowerCase();
@@ -74,6 +75,16 @@ export default function GroceryList({ plan }: GroceryListProps) {
   const [canShare, setCanShare] = useState(false);
   const [expandedRecipes, setExpandedRecipes] = useState<Record<string, boolean>>({});
   const [configPanelExpanded, setConfigPanelExpanded] = useState(false);
+  const [notification, setNotification] = useState<{
+    title: string;
+    description: string;
+    icon: string;
+    variant: ConfirmationVariant;
+  } | null>(null);
+
+  const showNotification = (title: string, description: string, icon: string, variant: ConfirmationVariant) => {
+    setNotification({ title, description, icon, variant });
+  };
 
 
   // Opciones de formato de compartido
@@ -108,13 +119,23 @@ export default function GroceryList({ plan }: GroceryListProps) {
         })
       });
       if (response.ok) {
-        alert("¡Lista de la compra guardada con éxito en la base de datos SQLite!");
+        showNotification(
+          "Lista guardada",
+          "La lista de la compra se ha guardado correctamente en la base de datos SQLite.",
+          "check_circle",
+          "success"
+        );
       } else {
         throw new Error();
       }
     } catch (err) {
       console.error(err);
-      alert("Error al guardar la lista de la compra.");
+      showNotification(
+        "No se pudo guardar",
+        "Error al guardar la lista de la compra. Inténtalo de nuevo en unos segundos.",
+        "error",
+        "danger"
+      );
     }
   };
 
@@ -135,11 +156,21 @@ export default function GroceryList({ plan }: GroceryListProps) {
           if (state.multipliers.days) setDayMultipliers(state.multipliers.days);
           if (state.multipliers.meals) setMealMultipliers(state.multipliers.meals);
         }
-        alert("¡Lista de la compra restaurada con éxito!");
+        showNotification(
+          "Lista restaurada",
+          "La lista de la compra se ha restaurado correctamente.",
+          "check_circle",
+          "success"
+        );
       }
     } catch (err) {
       console.error(err);
-      alert("Error al restaurar la lista de la compra.");
+      showNotification(
+        "No se pudo restaurar",
+        "Error al restaurar la lista de la compra. Inténtalo de nuevo en unos segundos.",
+        "error",
+        "danger"
+      );
     }
   };
 
@@ -1453,6 +1484,18 @@ export default function GroceryList({ plan }: GroceryListProps) {
           </p>
         </div>
       )}
+
+      <ConfirmationModal
+        isOpen={!!notification}
+        title={notification?.title || ""}
+        description={notification?.description || ""}
+        confirmLabel="Entendido"
+        icon={notification?.icon}
+        variant={notification?.variant}
+        showCancel={false}
+        onCancel={() => setNotification(null)}
+        onConfirm={() => setNotification(null)}
+      />
     </div>
   );
 }
