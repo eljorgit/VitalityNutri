@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { DayType, MealType, Recipe, MealPlan, PlanMetadata } from "../types";
+import ConfirmationModal from "./ConfirmationModal";
 
 const formatAmountAndUnit = (amount: number, unit: string) => {
   let normalizedUnit = unit.trim().toLowerCase();
@@ -78,6 +79,7 @@ export default function RecipeDetail({
   const [touchEndY, setTouchEndY] = useState<number | null>(null);
 
   const [showProgressModal, setShowProgressModal] = useState<boolean>(false);
+  const [showRestoreConfirmation, setShowRestoreConfirmation] = useState<boolean>(false);
 
   const topDayMealsDropdownRef = React.useRef<HTMLDivElement>(null);
   const topAllRecipesDropdownRef = React.useRef<HTMLDivElement>(null);
@@ -780,11 +782,7 @@ export default function RecipeDetail({
                   {onRestorePlan && (
                     <button
                       type="button"
-                      onClick={() => {
-                        if (window.confirm("¿Deseas restaurar este plan como tu plan activo actual? El plan anterior dejará de estar activo.")) {
-                          onRestorePlan();
-                        }
-                      }}
+                      onClick={() => setShowRestoreConfirmation(true)}
                       className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-bold text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/40 hover:bg-amber-200 dark:hover:bg-amber-800/50 border border-amber-300/60 dark:border-amber-700/40 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
                     >
                       <span className="material-symbols-outlined text-[14px]">restore</span>
@@ -1800,6 +1798,20 @@ export default function RecipeDetail({
           </div>
         </div>
       )}
+
+      <ConfirmationModal
+        isOpen={showRestoreConfirmation}
+        title="Restaurar plan"
+        description="Este plan pasará a ser el plan activo actual y el plan anterior dejará de estar activo."
+        confirmLabel="Restaurar plan"
+        icon="restore"
+        variant="warning"
+        onCancel={() => setShowRestoreConfirmation(false)}
+        onConfirm={() => {
+          setShowRestoreConfirmation(false);
+          onRestorePlan?.();
+        }}
+      />
 
     </div>
   );
