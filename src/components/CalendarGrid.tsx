@@ -291,17 +291,28 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, compl
           <p className="text-sm text-gray-550 dark:text-zinc-400">Visualiza, edita y organiza tu pauta nutricional compartida para todos.</p>
         </div>
         
-        {/* Leyenda de puntos de información */}
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs bg-white dark:bg-zinc-900 px-4 py-2.5 rounded-2xl border border-slate-200/80 dark:border-zinc-800/80 w-fit select-none animate-fade-in no-print">
-          <span className="font-bold text-slate-500 dark:text-zinc-400">Leyenda:</span>
-          <span className="flex items-center gap-1.5 text-slate-700 dark:text-zinc-200">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/20"></span>
-            Rico en nutrientes
-          </span>
-          <span className="flex items-center gap-1.5 text-slate-700 dark:text-zinc-200">
-            <span className="w-2.5 h-2.5 rounded-full bg-orange-400 shadow-sm shadow-orange-400/20"></span>
-            Alto aporte energético (&gt; 350 kcal)
-          </span>
+        {/* Leyenda and Batch Cooking Quick Access */}
+        <div className="flex flex-wrap items-center gap-4 animate-fade-in no-print select-none">
+          <button
+            type="button"
+            onClick={() => setActiveTab("batch-cooking")}
+            className="flex items-center gap-2 px-4.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-2xl shadow-sm hover:shadow hover:scale-[1.02] active:scale-95 transition-all duration-150 cursor-pointer border-none"
+          >
+            <span className="material-symbols-outlined text-[16px]">outdoor_grill</span>
+            Cocinado por Lotes (Batch Cooking)
+          </button>
+          
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs bg-white dark:bg-zinc-900 px-4 py-2.5 rounded-2xl border border-slate-200/80 dark:border-zinc-800/80 w-fit">
+            <span className="font-bold text-slate-500 dark:text-zinc-400">Leyenda:</span>
+            <span className="flex items-center gap-1.5 text-slate-700 dark:text-zinc-200">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/20"></span>
+              Rico en nutrientes
+            </span>
+            <span className="flex items-center gap-1.5 text-slate-700 dark:text-zinc-200">
+              <span className="w-2.5 h-2.5 rounded-full bg-orange-400 shadow-sm shadow-orange-400/20"></span>
+              Alto aporte energético (&gt; 350 kcal)
+            </span>
+          </div>
         </div>
       </div>      {plan ? (
         <>

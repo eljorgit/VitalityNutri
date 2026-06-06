@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import Database from "better-sqlite3";
+import crypto from "crypto";
 import { MealPlan, PlanMetadata, Recipe } from "./types.js";
 
 // Determine the database storage directory
@@ -62,6 +63,66 @@ db.exec(`
   );
 `);
 
+// Dynamic migrations to add batch cooking columns
+try {
+  db.exec("ALTER TABLE plans ADD COLUMN batch_cooking_json TEXT;");
+  console.log("[Migration] Added batch_cooking_json column to plans table.");
+} catch (error: any) {
+  if (!error.message.includes("duplicate column name")) {
+    console.error("Migration error adding batch_cooking_json:", error);
+  }
+}
+
+try {
+  db.exec("ALTER TABLE plans ADD COLUMN batch_cooking_params TEXT;");
+  console.log("[Migration] Added batch_cooking_params column to plans table.");
+} catch (error: any) {
+  if (!error.message.includes("duplicate column name")) {
+    console.error("Migration error adding batch_cooking_params:", error);
+  }
+}
+
+// Add file_hash column if it doesn't exist (backward compatibility)
+try {
+  const tableInfo = db.prepare("PRAGMA table_info(plans)").all() as any[];
+  const hasHashColumn = tableInfo.some(col => col.name === "file_hash");
+  if (!hasHashColumn) {
+    db.exec("ALTER TABLE plans ADD COLUMN file_hash TEXT;");
+    console.log("Database migrated: added 'file_hash' column to 'plans' table.");
+  }
+} catch (error) {
+  console.error("Error migrating plans table schema:", error);
+}
+
+// Migrate existing plans without hashes by hashing their stored physical files
+try {
+  const plansWithoutHash = db.prepare("SELECT id, saved_file_name FROM plans WHERE file_hash IS NULL AND saved_file_name IS NOT NULL").all() as any[];
+  if (plansWithoutHash.length > 0) {
+    const uploadsDir = path.join(process.cwd(), "data", "uploads");
+    const updateStmt = db.prepare("UPDATE plans SET file_hash = ? WHERE id = ?");
+    
+    let migratedCount = 0;
+    for (const plan of plansWithoutHash) {
+      const filePath = path.join(uploadsDir, plan.saved_file_name);
+      if (fs.existsSync(filePath)) {
+        try {
+          const fileBuffer = fs.readFileSync(filePath);
+          const hash = crypto.createHash("sha256").update(fileBuffer).digest("hex");
+          updateStmt.run(hash, plan.id);
+          migratedCount++;
+        } catch (err) {
+          console.error(`Error hashing file ${plan.saved_file_name} for plan ${plan.id}:`, err);
+        }
+      }
+    }
+    if (migratedCount > 0) {
+      console.log(`Database migrated: calculated and updated hashes for ${migratedCount} existing plans.`);
+    }
+  }
+} catch (error) {
+  console.error("Error migrating hashes for existing plans:", error);
+}
+
 /**
  * Retrieves the currently active meal plan and metadata from the SQLite database.
  */
@@ -83,7 +144,7 @@ export function getPlan(): { plan: MealPlan | null; metadata: PlanMetadata | nul
 /**
  * Saves or updates the active meal plan and metadata in the SQLite database.
  */
-export function savePlan(plan: MealPlan, metadata: PlanMetadata, savedFileName?: string): void {
+export function savePlan(plan: MealPlan, metadata: PlanMetadata, savedFileName?: string, fileHash?: string): void {
   try {
     // 1. Deactivate all other plans
     db.prepare("UPDATE plans SET is_active = 0").run();
@@ -107,10 +168,10 @@ export function savePlan(plan: MealPlan, metadata: PlanMetadata, savedFileName?:
       }
       const stmt = db.prepare(`
         UPDATE plans
-        SET plan_json = ?, metadata_json = ?, is_active = 1, created_at = ?
+        SET plan_json = ?, metadata_json = ?, is_active = 1, created_at = ?, file_hash = COALESCE(?, file_hash)
         WHERE id = ?
       `);
-      stmt.run(JSON.stringify(plan), JSON.stringify(metadata), new Date().toISOString(), existingId);
+      stmt.run(JSON.stringify(plan), JSON.stringify(metadata), new Date().toISOString(), fileHash || null, existingId);
     } else {
       // Insert new plan
       const savedName = savedFileName || metadata.savedFileName || null;
@@ -118,15 +179,16 @@ export function savePlan(plan: MealPlan, metadata: PlanMetadata, savedFileName?:
         metadata.savedFileName = savedName;
       }
       const stmt = db.prepare(`
-        INSERT INTO plans (file_name, saved_file_name, plan_json, metadata_json, is_active, created_at)
-        VALUES (?, ?, ?, ?, 1, ?)
+        INSERT INTO plans (file_name, saved_file_name, plan_json, metadata_json, is_active, created_at, file_hash)
+        VALUES (?, ?, ?, ?, 1, ?, ?)
       `);
       const result = stmt.run(
         metadata.fileName,
         savedName,
         JSON.stringify(plan),
         JSON.stringify(metadata),
-        new Date().toISOString()
+        new Date().toISOString(),
+        fileHash || null
       );
       
       metadata.id = result.lastInsertRowid as number;
@@ -136,6 +198,25 @@ export function savePlan(plan: MealPlan, metadata: PlanMetadata, savedFileName?:
   } catch (error) {
     console.error("Error saving meal plan to SQLite database:", error);
   }
+}
+
+/**
+ * Finds a plan in the database by its file hash.
+ */
+export function findPlanByHash(hash: string): { id: number; file_name: string; is_active: boolean } | null {
+  try {
+    const row = db.prepare("SELECT id, file_name, is_active FROM plans WHERE file_hash = ? LIMIT 1").get(hash) as any;
+    if (row) {
+      return {
+        id: row.id,
+        file_name: row.file_name,
+        is_active: !!row.is_active
+      };
+    }
+  } catch (error) {
+    console.error("Error finding plan by hash in SQLite database:", error);
+  }
+  return null;
 }
 
 /**
@@ -395,6 +476,46 @@ export function clearSearchHistory(): void {
     db.prepare("DELETE FROM search_history").run();
   } catch (error) {
     console.error("Error clearing search history from database:", error);
+  }
+}
+
+/**
+ * Retrieves the batch cooking guide and params for the active plan.
+ */
+export function getBatchCooking(): { guide: string | null; params: string | null } {
+  try {
+    const row = db.prepare("SELECT batch_cooking_json, batch_cooking_params FROM plans WHERE is_active = 1 LIMIT 1").get() as any;
+    if (row) {
+      return {
+        guide: row.batch_cooking_json || null,
+        params: row.batch_cooking_params || null
+      };
+    }
+  } catch (error) {
+    console.error("Error reading batch cooking from SQLite database:", error);
+  }
+  return { guide: null, params: null };
+}
+
+/**
+ * Saves the batch cooking guide and params for the active plan.
+ */
+export function saveBatchCooking(guide: string, params: string): void {
+  try {
+    db.prepare("UPDATE plans SET batch_cooking_json = ?, batch_cooking_params = ? WHERE is_active = 1").run(guide, params);
+  } catch (error) {
+    console.error("Error saving batch cooking to SQLite database:", error);
+  }
+}
+
+/**
+ * Resets the batch cooking guide for the active plan.
+ */
+export function resetBatchCooking(): void {
+  try {
+    db.prepare("UPDATE plans SET batch_cooking_json = NULL, batch_cooking_params = NULL WHERE is_active = 1").run();
+  } catch (error) {
+    console.error("Error resetting batch cooking in SQLite database:", error);
   }
 }
 

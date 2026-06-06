@@ -3,6 +3,7 @@ import Dashboard from "./components/Dashboard";
 import CalendarGrid from "./components/CalendarGrid";
 import RecipeDetail from "./components/RecipeDetail";
 import GroceryList from "./components/GroceryList";
+import BatchCooking from "./components/BatchCooking";
 import ConfirmationModal, { ConfirmationVariant } from "./components/ConfirmationModal";
 import { MealPlan, PlanMetadata, DayType, MealType, Recipe } from "./types";
 
@@ -227,8 +228,15 @@ export default function App() {
     meal: MealType;
     recipe: Recipe;
     planId: number;
+    plan?: MealPlan | null;
+    metadata?: PlanMetadata | null;
   } | null>(null);
   const [isViewingActivePlan, setIsViewingActivePlan] = useState<boolean>(true);
+
+  const inactiveRecipeDetailRef = useRef(inactiveRecipeDetail);
+  useEffect(() => {
+    inactiveRecipeDetailRef.current = inactiveRecipeDetail;
+  }, [inactiveRecipeDetail]);
 
   // Sync state from URL pathname
   const syncStateFromUrl = (urlPath: string) => {
@@ -240,12 +248,23 @@ export default function App() {
     if (!pathname || pathname === "/" || pathname.startsWith("/dashboard")) {
       setActiveTab("dashboard");
       setSelectedRecipeDetail(null);
+      setInactiveRecipeDetail(null);
+      setIsViewingActivePlan(true);
     } else if (pathname.startsWith("/calendar")) {
       setActiveTab("calendar");
       setSelectedRecipeDetail(null);
+      setInactiveRecipeDetail(null);
+      setIsViewingActivePlan(true);
     } else if (pathname.startsWith("/grocery")) {
       setActiveTab("grocery");
       setSelectedRecipeDetail(null);
+      setInactiveRecipeDetail(null);
+      setIsViewingActivePlan(true);
+    } else if (pathname.startsWith("/batch-cooking")) {
+      setActiveTab("batch-cooking");
+      setSelectedRecipeDetail(null);
+      setInactiveRecipeDetail(null);
+      setIsViewingActivePlan(true);
     } else if (pathname.startsWith("/recipe/")) {
       const parts = pathname.split("/");
       if (parts.length >= 4) {
@@ -258,6 +277,8 @@ export default function App() {
           if (recipe) {
             setSelectedRecipeDetail({ day, meal, recipe });
             setActiveTab("recipe-detail");
+            setIsViewingActivePlan(true);
+            setInactiveRecipeDetail(null);
           } else {
             setActiveTab("calendar");
             setSelectedRecipeDetail(null);
@@ -266,6 +287,26 @@ export default function App() {
           // Visiting a recipe from a different (inactive) plan — load it via dedicated endpoint
           const planId = parseInt(vParam, 10);
           setActiveTab("recipe-detail");
+
+          // Avoid re-fetching if this historical plan is already loaded
+          const currentInactive = inactiveRecipeDetailRef.current;
+          if (currentInactive && currentInactive.planId === planId && currentInactive.plan) {
+            const recipe = currentInactive.plan.days[day]?.[meal];
+            if (recipe) {
+              setInactiveRecipeDetail({
+                day,
+                meal,
+                recipe,
+                planId,
+                plan: currentInactive.plan,
+                metadata: currentInactive.metadata
+              });
+              setIsViewingActivePlan(false);
+              setSelectedRecipeDetail(null);
+              return;
+            }
+          }
+
           // Reset previous inactive state while loading the new one
           setInactiveRecipeDetail(null);
           setSelectedRecipeDetail(null);
@@ -274,7 +315,14 @@ export default function App() {
             .then((data: any) => {
               const recipe = data?.plan?.days?.[day]?.[meal];
               if (recipe) {
-                setInactiveRecipeDetail({ day, meal, recipe, planId });
+                setInactiveRecipeDetail({
+                  day,
+                  meal,
+                  recipe,
+                  planId,
+                  plan: data.plan,
+                  metadata: data.metadata,
+                });
                 setIsViewingActivePlan(false);
                 setSelectedRecipeDetail(null);
               }
@@ -338,6 +386,8 @@ export default function App() {
       document.title = "Calendario | VitalityNutri";
     } else if (activeTab === "grocery") {
       document.title = "Lista de Compra | VitalityNutri";
+    } else if (activeTab === "batch-cooking") {
+      document.title = "Batch Cooking | VitalityNutri";
     } else if (activeTab === "dashboard") {
       document.title = "Dashboard | VitalityNutri - Planificador de Alimentación Consciente";
     } else {
@@ -347,8 +397,9 @@ export default function App() {
 
   const navigate = (path: string) => {
     let cleanPath = path;
-    if (cleanPath.startsWith("/recipe/") && !cleanPath.includes("?v=") && metadata?.id) {
-      cleanPath = `${cleanPath}?v=${metadata.id}`;
+    if (cleanPath.startsWith("/recipe/") && !cleanPath.includes("v=") && metadata?.id) {
+      const separator = cleanPath.includes("?") ? "&" : "?";
+      cleanPath = `${cleanPath}${separator}v=${metadata.id}`;
     }
     window.history.pushState(null, "", cleanPath);
     syncStateFromUrl(cleanPath);
@@ -359,7 +410,10 @@ export default function App() {
   };
 
   const handleSelectRecipe = (day: DayType, meal: MealType, recipe: Recipe) => {
-    navigate(`/recipe/${day}/${meal}`);
+    const searchParams = new URLSearchParams(window.location.search);
+    const fromVal = searchParams.get("from");
+    const query = fromVal ? `?from=${fromVal}` : "";
+    navigate(`/recipe/${day}/${meal}${query}`);
   };
 
   // Fetch the current globally stored plan from the Express backend on mount
@@ -943,6 +997,20 @@ export default function App() {
               >
                 Lista Compra
               </button>
+              <button
+                type="button"
+                disabled={!plan}
+                onClick={() => {
+                  navigate("/batch-cooking");
+                }}
+                className={`text-xs font-black px-3.5 py-2 rounded-xl transition duration-150 cursor-pointer ${
+                  activeTab === "batch-cooking"
+                    ? "text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 font-bold"
+                    : "text-slate-500 dark:text-zinc-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-gray-50/50 dark:hover:bg-zinc-800 disabled:opacity-40 disabled:cursor-not-allowed"
+                }`}
+              >
+                Batch Cooking
+              </button>
             </nav>
           </div>
 
@@ -1143,7 +1211,12 @@ export default function App() {
                 metadata={metadata}
                 onNavigate={handleSelectRecipe}
                 onGoBack={() => {
-                  navigate("/calendar");
+                  const searchParams = new URLSearchParams(window.location.search);
+                  if (searchParams.get("from") === "batch-cooking") {
+                    navigate("/batch-cooking");
+                  } else {
+                    navigate("/calendar");
+                  }
                 }}
                 completedRecipes={completedRecipes}
                 onToggleComplete={handleToggleCompleteRecipe}
@@ -1157,12 +1230,25 @@ export default function App() {
                 day={inactiveRecipeDetail.day}
                 meal={inactiveRecipeDetail.meal}
                 recipe={inactiveRecipeDetail.recipe}
-                plan={null}
-                metadata={null}
+                plan={inactiveRecipeDetail.plan || null}
+                metadata={inactiveRecipeDetail.metadata || null}
+                activePlan={plan}
+                onNavigate={(day, meal, recipe) => {
+                  const searchParams = new URLSearchParams(window.location.search);
+                  const fromVal = searchParams.get("from");
+                  const fromQuery = fromVal ? `&from=${fromVal}` : "";
+                  navigate(`/recipe/${day}/${meal}?v=${inactiveRecipeDetail.planId}${fromQuery}`);
+                }}
+                onNavigateActive={handleSelectRecipe}
                 onGoBack={() => {
+                  const searchParams = new URLSearchParams(window.location.search);
                   setInactiveRecipeDetail(null);
                   setIsViewingActivePlan(true);
-                  navigate("/calendar");
+                  if (searchParams.get("from") === "batch-cooking") {
+                    navigate("/batch-cooking");
+                  } else {
+                    navigate("/calendar");
+                  }
                 }}
                 completedRecipes={{}}
                 onToggleComplete={() => {}}
@@ -1198,6 +1284,14 @@ export default function App() {
 
             {activeTab === "grocery" && (
               <GroceryList plan={plan} />
+            )}
+
+            {activeTab === "batch-cooking" && (
+              <BatchCooking 
+                plan={plan} 
+                metadata={metadata} 
+                onSelectRecipe={(day, meal, rec) => navigate(`/recipe/${day}/${meal}?from=batch-cooking`)} 
+              />
             )}
 
           </div>
@@ -1288,6 +1382,19 @@ export default function App() {
         >
           <span className="material-symbols-outlined text-[22px]">shopping_basket</span>
           <span className="text-[10px] tracking-tight mt-0.5 font-bold">Lista Compra</span>
+        </button>
+        <button
+          type="button"
+          disabled={!plan}
+          onClick={() => handleSetActiveTab("batch-cooking")}
+          className={`flex flex-col items-center justify-center flex-1 h-full transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+            activeTab === "batch-cooking"
+              ? "text-emerald-600 dark:text-emerald-400 font-extrabold"
+              : "text-slate-400 hover:text-emerald-600 dark:text-zinc-500 dark:hover:text-emerald-400"
+          }`}
+        >
+          <span className="material-symbols-outlined text-[22px]">outdoor_grill</span>
+          <span className="text-[10px] tracking-tight mt-0.5 font-bold">Batch Cooking</span>
         </button>
       </nav>
 

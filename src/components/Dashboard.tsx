@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { PlanMetadata, MealPlan } from "../types";
 import ConfirmationModal from "./ConfirmationModal";
+import DuplicatePlanModal from "./DuplicatePlanModal";
 
 interface DashboardProps {
   metadata: PlanMetadata | null;
@@ -48,6 +49,8 @@ export default function Dashboard({
     showCancel?: boolean;
     onConfirm: () => void;
   } | null>(null);
+  const [duplicatePlan, setDuplicatePlan] = useState<{ id: number; fileName: string; isActive: boolean } | null>(null);
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -299,8 +302,10 @@ export default function Dashboard({
     fileInputRef.current?.click();
   };
 
-  const handleUploadAndProcess = async () => {
+  const handleUploadAndProcess = async (forceParam: any = false) => {
     if (!selectedFile) return;
+
+    const force = forceParam === true;
 
     setIsProcessing(true);
     setProgress(0);
@@ -355,7 +360,8 @@ export default function Dashboard({
         },
         body: JSON.stringify({
           fileName: selectedFile.name,
-          fileData: fileData
+          fileData: fileData,
+          force: force
         }),
         signal: controller.signal
       });
@@ -377,6 +383,14 @@ export default function Dashboard({
       }
 
       const data = await response.json();
+
+      if (data.duplicateDetected) {
+        clearInterval(progressInterval);
+        setIsProcessing(false);
+        setDuplicatePlan(data.existingPlan);
+        setShowDuplicateModal(true);
+        return;
+      }
 
       clearInterval(progressInterval);
       setProgress(100);
@@ -552,16 +566,32 @@ export default function Dashboard({
                   <span className="animate-spin material-symbols-outlined text-[16px]">sync</span>
                   Procesando...
                 </div>
+              ) : selectedFile ? (
+                <div className="flex items-center gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedFile(null)}
+                    className="inline-flex items-center gap-2 px-5 py-3 rounded-full text-sm font-semibold tracking-tight border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 transition-all duration-200 cursor-pointer active:scale-95 dark:border-red-950/40 dark:bg-red-950/20 dark:text-red-400 dark:hover:bg-red-950"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">close</span>
+                    Quitar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleUploadAndProcess}
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-[#0f5238] hover:bg-[#116c4a] text-white font-semibold rounded-full text-sm tracking-tight transition-all duration-200 cursor-pointer active:scale-95"
+                  >
+                    <span className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                      auto_awesome
+                    </span>
+                    Procesar con IA
+                  </button>
+                </div>
               ) : (
                 <button
                   type="button"
-                  disabled={!selectedFile}
-                  onClick={handleUploadAndProcess}
-                  className={`inline-flex items-center gap-2 px-6 py-3 rounded-full text-sm font-semibold tracking-tight transition-all duration-200 ${
-                    selectedFile
-                      ? "bg-[#0f5238] hover:bg-[#116c4a] text-white cursor-pointer active:scale-95"
-                      : "bg-gray-100 dark:bg-[#27272a] text-gray-300 dark:text-zinc-600 cursor-not-allowed"
-                  }`}
+                  disabled
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-sm font-semibold tracking-tight transition-all duration-200 bg-gray-100 dark:bg-[#27272a] text-gray-300 dark:text-zinc-600 cursor-not-allowed"
                 >
                   <span className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: "'FILL' 1" }}>
                     auto_awesome
@@ -895,6 +925,27 @@ export default function Dashboard({
           </div>
         </div>
       )}
+
+      <DuplicatePlanModal
+        isOpen={showDuplicateModal}
+        fileName={duplicatePlan?.fileName || ""}
+        isActive={!!duplicatePlan?.isActive}
+        onUseExisting={() => {
+          if (duplicatePlan) {
+            handleRestoreHistory(duplicatePlan.id);
+            setShowDuplicateModal(false);
+            setDuplicatePlan(null);
+          }
+        }}
+        onReprocess={() => {
+          setShowDuplicateModal(false);
+          handleUploadAndProcess(true);
+        }}
+        onCancel={() => {
+          setShowDuplicateModal(false);
+          setDuplicatePlan(null);
+        }}
+      />
 
       <ConfirmationModal
         isOpen={!!confirmation}

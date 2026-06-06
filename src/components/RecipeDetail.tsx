@@ -43,6 +43,8 @@ interface RecipeDetailProps {
   onToggleDayComplete: (day: DayType, meals: MealType[], targetState: boolean) => void;
   isPlanActive?: boolean;
   onRestorePlan?: () => void;
+  activePlan?: MealPlan | null;
+  onNavigateActive?: (day: DayType, meal: MealType, recipe: Recipe) => void;
 }
 
 export default function RecipeDetail({
@@ -59,7 +61,13 @@ export default function RecipeDetail({
   onToggleDayComplete,
   isPlanActive = true,
   onRestorePlan,
+  activePlan,
+  onNavigateActive,
 }: RecipeDetailProps) {
+  const searchParams = new URLSearchParams(window.location.search);
+  const isFromBatchCooking = searchParams.get("from") === "batch-cooking";
+  const backLabel = isFromBatchCooking ? "Volver a Batch Cooking" : "Volver al Calendario";
+
   // Ratio defaults to 1 ración (base)
   const [multiplier, setMultiplier] = useState<number>(1);
   const [customInput, setCustomInput] = useState<string>("1");
@@ -474,6 +482,19 @@ export default function RecipeDetail({
     });
   }
 
+  const activePlanRecipes: { day: DayType; meal: MealType; recipe: Recipe }[] = [];
+  const planForNextMeal = isPlanActive ? plan : activePlan;
+  if (planForNextMeal) {
+    orderedDays.forEach((d) => {
+      orderedMeals.forEach((m) => {
+        const r = planForNextMeal.days[d]?.[m];
+        if (r) {
+          activePlanRecipes.push({ day: d, meal: m, recipe: r });
+        }
+      });
+    });
+  }
+
   const currentIndex = activeRecipes.findIndex(
     (item) => item.day === day && item.meal === meal
   );
@@ -488,7 +509,7 @@ export default function RecipeDetail({
   };
 
   const getNextMealRecipe = () => {
-    if (activeRecipes.length === 0) return null;
+    if (activePlanRecipes.length === 0) return null;
 
     const dayKeysInOrder: DayType[] = ["domingo", "lunes", "martes", "miercoles", "jueves", "viernes", "sabado"];
     const localDayNum = new Date().getDay();
@@ -510,9 +531,9 @@ export default function RecipeDetail({
 
     const targetWeight = getSequenceValue(targetDay, targetMeal);
 
-    let bestMatch = activeRecipes.find(item => getSequenceValue(item.day, item.meal) >= targetWeight);
+    let bestMatch = activePlanRecipes.find(item => getSequenceValue(item.day, item.meal) >= targetWeight);
     if (!bestMatch) {
-      bestMatch = activeRecipes[0];
+      bestMatch = activePlanRecipes[0];
     }
     return bestMatch;
   };
@@ -760,6 +781,32 @@ export default function RecipeDetail({
     );
   };
 
+  const renderHistoricalWarning = () => {
+    return (
+      <div className="bg-amber-50 dark:bg-amber-950/25 border border-amber-200/70 dark:border-amber-800/40 rounded-2xl p-5 text-left">
+        <div className="flex items-start gap-3">
+          <span className="material-symbols-outlined text-amber-500 dark:text-amber-400 text-[22px] shrink-0 mt-0.5">history</span>
+          <div className="flex-1 min-w-0">
+            <h3 className="text-xs font-extrabold text-amber-800 dark:text-amber-300 uppercase tracking-wider mb-1">Plan Histórico</h3>
+            <p className="text-[11px] text-amber-700 dark:text-amber-400 leading-relaxed">
+              Esta receta pertenece a un plan anterior. Puedes consultar todos los detalles, ajustar raciones y compartirla, pero no podrás marcarla como completada.
+            </p>
+            {onRestorePlan && (
+              <button
+                type="button"
+                onClick={() => setShowRestoreConfirmation(true)}
+                className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-bold text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/40 hover:bg-amber-200 dark:hover:bg-amber-800/50 border border-amber-300/60 dark:border-amber-700/40 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[14px]">restore</span>
+                Restaurar plan
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderSidebarContent = (showOnly?: 'adjust' | 'share') => {
     const showAdjust = !showOnly || showOnly === 'adjust';
     const showShare = !showOnly || showOnly === 'share';
@@ -767,32 +814,7 @@ export default function RecipeDetail({
       <div className="space-y-6">
         {/* Progreso Semanal / Completar Receta Panel */}
         {showAdjust && !showOnly && (
-          isPlanActive ? (
-            renderCompletionPanel()
-          ) : (
-            /* Read-only banner for inactive/historical plans */
-            <div className="bg-amber-50 dark:bg-amber-950/25 border border-amber-200/70 dark:border-amber-800/40 rounded-2xl p-5 text-left">
-              <div className="flex items-start gap-3">
-                <span className="material-symbols-outlined text-amber-500 dark:text-amber-400 text-[22px] shrink-0 mt-0.5">history</span>
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-xs font-extrabold text-amber-800 dark:text-amber-300 uppercase tracking-wider mb-1">Plan Histórico</h3>
-                  <p className="text-[11px] text-amber-700 dark:text-amber-400 leading-relaxed">
-                    Esta receta pertenece a un plan anterior. Puedes consultar todos los detalles, ajustar raciones y compartirla, pero no podrás marcarla como completada.
-                  </p>
-                  {onRestorePlan && (
-                    <button
-                      type="button"
-                      onClick={() => setShowRestoreConfirmation(true)}
-                      className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-bold text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/40 hover:bg-amber-200 dark:hover:bg-amber-800/50 border border-amber-300/60 dark:border-amber-700/40 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
-                    >
-                      <span className="material-symbols-outlined text-[14px]">restore</span>
-                      Restaurar plan
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          )
+          isPlanActive ? renderCompletionPanel() : renderHistoricalWarning()
         )}
 
         {/* Raciones Ajustables */}
@@ -1031,7 +1053,7 @@ export default function RecipeDetail({
   };
 
   const renderMealNavigator = (isMobileSticky = false) => {
-    if (activeRecipes.length === 0) return null;
+    if (!isPlanActive || activeRecipes.length === 0) return null;
 
     const dayMealsRef = isMobileSticky ? bottomDayMealsDropdownRef : topDayMealsDropdownRef;
     const allRecipesRef = isMobileSticky ? bottomAllRecipesDropdownRef : topAllRecipesDropdownRef;
@@ -1235,17 +1257,19 @@ export default function RecipeDetail({
             type="button"
             onClick={onGoBack}
             className="inline-flex items-center justify-center p-2.5 md:px-3.5 md:py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-600 hover:text-emerald-700 dark:text-zinc-300 dark:hover:text-emerald-400 transition duration-200 cursor-pointer font-bold text-xs shadow-sm"
-            title="Volver al Calendario"
+            title={backLabel}
           >
             <span className="material-symbols-outlined text-[16px]">arrow_back</span>
-            <span className="hidden md:inline ml-1.5">Volver al Calendario</span>
+            <span className="hidden md:inline ml-1.5">{backLabel}</span>
           </button>
 
           {nextMeal && (
             <button
               type="button"
               onClick={() => {
-                if (onNavigate) {
+                if (onNavigateActive) {
+                  onNavigateActive(nextMeal.day, nextMeal.meal, nextMeal.recipe);
+                } else if (onNavigate) {
                   onNavigate(nextMeal.day, nextMeal.meal, nextMeal.recipe);
                 }
               }}
@@ -1338,25 +1362,28 @@ export default function RecipeDetail({
 
         {/* Main Ingredients detail presentation card layout */}
         <section className="lg:col-span-8 space-y-6">
-
-          {/* Botón de completar para móvil (entre la imagen de cabecera y los ingredientes) */}
+          {/* Botón de completar para móvil o warning si es histórico */}
           <div className="lg:hidden no-print">
-            <button
-              type="button"
-              onClick={() => onToggleComplete(day, meal)}
-              className={`w-full py-4 px-5 font-black text-sm rounded-2xl transition duration-200 cursor-pointer shadow-sm flex items-center justify-center gap-2 active:scale-[0.98] ${
-                isRecipeCompleted
-                  ? "bg-emerald-600 text-white border border-emerald-600 hover:bg-emerald-750 hover:border-emerald-750"
-                  : "bg-white hover:bg-slate-50 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-200 border border-slate-200 dark:border-zinc-800"
-              }`}
-            >
-              <span className="w-6 h-6 flex items-center justify-center shrink-0">
-                <span className="material-symbols-outlined text-[20px] font-black">
-                  {isRecipeCompleted ? "check_circle" : "circle"}
+            {isPlanActive ? (
+              <button
+                type="button"
+                onClick={() => onToggleComplete(day, meal)}
+                className={`w-full py-4 px-5 font-black text-sm rounded-2xl transition duration-200 cursor-pointer shadow-sm flex items-center justify-center gap-2 active:scale-[0.98] ${
+                  isRecipeCompleted
+                    ? "bg-emerald-600 text-white border border-emerald-600 hover:bg-emerald-750 hover:border-emerald-750"
+                    : "bg-white hover:bg-slate-50 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-200 border border-slate-200 dark:border-zinc-800"
+                }`}
+              >
+                <span className="w-6 h-6 flex items-center justify-center shrink-0">
+                  <span className="material-symbols-outlined text-[20px] font-black">
+                    {isRecipeCompleted ? "check_circle" : "circle"}
+                  </span>
                 </span>
-              </span>
-              <span>Marcar como completado</span>
-            </button>
+                <span>Marcar como completado</span>
+              </button>
+            ) : (
+              renderHistoricalWarning()
+            )}
           </div>
 
           <div className="bg-white dark:bg-zinc-900 p-6 md:p-8 rounded-3xl border border-slate-200/50 dark:border-zinc-800 shadow-sm text-left">
@@ -1606,9 +1633,11 @@ export default function RecipeDetail({
           </div>
 
           {/* Mobile-only inline completion panel at the very bottom */}
-          <div className="lg:hidden mt-6 no-print">
-            {renderCompletionPanel()}
-          </div>
+          {isPlanActive && (
+            <div className="lg:hidden mt-6 no-print">
+              {renderCompletionPanel()}
+            </div>
+          )}
 
         </section>
 
@@ -1658,9 +1687,11 @@ export default function RecipeDetail({
 
 
       {/* Mobile Sticky Bottom Recipe Switcher - positioned exactly above the mobile appbar (bottom-16) */}
-      <div className="recipe-bottom-switcher fixed bottom-16 left-0 right-0 z-40 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border-t border-slate-200/50 dark:border-zinc-800 p-2.5 md:hidden shadow-lg flex justify-center no-print">
-        {renderMealNavigator(true)}
-      </div>
+      {isPlanActive && activeRecipes.length > 0 && (
+        <div className="recipe-bottom-switcher fixed bottom-16 left-0 right-0 z-40 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border-t border-slate-200/50 dark:border-zinc-800 p-2.5 md:hidden shadow-lg flex justify-center no-print">
+          {renderMealNavigator(true)}
+        </div>
+      )}
 
       {/* Progress recipes list modal overlay */}
       {showProgressModal && plan && (

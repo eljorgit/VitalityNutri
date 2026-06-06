@@ -1,6 +1,7 @@
 import express from "express";
 import path from "path";
 import fs from "fs";
+import crypto from "crypto";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
@@ -10,7 +11,7 @@ import { createApi } from "unsplash-js";
 
 import { DEFAULT_MEAL_PLAN, DEFAULT_PLAN_METADATA } from "./src/defaultData.js";
 import { MealPlan, PlanMetadata } from "./src/types.js";
-import { getPlan, savePlan, resetPlan, updateRecipe, getHistory, restorePlanFromHistory, deleteHistoryItem, getGroceryListState, saveGroceryListState, getCompletedRecipes, saveCompletedRecipes, getSearchHistory, addSearchHistoryItem, deleteSearchHistoryItem, clearSearchHistory } from "./src/db.js";
+import { getPlan, savePlan, resetPlan, updateRecipe, getHistory, restorePlanFromHistory, deleteHistoryItem, getGroceryListState, saveGroceryListState, getCompletedRecipes, saveCompletedRecipes, getSearchHistory, addSearchHistoryItem, deleteSearchHistoryItem, clearSearchHistory, getBatchCooking, saveBatchCooking, resetBatchCooking, findPlanByHash } from "./src/db.js";
 
 dotenv.config();
 
@@ -452,6 +453,207 @@ app.post("/api/completed-recipes", (req, res) => {
   res.json({ success: true });
 });
 
+/**
+ * Helper to upload meal plan data and get a customized batch cooking timeline using Gemini AI
+ */
+async function generateBatchCookingWithGemini(mealPlan: MealPlan, params: any): Promise<any> {
+  if (!ai) {
+    throw new Error("La API de Gemini no está configurada.");
+  }
+
+  // Construct parameter description
+  const burnersText = `${params.burnersCount} fuegos activos simultáneamente`;
+  const appliancesList: string[] = [];
+  if (params.hasOven) appliancesList.push("Horno");
+  if (params.hasMicrowave) appliancesList.push("Microondas");
+  if (params.hasAirfryer) appliancesList.push("Freidora de Aire (Airfryer)");
+  if (params.hasRobot) appliancesList.push("Robot de Cocina (Thermomix o similar)");
+  const appliancesText = appliancesList.length > 0 
+    ? appliancesList.join(", ") 
+    : "Ningún electrodoméstico adicional (solo fuegos)";
+  
+  const customToolsText = params.customTools && params.customTools.trim() !== "" 
+    ? params.customTools.trim() 
+    : "Ninguno";
+
+  // Filter only almuerzo and cena (lunches and dinners) for each day
+  const daysKeys = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"] as const;
+  const filteredDays: any = {};
+  for (const d of daysKeys) {
+    filteredDays[d] = {
+      almuerzo: mealPlan.days[d]?.almuerzo,
+      cena: mealPlan.days[d]?.cena
+    };
+  }
+
+  const prompt = `
+Eres un Chef Profesional y Asesor Experto en "Batch Cooking" (cocinado por lotes).
+Tu tarea es analizar el plan de comidas (ALMUERZOS y CENAS) de la semana y diseñar una guía de preparación secuencial y optimizada para cocinar todas las recetas de una sola vez en aproximadamente 2 horas.
+
+INFORMACIÓN DE LA COCINA DEL USUARIO (CRÍTICO: Debes adaptarte estrictamente a estos límites):
+1. Fuegos/Hornillas disponibles simultáneamente: ${burnersText}.
+   *¡ATENCIÓN! No planifiques pasos que requieran usar más fuegos de los disponibles a la vez.*
+2. Electrodomésticos disponibles: ${appliancesText}.
+   *Aprovecha estos electrodomésticos para realizar cocciones paralelas (ej. hornear algo mientras se hace un guiso al fuego).*
+3. Herramientas adicionales disponibles: ${customToolsText}.
+
+EL PLAN DE COMIDAS A PREPARAR ES:
+${JSON.stringify(filteredDays)}
+
+INSTRUCCIONES DE DISEÑO DE LA GUÍA (CRÍTICO Y DETALLADO):
+1. Sé extremadamente específico y descriptivo en las instrucciones de cada paso.
+   * EVITA terminantemente frases genéricas como "lava todos los vegetales", "corta las verduras de la semana" o "pica las cebollas y ajos necesarios".
+   * EVITA expresiones vagas como "en sus respectivos formatos", "según corresponda" o "preparado como se indica". Debes especificar exactamente CÓMO cortar, formatear o porcionar cada ingrediente y a qué receta va destinada cada porción (ej. en lugar de decir "670g de pechuga de pollo en sus respectivos formatos", di "Cortar 670g de pechuga de pollo de la siguiente manera: 200g en tiras para las Fajitas, 300g en dados para el Wok de verduras y 170g en filetes delgados para la Ensalada César").
+   * En su lugar, especifica detalladamente los ingredientes exactos y sus cantidades requeridas en ese paso (ej. "Lavar y desinfectar 3 tazas de hojas de espinaca, 2 calabacines medianos y 500g de tomates cherry", o "Picar finamente 2 cebollas moradas, 4 dientes de ajo y 1 pimiento rojo...").
+2. Estructura el plan en pasos lógicos secuenciales (Paso 1, Paso 2, etc.). Cada paso debe tener:
+   - "stepNumber" (número correlativo).
+   - "title" (título descriptivo y conciso, ej. "Mise en place de verduras", "Horneado de salmón").
+   - "description" (descripción muy detallada y paso a paso indicando tiempos, temperaturas de cocción, etc.).
+   - "duration" (ej. "15 min").
+   - "utensils" (utensilios y electrodomésticos usados).
+   - "recipesAffected" (nombres exactos de las recetas afectadas).
+   - "ingredients" (un array de strings con los ingredientes y cantidades que se manipulan o cocinan específicamente en este paso, ej. ["2 cebollas medianas", "4 dientes de ajo", "500g de calabacín", "1 cda de aceite de oliva"]).
+3. Diseña una línea de tiempo fluida y coordinada para optimizar los tiempos de espera (Mise en Place al inicio, luego cocciones lentas/horno, y cocciones rápidas al final).
+4. Genera una lista estructurada de consejos de almacenamiento y envasado ("storageTips") detallando cómo conservar cada preparación principal resultante.
+
+Debes responder ÚNICA Y EXCLUSIVAMENTE con un código JSON válido estructurado según el siguiente esquema TypeScript:
+
+interface StorageTip {
+  preparation: string;       // Tipo de preparación (ej. "Sofrito base", "Cremas y sopas", "Verduras asadas", "Pollo/Proteínas asadas")
+  container: string;         // Tipo de envase recomendado (ej. "Túper de vidrio hermético", "Bolsa de silicona con cierre zip", "Tarro de cristal para vacío")
+  duration: string;          // Tiempo de conservación en nevera y congelador (ej. "3-4 días en nevera / No congelar" o "4 días en nevera / 3 meses en congelador")
+  freezable: boolean;        // true si se puede congelar, false si no
+  reheatingAndTips: string;  // Consejos detallados de recalentado y conservación para conservar textura y sabor (ej. "Recalentar en sartén tapada con una cucharada de agua para devolver humedad.")
+}
+
+interface BatchCookingStep {
+  stepNumber: number;
+  title: string;
+  description: string;
+  duration: string;
+  utensils: string[];
+  recipesAffected: string[];
+  ingredients: string[]; // Ingredientes específicos de este paso con sus cantidades exactas
+}
+
+interface BatchCookingGuide {
+  introduction: string;
+  prepTime: string; // Tiempo total estimado (ej. "2 horas", "1h 45 min")
+  steps: BatchCookingStep[];
+  storageTips: StorageTip[]; // Detalle estructurado de conservación
+}
+
+Restricciones:
+- Genera el JSON en formato compacto/minificado.
+- Devuelve únicamente el JSON crudo, sin bloques de código conversacionales ni explicaciones iniciales/finales.
+`;
+
+  const response = await ai.models.generateContent({
+    model: "gemini-3.5-flash",
+    contents: prompt,
+    config: {
+      responseMimeType: "application/json",
+      temperature: 0.2,
+    }
+  });
+
+  const textResponse = response.text;
+  if (!textResponse) {
+    throw new Error("No se pudo obtener una respuesta legible de Gemini.");
+  }
+
+  return JSON.parse(textResponse.trim());
+}
+
+// Endpoint to fetch cached batch cooking guide for the active plan
+app.get("/api/plan/batch-cooking", (req, res) => {
+  try {
+    const active = getPlan();
+    if (!active.plan) {
+      return res.status(400).json({ error: "No hay ningún plan activo cargado." });
+    }
+    const { guide, params } = getBatchCooking();
+    res.json({
+      guide: guide ? JSON.parse(guide) : null,
+      params: params ? JSON.parse(params) : null
+    });
+  } catch (error: any) {
+    console.error("Error fetching batch cooking state:", error);
+    res.status(500).json({ error: "No se pudo recuperar la guía de cocinado." });
+  }
+});
+
+// Endpoint to generate and save batch cooking guide for the active plan
+app.post("/api/plan/batch-cooking", async (req, res) => {
+  try {
+    const active = getPlan();
+    if (!active.plan) {
+      return res.status(400).json({ error: "No hay ningún plan activo cargado." });
+    }
+
+    const { params: clientParams, forceRegenerate } = req.body;
+    if (!clientParams) {
+      return res.status(400).json({ error: "Faltan los parámetros de la cocina." });
+    }
+
+    const { guide: cachedGuide, params: cachedParamsStr } = getBatchCooking();
+
+    // Check if parameters match exactly and we are not forcing regeneration
+    let paramsMatch = false;
+    if (cachedParamsStr && !forceRegenerate) {
+      try {
+        const cachedParams = JSON.parse(cachedParamsStr);
+        paramsMatch = 
+          cachedParams.burnersCount === clientParams.burnersCount &&
+          cachedParams.hasOven === clientParams.hasOven &&
+          cachedParams.hasMicrowave === clientParams.hasMicrowave &&
+          cachedParams.hasAirfryer === clientParams.hasAirfryer &&
+          cachedParams.hasRobot === clientParams.hasRobot &&
+          String(cachedParams.customTools || "").trim() === String(clientParams.customTools || "").trim();
+      } catch (_) {}
+    }
+
+    if (cachedGuide && paramsMatch && !forceRegenerate) {
+      console.log("[BatchCooking] Serving cached batch cooking guide.");
+      return res.json({
+        success: true,
+        guide: JSON.parse(cachedGuide),
+        params: JSON.parse(cachedParamsStr!)
+      });
+    }
+
+    console.log("[BatchCooking] Generating new batch cooking guide with Gemini...");
+    const guideJson = await generateBatchCookingWithGemini(active.plan, clientParams);
+    
+    // Save to database
+    saveBatchCooking(JSON.stringify(guideJson), JSON.stringify(clientParams));
+
+    res.json({
+      success: true,
+      guide: guideJson,
+      params: clientParams
+    });
+  } catch (error: any) {
+    console.error("Error generating/saving batch cooking:", error);
+    res.status(500).json({ error: "No se pudo generar la guía de Batch Cooking. Detalles: " + error.message });
+  }
+});
+
+// Endpoint to reset batch cooking guide for the active plan
+app.post("/api/plan/batch-cooking/reset", (req, res) => {
+  try {
+    const active = getPlan();
+    if (!active.plan) {
+      return res.status(400).json({ error: "No hay ningún plan activo cargado." });
+    }
+    resetBatchCooking();
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error("Error resetting batch cooking state:", error);
+    res.status(500).json({ error: "No se pudo resetear la guía de cocinado." });
+  }
+});
+
 // 4. Endpoint to upload & process nutrition plan PDF with Gemini AI
 app.post("/api/upload", async (req, res) => {
   const { fileName, fileData } = req.body; // fileData is base64 string
@@ -484,6 +686,26 @@ app.post("/api/upload", async (req, res) => {
   });
 
   try {
+    // Compute the hash of the uploaded PDF
+    const fileHash = crypto.createHash("sha256").update(Buffer.from(fileData, "base64")).digest("hex");
+
+    // Check for duplicates unless force is requested
+    const force = req.body.force === true || req.body.forceReprocess === true;
+    if (!force) {
+      const existing = findPlanByHash(fileHash);
+      if (existing) {
+        responseSent = true;
+        return res.json({
+          duplicateDetected: true,
+          existingPlan: {
+            id: existing.id,
+            fileName: existing.file_name,
+            isActive: existing.is_active
+          }
+        });
+      }
+    }
+
     // Save the PDF file physically
     const uploadsDir = path.join(process.cwd(), "data", "uploads");
     if (!fs.existsSync(uploadsDir)) {
@@ -508,7 +730,7 @@ app.post("/api/upload", async (req, res) => {
     };
 
     // Persist the plan and metadata to the SQLite database
-    savePlan(mealPlan, planMetadata, savedFileName);
+    savePlan(mealPlan, planMetadata, savedFileName, fileHash);
 
     responseSent = true;
     res.json({
@@ -771,6 +993,10 @@ app.post("/api/reprocess", async (req, res) => {
       return res.status(404).json({ error: `No se encontró el archivo original ${fileName} en el servidor.` });
     }
 
+    // Read the physical file buffer and compute hash
+    const fileBuffer = fs.readFileSync(filePath);
+    const fileHash = crypto.createHash("sha256").update(fileBuffer).digest("hex");
+
     // Process using helper
     const mealPlan = await processPDFWithGemini(filePath);
 
@@ -781,8 +1007,8 @@ app.post("/api/reprocess", async (req, res) => {
       processedAt: new Date().toISOString()
     };
 
-    // Save back
-    savePlan(mealPlan, planMetadata, savedFileName);
+    // Save back with hash
+    savePlan(mealPlan, planMetadata, savedFileName, fileHash);
 
     res.json({
       success: true,
@@ -975,13 +1201,13 @@ async function setupVite() {
     });
     
     // Serve page requests with dynamic metadata in development
-    app.get(["/", "/dashboard", "/calendar", "/grocery", "/recipe/:day/:meal"], handlePageRequest);
+    app.get(["/", "/dashboard", "/calendar", "/grocery", "/batch-cooking", "/recipe/:day/:meal"], handlePageRequest);
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), "dist");
     
     // Serve page requests with dynamic metadata in production
-    app.get(["/", "/dashboard", "/calendar", "/grocery", "/recipe/:day/:meal"], handlePageRequest);
+    app.get(["/", "/dashboard", "/calendar", "/grocery", "/batch-cooking", "/recipe/:day/:meal"], handlePageRequest);
     app.use(express.static(distPath));
     app.get("*", handlePageRequest);
   }
