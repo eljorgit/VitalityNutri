@@ -1261,8 +1261,8 @@ export default function RecipeDetail({
       onTouchEnd={handleTouchEnd}
     >
 
-      {/* Recipe Navigation Bar - static header on mobile and desktop */}
-      <div className="flex flex-row items-center justify-between gap-4 md:grid md:grid-cols-2 md:gap-y-3.5 md:items-center lg:flex lg:flex-row lg:items-center lg:justify-between lg:gap-4 border-b border-slate-200/50 dark:border-zinc-800 pb-4 no-print select-none">
+      {/* Recipe Navigation Bar - sticky header on desktop */}
+      <div className="flex flex-row items-center justify-between gap-4 md:grid md:grid-cols-2 md:gap-y-3.5 md:items-center lg:flex lg:flex-row lg:items-center lg:justify-between lg:gap-4 md:sticky md:top-16 z-30 bg-slate-50/95 dark:bg-zinc-950/95 backdrop-blur-md pt-4 pb-4 -mt-4 border-b border-slate-200/50 dark:border-zinc-800 no-print select-none">
 
         {/* Go back trigger and Next Meal helper */}
         <div className="flex items-center gap-2 order-1">
