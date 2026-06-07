@@ -555,6 +555,11 @@ export default function RecipeDetail({
   const [selectedIngCategory, setSelectedIngCategory] = useState<string>("Todo");
   const [selectedStepCategory, setSelectedStepCategory] = useState<string>("Todo");
 
+  const syncCategory = (cat: string) => {
+    setSelectedIngCategory(cat);
+    setSelectedStepCategory(cat);
+  };
+
   // Reset selected categories and checklists when recipe changes
   React.useEffect(() => {
     setSelectedIngCategory("Todo");
@@ -1415,7 +1420,7 @@ export default function RecipeDetail({
               <div className="flex flex-wrap gap-1.5 mb-5 select-none bg-slate-50 dark:bg-zinc-950 p-1.5 rounded-2xl border border-slate-100 dark:border-zinc-800/60 w-max max-w-full">
                 <button
                   type="button"
-                  onClick={() => setSelectedIngCategory("Todo")}
+                  onClick={() => syncCategory("Todo")}
                   className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer ${selectedIngCategory === "Todo"
                     ? "bg-emerald-600 text-white shadow-sm"
                     : "text-slate-600 hover:text-emerald-600 dark:text-zinc-400 dark:hover:text-emerald-400 hover:bg-white dark:hover:bg-zinc-900"
@@ -1427,7 +1432,7 @@ export default function RecipeDetail({
                   <button
                     key={catKey}
                     type="button"
-                    onClick={() => setSelectedIngCategory(catKey)}
+                    onClick={() => syncCategory(catKey)}
                     className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer ${selectedIngCategory === catKey
                       ? "bg-emerald-600 text-white shadow-sm"
                       : "text-slate-600 hover:text-emerald-600 dark:text-zinc-400 dark:hover:text-emerald-400 hover:bg-white dark:hover:bg-zinc-900"
@@ -1565,7 +1570,7 @@ export default function RecipeDetail({
               <div className="flex flex-wrap gap-1.5 mb-5 select-none bg-slate-50 dark:bg-zinc-950 p-1.5 rounded-2xl border border-slate-100 dark:border-zinc-800/60 w-max max-w-full">
                 <button
                   type="button"
-                  onClick={() => setSelectedStepCategory("Todo")}
+                  onClick={() => syncCategory("Todo")}
                   className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer ${selectedStepCategory === "Todo"
                     ? "bg-emerald-600 text-white shadow-sm"
                     : "text-slate-600 hover:text-emerald-600 dark:text-zinc-400 dark:hover:text-emerald-400 hover:bg-white dark:hover:bg-zinc-900"
@@ -1577,7 +1582,7 @@ export default function RecipeDetail({
                   <button
                     key={catKey}
                     type="button"
-                    onClick={() => setSelectedStepCategory(catKey)}
+                    onClick={() => syncCategory(catKey)}
                     className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer ${selectedStepCategory === catKey
                       ? "bg-emerald-600 text-white shadow-sm"
                       : "text-slate-600 hover:text-emerald-600 dark:text-zinc-400 dark:hover:text-emerald-400 hover:bg-white dark:hover:bg-zinc-900"
