@@ -716,7 +716,7 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, compl
               <button
                 type="button"
                 onClick={() => setShowProgressModal(false)}
-                className="w-8 h-8 rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-zinc-800/50 dark:hover:bg-zinc-850 text-slate-450 hover:text-slate-700 dark:hover:text-zinc-200 transition duration-200 cursor-pointer flex items-center justify-center border border-slate-200/50 dark:border-zinc-700/50 shadow-xs"
+                className="w-8 h-8 rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-zinc-800/50 dark:hover:bg-zinc-800 text-slate-400 hover:text-slate-700 dark:hover:text-zinc-200 transition duration-200 cursor-pointer flex items-center justify-center border border-slate-200/50 dark:border-zinc-700/50 shadow-xs"
               >
                 <span className="material-symbols-outlined text-[18px]">close</span>
               </button>
@@ -760,7 +760,7 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, compl
                               isFocused
                                 ? "bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-500 ring-2 ring-emerald-500/20 shadow-xs"
                                 : isCompleted
-                                  ? "bg-emerald-50/20 dark:bg-emerald-950/10 border-emerald-500/20 text-slate-855 dark:text-zinc-250"
+                                  ? "bg-emerald-50/20 dark:bg-emerald-950/10 border-emerald-500/20 text-slate-800 dark:text-zinc-250"
                                   : "bg-slate-50/50 hover:bg-slate-100/50 dark:bg-zinc-950/20 dark:hover:bg-zinc-800/40 border-transparent hover:border-emerald-600/10 text-slate-700 dark:text-zinc-350"
                             }`}
                           >

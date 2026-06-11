@@ -4,6 +4,8 @@ import CalendarGrid from "./components/CalendarGrid";
 import RecipeDetail from "./components/RecipeDetail";
 import GroceryList from "./components/GroceryList";
 import BatchCooking from "./components/BatchCooking";
+import Recetario from "./components/Recetario";
+import RecipeForm from "./components/RecipeForm";
 import ConfirmationModal, { ConfirmationVariant } from "./components/ConfirmationModal";
 import { MealPlan, PlanMetadata, DayType, MealType, Recipe } from "./types";
 import {
@@ -29,6 +31,8 @@ interface SearchRecipeItem {
   tag: string;
   image: string;
   ingredientNames: string[];
+  isRecetario?: boolean;
+  recetarioId?: number;
 }
 
 interface SearchHistoryItem {
@@ -41,6 +45,8 @@ interface SearchHistoryItem {
   image: string;
   isActive: boolean;
   clickedAt: string;
+  isRecetario?: boolean;
+  recetarioId?: number;
 }
 
 
@@ -58,6 +64,10 @@ export default function App() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [completedRecipes, setCompletedRecipes] = useState<Record<string, boolean>>({});
+
+  // --- Recetario States ---
+  const [recetarioRecipeDetail, setRecetarioRecipeDetail] = useState<Recipe | null>(null);
+  const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null);
 
   // --- Search Engine State ---
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -252,6 +262,55 @@ export default function App() {
           setPendingRecipe({ day, meal });
         }
       }
+    } else if (pathname.startsWith("/recipe-book/recipe/")) {
+      const parts = pathname.split("/");
+      if (parts.length >= 4) {
+        const id = parseInt(parts[3], 10);
+        setActiveTab("recipe-detail");
+        setSelectedRecipeDetail(null);
+        setInactiveRecipeDetail(null);
+        setRecetarioRecipeDetail(null);
+        
+        fetch(`/api/recipes/${id}`)
+          .then(r => r.json())
+          .then(data => {
+            if (data && data.recipeName) {
+              setRecetarioRecipeDetail(data);
+            }
+          })
+          .catch(err => console.error("Error loading recetario recipe:", err));
+      }
+    } else if (pathname.startsWith("/recipe-book/new")) {
+      setActiveTab("recipe-form");
+      setEditingRecipe(null);
+      setSelectedRecipeDetail(null);
+      setInactiveRecipeDetail(null);
+      setRecetarioRecipeDetail(null);
+    } else if (pathname.startsWith("/recipe-book/edit/")) {
+      const parts = pathname.split("/");
+      if (parts.length >= 4) {
+        const id = parseInt(parts[3], 10);
+        setActiveTab("recipe-form");
+        setSelectedRecipeDetail(null);
+        setInactiveRecipeDetail(null);
+        setRecetarioRecipeDetail(null);
+
+        fetch(`/api/recipes/${id}`)
+          .then(r => r.json())
+          .then(data => {
+            if (data && data.recipeName) {
+              setEditingRecipe(data);
+            }
+          })
+          .catch(err => console.error("Error loading recipe for editing:", err));
+      }
+    } else if (pathname.startsWith("/recipe-book")) {
+      setActiveTab("recetario");
+      setSelectedRecipeDetail(null);
+      setInactiveRecipeDetail(null);
+      setRecetarioRecipeDetail(null);
+      setEditingRecipe(null);
+      setIsViewingActivePlan(true);
     }
   };
 
@@ -325,7 +384,11 @@ export default function App() {
   };
 
   const handleSetActiveTab = (tab: string) => {
-    navigate(`/${tab}`);
+    if (tab === "recetario") {
+      navigate("/recipe-book");
+    } else {
+      navigate(`/${tab}`);
+    }
   };
 
   const handleSelectRecipe = (day: DayType, meal: MealType, recipe: Recipe) => {
@@ -611,24 +674,30 @@ export default function App() {
                     </p>
                     {/* Occurrence badges: one per day+meal combo */}
                     <div className="flex flex-wrap gap-1 mt-1">
-                      {item.occurrences.map((occ, oi) => (
-                        <span
-                          key={oi}
-                          onClick={e => {
-                            e.stopPropagation();
-                            registerSearchClick({ ...item, day: occ.day, meal: occ.meal, isActive: occ.isActive, planId: occ.planId });
-                            navigateToSearchResult({ ...item, day: occ.day, meal: occ.meal, isActive: occ.isActive, planId: occ.planId });
-                          }}
-                          className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md cursor-pointer transition-colors ${
-                            occ.isActive
-                              ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/50"
-                              : "bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40"
-                          }`}
-                        >
-                          {MEAL_LABELS[occ.meal] || occ.meal} · {DAY_LABELS[occ.day] || occ.day}
-                          {!occ.isActive && <span className="ml-0.5 opacity-70">(ant.)</span>}
+                      {item.isRecetario ? (
+                        <span className="text-[9px] font-black px-1.5 py-0.5 rounded-md bg-indigo-55 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-400 border border-indigo-100/30 dark:border-indigo-900/30 uppercase tracking-wider">
+                          Recetario
                         </span>
-                      ))}
+                      ) : (
+                        item.occurrences.map((occ, oi) => (
+                          <span
+                            key={oi}
+                            onClick={e => {
+                              e.stopPropagation();
+                              registerSearchClick({ ...item, day: occ.day, meal: occ.meal, isActive: occ.isActive, planId: occ.planId });
+                              navigateToSearchResult({ ...item, day: occ.day, meal: occ.meal, isActive: occ.isActive, planId: occ.planId });
+                            }}
+                            className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md cursor-pointer transition-colors ${
+                              occ.isActive
+                                ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/50"
+                                : "bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40"
+                            }`}
+                          >
+                            {MEAL_LABELS[occ.meal] || occ.meal} · {DAY_LABELS[occ.day] || occ.day}
+                            {!occ.isActive && <span className="ml-0.5 opacity-70">(ant.)</span>}
+                          </span>
+                        ))
+                      )}
                     </div>
                     {item.matchedIngredient && (
                       <p className="text-[10px] text-slate-400 dark:text-zinc-500 mt-0.5 truncate">
@@ -732,12 +801,23 @@ export default function App() {
 
   // Navigate to a recipe, supporting cross-plan navigation
   const navigateToSearchResult = (item: SearchRecipeItem | SearchHistoryItem) => {
-    const vParam = `?v=${item.planId}`;
-    const path = `/recipe/${item.day}/${item.meal}${vParam}`;
     setSearchQuery("");
     setSearchFocused(false);
     setMobileSearchOpen(false);
     searchInputRef.current?.blur();
+
+    if (item.isRecetario) {
+      setInactiveRecipeDetail(null);
+      setSelectedRecipeDetail(null);
+      setRecetarioRecipeDetail(null);
+      const path = `/recipe-book/recipe/${item.recetarioId}`;
+      window.history.pushState(null, "", path);
+      syncStateFromUrl(path);
+      return;
+    }
+
+    const vParam = `?v=${item.planId}`;
+    const path = `/recipe/${item.day}/${item.meal}${vParam}`;
 
     if (item.isActive) {
       // Active plan recipe – always reset any historical view first
@@ -869,39 +949,16 @@ export default function App() {
               </button>
               <button
                 type="button"
-                disabled={!plan}
                 onClick={() => {
-                  if (plan) {
-                    if (selectedRecipeDetail) {
-                      navigate(`/recipe/${selectedRecipeDetail.day}/${selectedRecipeDetail.meal}`);
-                    } else {
-                      const weekdays = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"];
-                      const meals = ["desayuno", "almuerzo", "merienda", "cena"];
-                      let found = false;
-                      for (const d of weekdays) {
-                        for (const m of meals) {
-                          const r = plan.days[d as DayType]?.[m as MealType];
-                          if (r) {
-                            navigate(`/recipe/${d}/${m}`);
-                            found = true;
-                            break;
-                          }
-                        }
-                        if (found) break;
-                      }
-                      if (!found) {
-                        navigate("/recipe/lunes/almuerzo");
-                      }
-                    }
-                  }
+                  navigate("/recipe-book");
                 }}
                 className={`text-xs font-black px-3.5 py-2 rounded-xl transition duration-150 cursor-pointer ${
-                  activeTab === "recipes" || activeTab === "recipe-detail"
+                  activeTab === "recetario" || activeTab === "recipe-detail" || activeTab === "recipe-form"
                     ? "text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 font-bold"
-                    : "text-slate-500 dark:text-zinc-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-gray-50/50 dark:hover:bg-zinc-800 disabled:opacity-40 disabled:cursor-not-allowed"
+                    : "text-slate-500 dark:text-zinc-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-gray-50/50 dark:hover:bg-zinc-800"
                 }`}
               >
-                Recetas
+                Recetario
               </button>
               <button
                 type="button"
@@ -1193,8 +1250,89 @@ export default function App() {
               />
             )}
 
+            {activeTab === "recipe-detail" && recetarioRecipeDetail && (
+              <RecipeDetail
+                recipe={recetarioRecipeDetail}
+                mode="recetario"
+                onGoBack={() => {
+                  setRecetarioRecipeDetail(null);
+                  navigate("/recipe-book");
+                }}
+                onEdit={(recipe) => {
+                  setEditingRecipe(recipe);
+                  setActiveTab("recipe-form");
+                  window.history.pushState(null, "", `/recipe-book/edit/${recipe.id}`);
+                }}
+                onDelete={async (recipe) => {
+                  if (!recipe.id) return;
+                  if (confirm(`¿Estás seguro de que deseas eliminar "${recipe.recipeName}" del recetario?`)) {
+                    try {
+                      const res = await fetch(`/api/recipes/${recipe.id}`, { method: "DELETE" });
+                      if (res.ok) {
+                        setRecetarioRecipeDetail(null);
+                        navigate("/recipe-book");
+                      } else {
+                        alert("No se pudo eliminar la receta.");
+                      }
+                    } catch (err) {
+                      console.error("Error deleting recipe:", err);
+                      alert("Error de conexión al eliminar la receta.");
+                    }
+                  }
+                }}
+                activePlan={plan}
+                onNavigateActive={(day, meal, recipe) => {
+                  setRecetarioRecipeDetail(null);
+                  setIsViewingActivePlan(true);
+                  setSelectedRecipeDetail({ day, meal, recipe });
+                  setActiveTab("recipe-detail");
+                  window.history.pushState(null, "", `/recipe/${day}/${meal}`);
+                }}
+                completedRecipes={completedRecipes}
+                onToggleComplete={handleToggleCompleteRecipe}
+                onToggleDayComplete={handleToggleDayComplete}
+              />
+            )}
+
+            {activeTab === "recetario" && (
+              <Recetario
+                plan={plan}
+                searchQuery={searchQuery}
+                onSelectRecipe={(r) => {
+                  setRecetarioRecipeDetail(r);
+                  setActiveTab("recipe-detail");
+                  window.history.pushState(null, "", `/recipe-book/recipe/${r.id}`);
+                }}
+                onAddNewRecipe={() => {
+                  setEditingRecipe(null);
+                  setActiveTab("recipe-form");
+                  window.history.pushState(null, "", "/recipe-book/new");
+                }}
+                onEditRecipe={(r) => {
+                  setEditingRecipe(r);
+                  setActiveTab("recipe-form");
+                  window.history.pushState(null, "", `/recipe-book/edit/${r.id}`);
+                }}
+              />
+            )}
+
+            {activeTab === "recipe-form" && (
+              <RecipeForm
+                recipe={editingRecipe}
+                onGoBack={() => {
+                  setEditingRecipe(null);
+                  navigate("/recipe-book");
+                }}
+                onSave={() => {
+                  setEditingRecipe(null);
+                  fetchSearchPool(); // Refresh global search pool
+                  navigate("/recipe-book");
+                }}
+              />
+            )}
+
             {/* Loading state: recipe-detail active but fetch still in flight */}
-            {activeTab === "recipe-detail" && !selectedRecipeDetail && !inactiveRecipeDetail && (
+            {activeTab === "recipe-detail" && !selectedRecipeDetail && !inactiveRecipeDetail && !recetarioRecipeDetail && (
               <div className="flex flex-col items-center justify-center py-24 gap-4">
                 <div className="w-8 h-8 rounded-full border-[3px] border-emerald-100 dark:border-zinc-800 border-t-emerald-600 dark:border-t-emerald-400 animate-spin"></div>
                 <p className="text-sm font-semibold text-slate-400 dark:text-zinc-500">Cargando receta...</p>
@@ -1255,40 +1393,17 @@ export default function App() {
         </button>
         <button
           type="button"
-          disabled={!plan}
           onClick={() => {
-            if (plan) {
-              if (selectedRecipeDetail) {
-                handleSetActiveTab(`recipe/${selectedRecipeDetail.day}/${selectedRecipeDetail.meal}`);
-              } else {
-                const weekdays = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"];
-                const meals = ["desayuno", "almuerzo", "merienda", "cena"];
-                let found = false;
-                for (const d of weekdays) {
-                  for (const m of meals) {
-                    const r = plan.days[d as DayType]?.[m as MealType];
-                    if (r) {
-                      handleSelectRecipe(d as DayType, m as MealType, r);
-                      found = true;
-                      break;
-                    }
-                  }
-                  if (found) break;
-                }
-                if (!found) {
-                  handleSetActiveTab("recipe/lunes/almuerzo");
-                }
-              }
-            }
+            handleSetActiveTab("recetario");
           }}
-          className={`flex flex-col items-center justify-center flex-1 h-full transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
-            activeTab === "recipes" || activeTab === "recipe-detail"
+          className={`flex flex-col items-center justify-center flex-1 h-full transition-colors cursor-pointer ${
+            activeTab === "recetario" || activeTab === "recipe-detail" || activeTab === "recipe-form"
               ? "text-emerald-600 dark:text-emerald-400 font-extrabold"
               : "text-slate-400 hover:text-emerald-600 dark:text-zinc-500 dark:hover:text-emerald-400"
           }`}
         >
           <span className="material-symbols-outlined text-[22px]">restaurant_menu</span>
-          <span className="text-[10px] tracking-tight mt-0.5 font-bold">Recetas</span>
+          <span className="text-[10px] tracking-tight mt-0.5 font-bold">Recetario</span>
         </button>
         <button
           type="button"

@@ -871,14 +871,26 @@ export default function Dashboard({
                 Exporta tus datos o restaura una copia de seguridad previa.
               </p>
               <div className="flex flex-col gap-2">
-                <button
-                  type="button"
-                  onClick={handleExportBackup}
-                  className="w-full py-2.5 px-4 bg-emerald-50 dark:bg-emerald-950/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-[#0f5238] dark:text-emerald-400 font-bold text-xs rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5 border border-emerald-100 dark:border-emerald-900/40"
-                >
-                  <span className="material-symbols-outlined text-[16px]">download</span>
-                  Exportar Copia
-                </button>
+                {history.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={handleExportBackup}
+                    className="w-full py-2.5 px-4 bg-emerald-50 dark:bg-emerald-950/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-[#0f5238] dark:text-emerald-400 font-bold text-xs rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5 border border-emerald-100 dark:border-emerald-900/40"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">download</span>
+                    Exportar Copia
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    disabled
+                    className="w-full py-2.5 px-4 bg-gray-50 dark:bg-zinc-800/20 text-gray-400 dark:text-zinc-500 font-bold text-xs rounded-xl border border-gray-200 dark:border-zinc-800/50 flex items-center justify-center gap-1.5 cursor-not-allowed select-none"
+                    title="No hay datos disponibles para exportar"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">download</span>
+                    Exportar no disponible
+                  </button>
+                )}
                 <label className="w-full py-2.5 px-4 bg-[#f1f5f9] dark:bg-zinc-800 hover:bg-[#e2e8f0] dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-300 font-bold text-xs rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5 border border-[#e2e8f0] dark:border-zinc-700/60 text-center">
                   <span className="material-symbols-outlined text-[16px]">upload</span>
                   Importar Copia

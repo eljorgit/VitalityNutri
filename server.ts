@@ -11,7 +11,7 @@ import { createApi } from "unsplash-js";
 
 import { DEFAULT_MEAL_PLAN, DEFAULT_PLAN_METADATA } from "./src/defaultData.js";
 import { MealPlan, PlanMetadata } from "./src/types.js";
-import { getPlan, savePlan, resetPlan, updateRecipe, getHistory, restorePlanFromHistory, deleteHistoryItem, getGroceryListState, saveGroceryListState, getCompletedRecipes, saveCompletedRecipes, getSearchHistory, addSearchHistoryItem, deleteSearchHistoryItem, clearSearchHistory, getBatchCooking, saveBatchCooking, resetBatchCooking, findPlanByHash, exportBackupData, importBackupData } from "./src/db.js";
+import { getPlan, savePlan, resetPlan, updateRecipe, getHistory, restorePlanFromHistory, deleteHistoryItem, getGroceryListState, saveGroceryListState, getCompletedRecipes, saveCompletedRecipes, getSearchHistory, addSearchHistoryItem, deleteSearchHistoryItem, clearSearchHistory, getBatchCooking, saveBatchCooking, resetBatchCooking, findPlanByHash, exportBackupData, importBackupData, getRecipes, getRecipeById, insertRecipe, updateRecipeInBook, deleteRecipeInBook, getIngredients, updatePlanJson, updateRecipeImageInBook, updateRecipeImageInPlan, getRecipeIdByName, getRecipeBookIdsByNames, saveRecipeIngredients } from "./src/db.js";
 
 dotenv.config();
 
@@ -301,12 +301,69 @@ function getSearchQueryForRecipe(recipeName: string, mealType: string): string {
   }
 }
 
-async function fetchStaticImageForRecipe(recipeName: string, mealType: string): Promise<string> {
+/**
+ * Helper to check if image URLs are valid (not 404 and not unreachable).
+ * Checks all URLs concurrently using HEAD/GET requests with a short timeout.
+ */
+async function checkImageUrls(urls: string[]): Promise<boolean[]> {
+  return Promise.all(
+    urls.map(async (url) => {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2000); // 2s timeout
+        const res = await fetch(url, {
+          method: "HEAD",
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        
+        if (res.ok && res.status !== 404) {
+          return true;
+        }
+
+        // If HEAD request is not allowed (e.g. 405 Method Not Allowed), retry with GET (Range)
+        if (res.status === 405) {
+          const controller2 = new AbortController();
+          const timeoutId2 = setTimeout(() => controller2.abort(), 2000);
+          const res2 = await fetch(url, {
+            method: "GET",
+            headers: { "Range": "bytes=0-0" },
+            signal: controller2.signal
+          });
+          clearTimeout(timeoutId2);
+          return res2.ok && res2.status !== 404;
+        }
+        
+        return false;
+      } catch (error) {
+        // Fallback to GET just in case HEAD fails or is blocked
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 2000);
+          const res = await fetch(url, {
+            method: "GET",
+            headers: { "Range": "bytes=0-0" },
+            signal: controller.signal
+          });
+          clearTimeout(timeoutId);
+          return res.ok && res.status !== 404;
+        } catch (e) {
+          return false;
+        }
+      }
+    })
+  );
+}
+
+async function fetchStaticImageForRecipe(recipeName: string, mealType: string, excludedUrls: string[] = []): Promise<string> {
   const fallbackUrl = getVerifiedImageForRecipe(recipeName, mealType);
 
   if (!unsplash) {
     console.log(`[Unsplash] Client not initialized. Using static fallback for "${recipeName}"`);
-    return fallbackUrl;
+    // Verify fallbackUrl even if unsplash is not configured
+    const fallbackValid = await checkImageUrls([fallbackUrl]);
+    const isExcluded = excludedUrls.includes(fallbackUrl);
+    return (fallbackValid[0] && !isExcluded) ? fallbackUrl : "";
   }
 
   const query = getSearchQueryForRecipe(recipeName, mealType);
@@ -320,24 +377,43 @@ async function fetchStaticImageForRecipe(recipeName: string, mealType: string): 
     });
 
     if (result.type === "success" && result.response.results.length > 0) {
-      // Pick a random image from the top 3 results to give some variety
       const photos = result.response.results;
-      const selectedPhoto = photos[Math.floor(Math.random() * Math.min(photos.length, 3))];
-      const imageUrl = selectedPhoto.urls.regular;
-      console.log(`[Unsplash] Found image for "${recipeName}": ${imageUrl}`);
-      return imageUrl;
+      const urls = photos.map((photo: any) => photo.urls.regular);
+      
+      console.log(`[Unsplash] Verifying ${urls.length} images for "${recipeName}"...`);
+      const validityResults = await checkImageUrls(urls);
+      const validPhotos = photos.filter((photo: any, idx) => validityResults[idx] && !excludedUrls.includes(photo.urls.regular));
+
+      if (validPhotos.length > 0) {
+        // Pick a random image from the top valid results (up to 3)
+        const selectedPhoto = validPhotos[Math.floor(Math.random() * Math.min(validPhotos.length, 3))];
+        const imageUrl = selectedPhoto.urls.regular;
+        console.log(`[Unsplash] Found valid image for "${recipeName}": ${imageUrl}`);
+        return imageUrl;
+      } else {
+        console.warn(`[Unsplash] All ${photos.length} photos returned 404, failed or were excluded. Using fallback for "${recipeName}"`);
+      }
     } else {
       if (result.type === "error") {
         console.error(`[Unsplash] API Error searching for "${query}":`, result.errors[0]);
       } else {
         console.warn(`[Unsplash] No results found for "${query}"`);
       }
-      return fallbackUrl;
     }
   } catch (error) {
     console.error(`[Unsplash] Exception searching for "${query}":`, error);
+  }
+
+  // Verify fallbackUrl before returning
+  console.log(`[Unsplash] Verifying fallback URL for "${recipeName}": ${fallbackUrl}`);
+  const fallbackValid = await checkImageUrls([fallbackUrl]);
+  const isExcluded = excludedUrls.includes(fallbackUrl);
+  if (fallbackValid[0] && !isExcluded) {
     return fallbackUrl;
   }
+
+  console.warn(`[Unsplash] Fallback URL also failed validation or was excluded. Returning empty string to trigger frontend placeholder.`);
+  return "";
 }
 
 /**
@@ -418,6 +494,21 @@ async function processPDFWithGemini(filePath: string): Promise<MealPlan> {
 // 1. Endpoint to get the active global meal plan
 app.get("/api/plan", (req, res) => {
   const active = getPlan();
+
+  // Log a warning if any recipe in the plan is missing an ID (sanity check)
+  if (active.plan?.days) {
+    const daysKeys = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"] as const;
+    const mealsKeys = ["desayuno", "almuerzo", "merienda", "cena"] as const;
+    for (const day of daysKeys) {
+      for (const meal of mealsKeys) {
+        const r = active.plan.days[day]?.[meal];
+        if (r?.recipeName && !r.id) {
+          console.warn(`[Warning] Recipe "${r.recipeName}" in active plan is missing its database ID.`);
+        }
+      }
+    }
+  }
+
   res.json({
     plan: active.plan,
     metadata: active.metadata,
@@ -490,6 +581,43 @@ app.post("/api/completed-recipes", (req, res) => {
   saveCompletedRecipes(planId, completedRecipes || {});
   res.json({ success: true });
 });
+
+/**
+ * Enriches the batch cooking guide JSON by mapping string recipe names in "recipesAffected" to actual database IDs.
+ */
+function enrichBatchCookingGuide(guide: any, mealPlan: MealPlan): any {
+  if (!guide || !guide.steps) return guide;
+  
+  const nameToIdMap = new Map<string, number>();
+  const daysKeys = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"] as const;
+  const mealsKeys = ["desayuno", "almuerzo", "merienda", "cena"] as const;
+  for (const d of daysKeys) {
+    for (const m of mealsKeys) {
+      const r = mealPlan.days[d]?.[m];
+      if (r && r.recipeName && r.id) {
+        nameToIdMap.set(r.recipeName.trim().toLowerCase(), r.id);
+      }
+    }
+  }
+
+  const enrichedSteps = guide.steps.map((step: any) => {
+    const recipesAffected = Array.isArray(step.recipesAffected) ? step.recipesAffected : [];
+    const enrichedRecipes = recipesAffected.map((name: string) => {
+      const normalized = name.trim().toLowerCase();
+      const id = nameToIdMap.get(normalized) || null;
+      return { id, name };
+    });
+    return {
+      ...step,
+      recipesAffected: enrichedRecipes
+    };
+  });
+
+  return {
+    ...guide,
+    steps: enrichedSteps
+  };
+}
 
 /**
  * Helper to upload meal plan data and get a customized batch cooking timeline using Gemini AI
@@ -677,7 +805,10 @@ app.post("/api/plan/batch-cooking", batchCookingLimiter, async (req, res) => {
     }
 
     console.log("[BatchCooking] Generating new batch cooking guide with Gemini...");
-    const guideJson = await generateBatchCookingWithGemini(active.plan, clientParams);
+    let guideJson = await generateBatchCookingWithGemini(active.plan, clientParams);
+    
+    // Enrich guide steps with recipe database IDs
+    guideJson = enrichBatchCookingGuide(guideJson, active.plan);
     
     // Save to database
     saveBatchCooking(JSON.stringify(guideJson), JSON.stringify(clientParams));
@@ -790,11 +921,13 @@ app.post("/api/upload", uploadLimiter, async (req, res) => {
     // Persist the plan and metadata to the SQLite database
     savePlan(mealPlan, planMetadata, savedFileName, fileHash);
 
+    const savedPlan = getPlan();
+
     responseSent = true;
     res.json({
       success: true,
-      plan: mealPlan,
-      metadata: planMetadata,
+      plan: savedPlan.plan || mealPlan,
+      metadata: savedPlan.metadata || planMetadata,
     });
 
   } catch (error: any) {
@@ -969,13 +1102,48 @@ app.get("/api/all-recipes", (req, res) => {
             recipeName: recipe.recipeName,
             calories: recipe.calories,
             time: recipe.time,
-            tag: recipe.tag,
+            tag: recipe.tag || "",
             image: recipe.image || "",
             ingredientNames
           });
         }
       }
     }
+
+    // Add standalone recipes from Recetario
+    try {
+      const recetarioList = getRecipes();
+      for (const r of recetarioList) {
+        let ingredientNames: string[] = [];
+        if (Array.isArray(r.ingredients)) {
+          ingredientNames = (r.ingredients as any[]).map((i: any) => (i.name || "").toLowerCase());
+        } else if (r.ingredients && typeof r.ingredients === "object") {
+          for (const cat of Object.values(r.ingredients as any)) {
+            if (Array.isArray(cat)) {
+              ingredientNames.push(...(cat as any[]).map((i: any) => (i.name || "").toLowerCase()));
+            }
+          }
+        }
+        results.push({
+          planId: -1,
+          planName: "Recetario",
+          isActive: false,
+          day: "",
+          meal: "",
+          isRecetario: true,
+          recetarioId: r.id,
+          recipeName: r.recipeName,
+          calories: r.calories,
+          time: r.time,
+          tag: r.tag || "",
+          image: r.image || "",
+          ingredientNames
+        });
+      }
+    } catch (dbErr) {
+      console.error("Error reading recetario recipes for search pool:", dbErr);
+    }
+
     res.json(results);
   } catch (error: any) {
     console.error("Error building all-recipes pool:", error);
@@ -1080,10 +1248,12 @@ app.post("/api/reprocess", uploadLimiter, async (req, res) => {
     // Save back with hash
     savePlan(mealPlan, planMetadata, savedFileName, fileHash);
 
+    const savedPlan = getPlan();
+
     res.json({
       success: true,
-      plan: mealPlan,
-      metadata: planMetadata,
+      plan: savedPlan.plan || mealPlan,
+      metadata: savedPlan.metadata || planMetadata,
     });
   } catch (error: any) {
     console.error("Error al reprocesar PDF con Gemini:", error);
@@ -1131,6 +1301,425 @@ app.post("/api/backup/import", (req, res) => {
   } catch (error: any) {
     console.error("Error importing backup:", error);
     res.status(500).json({ error: "No se pudo importar la copia de seguridad. Detalles: " + error.message });
+  }
+});
+
+// CRUD endpoints for Recetario
+app.get("/api/recipes", (req, res) => {
+  try {
+    const list = getRecipes();
+    res.json(list);
+  } catch (error: any) {
+    console.error("Error fetching recipes:", error);
+    res.status(500).json({ error: "No se pudieron obtener las recetas." });
+  }
+});
+
+app.get("/api/recipes/tags", (req, res) => {
+  try {
+    const list = getRecipes();
+    const tags = Array.from(new Set(list.map(r => r.tag).filter(Boolean)));
+    res.json(tags);
+  } catch (error: any) {
+    console.error("Error fetching recipe tags:", error);
+    res.status(500).json({ error: "No se pudieron obtener las etiquetas." });
+  }
+});
+
+app.get("/api/recipes/favorite-status", (req, res) => {
+  const { id } = req.query;
+  try {
+    if (!id) {
+      return res.json({ isFavorite: false });
+    }
+    const recipeId = parseInt(id as string, 10);
+    if (isNaN(recipeId)) {
+      return res.json({ isFavorite: false });
+    }
+
+    const recipe = getRecipeById(recipeId);
+    if (recipe) {
+      return res.json({ isFavorite: !!recipe.isFavorite, id: recipe.id });
+    }
+    res.json({ isFavorite: false });
+  } catch (error) {
+    console.error("Error getting favorite status:", error);
+    res.status(500).json({ error: "Error interno" });
+  }
+});
+
+// High-quality static fallback food images
+const STATIC_FALLBACK_IMAGES = [
+  "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=1000&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=1000&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1498837167922-ddd27525d352?q=80&w=1000&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?q=80&w=1000&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1482049016688-2d3e1b311543?q=80&w=1000&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1484723091739-30a097e8f929?q=80&w=1000&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1473093295043-cdd812d0e601?q=80&w=1000&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1476224203421-9ac39bcb3327?q=80&w=1000&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1490645935967-10de6ba17061?q=80&w=1000&auto=format&fit=crop"
+];
+
+async function scrapeUnsplashImages(query: string): Promise<string[]> {
+  try {
+    const url = `https://unsplash.com/s/photos/${encodeURIComponent(query)}`;
+    const response = await fetch(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept-Language": "es-ES,es;q=0.9,en;q=0.8"
+      }
+    });
+    if (!response.ok) {
+      throw new Error(`Unsplash scrape failed with status ${response.status}`);
+    }
+    const html = await response.text();
+    // Match unsplash photo URLs
+    const matches = html.match(/https:\/\/images\.unsplash\.com\/photo-[a-zA-Z0-9\-]+/g);
+    if (!matches || matches.length === 0) {
+      return [];
+    }
+    
+    // Deduplicate
+    const unique = Array.from(new Set(matches));
+    
+    // Format to regular web quality and return
+    return unique.map(imgUrl => `${imgUrl.split('?')[0]}?auto=format&fit=crop&w=1000&q=80`).slice(0, 12);
+  } catch (error) {
+    console.error("Error scraping Unsplash:", error);
+    return [];
+  }
+}
+
+// Agnostic image search endpoint
+app.get("/api/recipes/image-search", async (req, res) => {
+  const query = req.query.query as string;
+  if (!query) {
+    return res.status(400).json({ error: "Falta el parámetro 'query'" });
+  }
+  
+  if (unsplash) {
+    try {
+      const result = await unsplash.search.getPhotos({
+        query: query,
+        page: 1,
+        perPage: 12,
+        orientation: "landscape"
+      });
+
+      if (result.type === "success" && result.response.results.length > 0) {
+        const urls = result.response.results.map((photo: any) => photo.urls.regular);
+        return res.json({ success: true, results: urls });
+      }
+    } catch (error: any) {
+      console.error("Error searching images via API, falling back to scraper:", error);
+    }
+  }
+
+  // Fallback to scraper
+  console.log(`[ImageSearch] Running Unsplash scraper fallback for query "${query}".`);
+  const scraped = await scrapeUnsplashImages(query);
+  if (scraped.length > 0) {
+    return res.json({ success: true, results: scraped });
+  }
+
+  // Last resort static list
+  console.log(`[ImageSearch] Returning static fallback images for query "${query}".`);
+  return res.json({
+    success: true,
+    results: STATIC_FALLBACK_IMAGES
+  });
+});
+
+app.get("/api/recipes/:id", (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) {
+    return res.status(400).json({ error: "ID de receta no válido." });
+  }
+  try {
+    const recipe = getRecipeById(id);
+    if (!recipe) {
+      return res.status(404).json({ error: "Receta no encontrada." });
+    }
+    res.json(recipe);
+  } catch (error: any) {
+    console.error("Error fetching recipe:", error);
+    res.status(500).json({ error: "No se pudo obtener la receta." });
+  }
+});
+
+app.post("/api/recipes", (req, res) => {
+  try {
+    const recipeData = req.body;
+    if (!recipeData.recipeName || !recipeData.ingredients) {
+      return res.status(400).json({ error: "Faltan campos obligatorios: nombre o ingredientes." });
+    }
+    const id = insertRecipe(recipeData);
+    res.json({ success: true, id });
+  } catch (error: any) {
+    console.error("Error creating recipe:", error);
+    res.status(500).json({ error: "No se pudo crear la receta. Detalles: " + error.message });
+  }
+});
+
+app.post("/api/recipes/report-broken-image", async (req, res) => {
+  const { recipeName, day, meal, planId, recipeId, brokenUrl } = req.body;
+  if (!recipeId) {
+    return res.status(400).json({ error: "El ID de la receta es obligatorio." });
+  }
+
+  try {
+    console.log(`[Broken Image] Reporting broken image for ID ${recipeId} ("${recipeName}"). Broken URL: ${brokenUrl}`);
+
+    // Step 1: Clean the broken image in DB
+    updateRecipeImageInBook(recipeId, "");
+    updateRecipeImageInPlan(planId, day, meal, "", recipeId);
+
+    // Step 2: Fetch new validated image (excluding the broken one)
+    const nameToSearch = recipeName || (getRecipeById(recipeId)?.recipeName) || "";
+    const mealType = meal || "almuerzo";
+    const excludedUrls = brokenUrl ? [brokenUrl] : [];
+    let newImageUrl = "";
+    if (nameToSearch) {
+      newImageUrl = await fetchStaticImageForRecipe(nameToSearch, mealType, excludedUrls);
+    }
+
+    // Step 3: Save new image to DB if found
+    if (newImageUrl) {
+      console.log(`[Broken Image] Found new valid image for ID ${recipeId}: ${newImageUrl}`);
+      updateRecipeImageInBook(recipeId, newImageUrl);
+      updateRecipeImageInPlan(planId, day, meal, newImageUrl, recipeId);
+    } else {
+      console.log(`[Broken Image] No alternative valid image found for ID ${recipeId}.`);
+    }
+
+    res.json({ success: true, newImageUrl });
+  } catch (error: any) {
+    console.error("Error reporting broken image:", error);
+    res.status(500).json({ error: "No se pudo procesar el reporte de imagen rota." });
+  }
+});
+
+app.put("/api/recipes/:id", (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) {
+    return res.status(400).json({ error: "ID de receta no válido." });
+  }
+  try {
+    const recipeData = req.body;
+    if (!recipeData.recipeName || !recipeData.ingredients) {
+      return res.status(400).json({ error: "Faltan campos obligatorios: nombre o ingredientes." });
+    }
+    updateRecipeInBook(id, recipeData);
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error("Error updating recipe:", error);
+    res.status(500).json({ error: "No se pudo actualizar la receta. Detalles: " + error.message });
+  }
+});
+
+app.put("/api/recipes/:id/toggle-favorite", (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) {
+    return res.status(400).json({ error: "ID de receta no válido." });
+  }
+  try {
+    const recipe = getRecipeById(id);
+    if (!recipe) {
+      return res.status(404).json({ error: "Receta no encontrada." });
+    }
+    recipe.isFavorite = !recipe.isFavorite;
+    updateRecipeInBook(id, recipe);
+    res.json({ success: true, isFavorite: recipe.isFavorite });
+  } catch (error: any) {
+    console.error("Error toggling favorite status:", error);
+    res.status(500).json({ error: "No se pudo cambiar el estado de favorito." });
+  }
+});
+
+
+
+
+app.delete("/api/recipes/:id", (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) {
+    return res.status(400).json({ error: "ID de receta no válido." });
+  }
+  try {
+    deleteRecipeInBook(id);
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error("Error deleting recipe:", error);
+    res.status(500).json({ error: "No se pudo eliminar la receta." });
+  }
+});
+
+app.get("/api/ingredients", (req, res) => {
+  try {
+    const list = getIngredients();
+    res.json(list);
+  } catch (error: any) {
+    console.error("Error fetching ingredients:", error);
+    res.status(500).json({ error: "No se pudieron obtener los ingredientes." });
+  }
+});
+
+app.post("/api/ingredients", (req, res) => {
+  const { name, category } = req.body;
+  if (!name || !category) {
+    return res.status(400).json({ error: "Nombre y categoría requeridos." });
+  }
+  try {
+    saveRecipeIngredients([{ name, category }]);
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error("Error saving ingredient:", error);
+    res.status(500).json({ error: "No se pudo guardar el ingrediente." });
+  }
+});
+
+// AI processing with Gemini
+app.post("/api/recipes/process-ai", async (req, res) => {
+  const { sourceType, fileData, textData, optionsCount = 3, extraPrompt } = req.body;
+
+  if (!ai) {
+    return res.status(500).json({ error: "La API de Gemini no está configurada." });
+  }
+
+  const kOptions = Math.max(1, Math.min(5, parseInt(optionsCount, 10) || 3));
+
+  let contents: any[] = [];
+  let systemPrompt = `
+Eres una Inteligencia Artificial experta en nutrición y gastronomía, especializada en digitalizar, estructurar y mejorar recetas de cocina.
+Analiza la información proporcionada (que puede ser texto, un documento o una imagen de una receta).
+Tu objetivo es extraer, estructurar y refinar la receta con el mayor nivel de detalle posible en un objeto JSON.
+
+DEBES GENERAR EXACTAMENTE ${kOptions} OPCIONES O VARIANTES DE LA RECETA, CADA UNA LIGERAMENTE DIFERENTE A LAS OTRAS (por ejemplo, variando ingredientes, aportes calóricos, complejidad o adaptándola para necesidades específicas como baja en carb, alta en proteínas o vegana).
+Asegúrate de que no haya opciones idénticas y que cada una tenga su propio enfoque diferenciado.
+
+INSTRUCCIONES EXTRA DEL USUARIO (Síguelas de forma prioritaria):
+"${extraPrompt || "Ninguna"}"
+
+ESTRUCTURA DE RESPUESTA REQUERIDA (JSON):
+Debes responder única y exclusivamente con un objeto JSON válido que contenga un array "options". No incluyas explicaciones previas ni bloques de código markdown de tipo \`\`\`json. Solo el JSON crudo.
+
+Esquema JSON del objeto de respuesta:
+{
+  "options": [
+    {
+      "recipeName": "Nombre descriptivo y atractivo de la receta",
+      "calories": 350, // Número de calorías estimadas POR RACIÓN
+      "time": "25 min", // Tiempo de preparación estimado
+      "tag": "Etiqueta breve de la variante (ej: 'Original', 'Alta en Proteínas', 'Sin Gluten')",
+      "image": "", // Deja este campo como string vacío ""
+      "ingredients": [
+        {
+          "name": "Nombre corto y directo del ingrediente (ej: pollo, zanahoria)",
+          "originalAmount": 150, // Cantidad original para las raciones de esta receta
+          "unit": "g", // Unidad de medida (g, ml, unidad, cda, cdta)
+          "secondaryAmount": 150, // Opcional: cantidad secundaria (peso si la unidad principal es unidad)
+          "secondaryUnit": "g", // Opcional: unidad secundaria
+          "category": "Categoría de compra: 'Verduras', 'Proteínas', 'Pescados', 'Lácteos/Bebidas', 'Granos/Semillas', 'Despensa', 'Otros'",
+          "preparation": "Opcional: preparación del ingrediente (ej: picado, en rodajas)"
+        }
+      ],
+      "steps": [
+        "Descripción detallada del primer paso...",
+        "Descripción detallada del segundo paso..."
+      ],
+      "tips": "Consejos breves de cocina",
+      "nutritionistTips": "Consejo de nutricionista personalizado para esta receta",
+      "servings": 4 // Número de personas/raciones para las que se calculan las cantidades anteriores (siempre mínimo 1)
+    }
+  ]
+}
+
+REGLA CRÍTICA PARA LOS PASOS (steps):
+No incluyas ningún prefijo numérico ni de texto como "Paso X:" o "Paso X." al inicio de los pasos de preparación. Cada paso debe ser directamente la acción a realizar (ej: "Cortar los tomates en rodajas" en lugar de "Paso 1: Cortar los tomates en rodajas").
+`;
+
+  if (sourceType === "image" && fileData) {
+    contents.push({
+      inlineData: {
+        mimeType: "image/jpeg",
+        data: fileData
+      }
+    });
+    contents.push(systemPrompt + "\nRealiza el OCR e infiere todos los campos basándote en la imagen provista.");
+  } else if (sourceType === "pdf" && fileData) {
+    contents.push({
+      inlineData: {
+        mimeType: "application/pdf",
+        data: fileData
+      }
+    });
+    contents.push(systemPrompt + "\nProcesa este documento PDF de receta.");
+  } else if (sourceType === "text" && textData) {
+    contents.push(systemPrompt + `\nProcesa y refina el siguiente texto de receta:\n\n${textData}`);
+  } else if (sourceType === "mejora" && textData) {
+    contents.push(systemPrompt + `\nEl usuario tiene una receta manual y desea que la mejores o adaptes. Mejora la siguiente receta en base a las instrucciones:\n\n${textData}`);
+  } else {
+    return res.status(400).json({ error: "Faltan parámetros o el sourceType/fileData no es válido." });
+  }
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3.5-flash",
+      contents: contents,
+      config: {
+        responseMimeType: "application/json",
+        temperature: 0.3,
+      }
+    });
+
+    const textResponse = response.text;
+    if (!textResponse) {
+      throw new Error("No se pudo obtener una respuesta legible de Gemini.");
+    }
+
+    const parsedData = JSON.parse(textResponse.trim());
+    if (parsedData && Array.isArray(parsedData.options)) {
+      const ingredientsToSave: { name: string; category?: string }[] = [];
+
+      for (const option of parsedData.options) {
+        // Clean steps prefixes
+        if (Array.isArray(option.steps)) {
+          option.steps = option.steps.map((step: any) => {
+            if (typeof step !== "string") return step;
+            return step.replace(/^(?:Paso\s+\d+\s*[:.-]*\s*)/i, "").trim();
+          });
+        }
+
+        // Collect ingredients to save
+        if (Array.isArray(option.ingredients)) {
+          for (const ing of option.ingredients) {
+            if (ing && ing.name) {
+              ingredientsToSave.push({
+                name: ing.name.trim(),
+                category: ing.category ? ing.category.trim() : undefined
+              });
+            }
+          }
+        }
+      }
+
+      // Automatically save all new ingredients to the database
+      if (ingredientsToSave.length > 0) {
+        try {
+          saveRecipeIngredients(ingredientsToSave);
+          console.log(`[ProcessAI] Auto-saved ${ingredientsToSave.length} ingredients to database.`);
+        } catch (dbErr) {
+          console.error("Error auto-saving AI ingredients:", dbErr);
+        }
+      }
+
+      res.json({ success: true, options: parsedData.options });
+    } else {
+      res.status(500).json({ error: "La respuesta de Gemini no coincide con el formato esperado." });
+    }
+  } catch (error: any) {
+    console.error("Error al procesar receta con IA:", error);
+    res.status(500).json({ error: "Error al procesar la receta con IA. Detalles: " + error.message });
   }
 });
 
@@ -1256,6 +1845,28 @@ function getMetaDataForRequest(req: express.Request): { title: string; descripti
     }
   }
 
+  // Check if we are requesting a recipe-book recipe page: /recipe-book/recipe/:id
+  const recipeBookMatch = req.path.match(/\/recipe-book\/recipe\/(\d+)/i);
+  if (recipeBookMatch) {
+    const recipeId = parseInt(recipeBookMatch[1], 10);
+    if (!isNaN(recipeId)) {
+      const recipe = getRecipeById(recipeId);
+      if (recipe) {
+        title = `${recipe.recipeName} | Recetario | VitalityNutri`;
+        const caloriesText = recipe.calories ? `${recipe.calories} kcal` : "";
+        const timeText = recipe.time ? `en ${recipe.time}` : "";
+        const details = [caloriesText, timeText].filter(Boolean).join(" • ");
+        description = `Receta para ${recipe.recipeName} (${recipe.tag || "Recetario"}). ${details ? details + ". " : ""}${recipe.tips || ""}`;
+        if (description.length > 200) {
+          description = description.slice(0, 197) + "...";
+        }
+        if (recipe.image) {
+          image = recipe.image;
+        }
+      }
+    }
+  }
+
   return { title, description, image, url: absoluteUrl };
 }
 
@@ -1307,6 +1918,8 @@ async function setupVite() {
           safeUrl = "/grocery";
         } else if (req.path === "/batch-cooking") {
           safeUrl = "/batch-cooking";
+        } else if (req.path.startsWith("/recipe-book")) {
+          safeUrl = req.path;
         }
         html = await vite.transformIndexHtml(safeUrl, html);
       }
@@ -1324,6 +1937,19 @@ async function setupVite() {
     }
   };
 
+  const pageRoutes = [
+    "/",
+    "/dashboard",
+    "/calendar",
+    "/grocery",
+    "/batch-cooking",
+    "/recipe/:day/:meal",
+    "/recipe-book",
+    "/recipe-book/new",
+    "/recipe-book/recipe/:id",
+    "/recipe-book/edit/:id"
+  ];
+
   if (process.env.NODE_ENV !== "production") {
     vite = await createViteServer({
       server: { middlewareMode: true },
@@ -1331,13 +1957,13 @@ async function setupVite() {
     });
     
     // Serve page requests with dynamic metadata in development
-    app.get(["/", "/dashboard", "/calendar", "/grocery", "/batch-cooking", "/recipe/:day/:meal"], pageLimiter, handlePageRequest);
+    app.get(pageRoutes, pageLimiter, handlePageRequest);
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), "dist");
     
     // Serve page requests with dynamic metadata in production
-    app.get(["/", "/dashboard", "/calendar", "/grocery", "/batch-cooking", "/recipe/:day/:meal"], pageLimiter, handlePageRequest);
+    app.get(pageRoutes, pageLimiter, handlePageRequest);
     app.use(express.static(distPath));
     app.get("*", pageLimiter, handlePageRequest);
   }

@@ -1214,10 +1214,10 @@ export default function GroceryList({ plan, completedRecipes }: GroceryListProps
                         </li>
                         {expandedRecipes[item.name] && item.recipes && (
                           <div 
-                            className="ml-9 p-3 bg-slate-50/40 dark:bg-zinc-950/20 rounded-2xl border border-slate-200/70 dark:border-zinc-800/40 space-y-2 animate-fade-in text-xs no-print max-w-xl"
+                            className="ml-9 p-3 bg-slate-50/40 dark:bg-zinc-900/20 rounded-2xl border border-slate-200/70 dark:border-zinc-800/40 space-y-2 animate-fade-in text-xs no-print max-w-xl"
                             onClick={(e) => e.stopPropagation()}
                           >
-                            <p className="text-[10px] font-extrabold uppercase text-slate-450 dark:text-zinc-500 tracking-wider">
+                            <p className="text-[10px] font-extrabold uppercase text-slate-400 dark:text-zinc-500 tracking-wider">
                               Se utiliza en:
                             </p>
                             <div className="flex flex-col gap-1.5">

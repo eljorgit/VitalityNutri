@@ -21,7 +21,7 @@ interface BatchCookingStep {
   description: string;
   duration: string;
   utensils: string[];
-  recipesAffected: string[];
+  recipesAffected: { id: number | null; name: string }[];
   ingredients?: string[];
 }
 
@@ -42,46 +42,17 @@ interface KitchenParams {
 }
 
 export default function BatchCooking({ plan, metadata, onSelectRecipe }: BatchCookingProps) {
-  // Helper to normalize strings for comparison (remove accents, lowercase, remove spaces/punctuation)
-  const normalizeForComparison = (str: string) => {
-    return str
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/[^a-z0-9]/g, "")
-      .trim();
-  };
-
-  // Find recipe day and meal from name
-  const findRecipeDayMeal = (recipeName: string): { day: DayType; meal: MealType; recipe: Recipe } | null => {
+  // Find recipe day and meal from ID
+  const findRecipeDayMeal = (recipeId: number): { day: DayType; meal: MealType; recipe: Recipe } | null => {
     if (!plan) return null;
     const daysKeys = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"] as const;
     const mealsKeys = ["almuerzo", "cena"] as const;
-    
-    const normalizedTarget = normalizeForComparison(recipeName);
-    if (!normalizedTarget) return null;
 
-    // Exact normalized match
     for (const day of daysKeys) {
       for (const meal of mealsKeys) {
         const rec = plan.days[day]?.[meal];
-        if (rec && normalizeForComparison(rec.recipeName) === normalizedTarget) {
+        if (rec && rec.id === recipeId) {
           return { day, meal, recipe: rec };
-        }
-      }
-    }
-    // Sub-string/Fuzzy normalized match
-    for (const day of daysKeys) {
-      for (const meal of mealsKeys) {
-        const rec = plan.days[day]?.[meal];
-        if (rec) {
-          const normalizedRecName = normalizeForComparison(rec.recipeName);
-          if (
-            normalizedRecName &&
-            (normalizedRecName.includes(normalizedTarget) || normalizedTarget.includes(normalizedRecName))
-          ) {
-            return { day, meal, recipe: rec };
-          }
         }
       }
     }
@@ -331,7 +302,7 @@ export default function BatchCooking({ plan, metadata, onSelectRecipe }: BatchCo
               className={`py-2 px-4 rounded-xl text-xs font-bold transition duration-200 border cursor-pointer flex items-center gap-1.5 shadow-sm ${
                 showSettingsPanel 
                   ? "bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-200 border-slate-200 dark:border-zinc-700"
-                  : "bg-white dark:bg-zinc-900 text-slate-700 dark:text-zinc-350 border-slate-200/60 dark:border-zinc-850 hover:bg-slate-50 dark:hover:bg-zinc-800"
+                  : "bg-white dark:bg-zinc-900 text-slate-700 dark:text-zinc-300 border-slate-200/60 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-800"
               }`}
             >
               <span className="material-symbols-outlined text-[16px]">settings_accessibility</span>
@@ -340,7 +311,7 @@ export default function BatchCooking({ plan, metadata, onSelectRecipe }: BatchCo
             <button
               type="button"
               onClick={() => window.print()}
-              className="py-2 px-4 bg-white dark:bg-zinc-900 text-slate-700 dark:text-zinc-350 border border-slate-200/60 dark:border-zinc-850 hover:bg-slate-50 dark:hover:bg-zinc-800 rounded-xl text-xs font-bold transition duration-250 cursor-pointer flex items-center gap-1.5 shadow-sm"
+              className="py-2 px-4 bg-white dark:bg-zinc-900 text-slate-700 dark:text-zinc-300 border border-slate-200/60 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-800 rounded-xl text-xs font-bold transition duration-250 cursor-pointer flex items-center gap-1.5 shadow-sm"
             >
               <span className="material-symbols-outlined text-[16px]">print</span>
               Imprimir Guía
@@ -377,7 +348,7 @@ export default function BatchCooking({ plan, metadata, onSelectRecipe }: BatchCo
                 </div>
 
                 {/* Blue Info Banner explaining lunches and dinners */}
-                <div className="bg-sky-50 dark:bg-sky-950/20 border border-sky-100 dark:border-sky-900/30 p-4.5 rounded-2xl text-sky-850 dark:text-sky-300 text-xs flex gap-3 items-start shadow-xs">
+                <div className="bg-sky-50 dark:bg-sky-950/20 border border-sky-100 dark:border-sky-900/30 p-4.5 rounded-2xl text-sky-800 dark:text-sky-300 text-xs flex gap-3 items-start shadow-xs">
                   <span className="material-symbols-outlined text-[20px] shrink-0 text-sky-600 dark:text-sky-400">info</span>
                   <div className="text-left">
                     <p className="font-extrabold mb-0.5 tracking-tight text-sky-950 dark:text-sky-200">Alcance de la Guía de Batch Cooking</p>
@@ -503,7 +474,7 @@ export default function BatchCooking({ plan, metadata, onSelectRecipe }: BatchCo
                 
                 {/* Visual warning if settings changed and do not match guide params */}
                 {!paramsMatch && (
-                  <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 p-4.5 rounded-2xl text-amber-850 dark:text-amber-300 text-xs flex gap-3 items-start animate-fade-in no-print">
+                  <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 p-4.5 rounded-2xl text-amber-800 dark:text-amber-300 text-xs flex gap-3 items-start animate-fade-in no-print">
                     <span className="material-symbols-outlined text-[20px] shrink-0 text-amber-600 dark:text-amber-400">warning</span>
                     <div className="text-left flex-1">
                       <p className="font-extrabold mb-0.5 tracking-tight text-amber-950 dark:text-amber-200">Ajustes modificados</p>
@@ -522,7 +493,7 @@ export default function BatchCooking({ plan, metadata, onSelectRecipe }: BatchCo
                 )}
 
                 {/* Progress checklist banner */}
-                <div className="bg-white dark:bg-zinc-900 rounded-3xl p-6 border border-slate-100 dark:border-zinc-850 shadow-xs flex flex-col gap-4 text-left select-none">
+                <div className="bg-white dark:bg-zinc-900 rounded-3xl p-6 border border-slate-100 dark:border-zinc-800 shadow-xs flex flex-col gap-4 text-left select-none">
                   <div className="flex justify-between items-center text-xs tracking-wider text-slate-400 dark:text-zinc-500 font-black uppercase">
                     <span>Progreso de Cocinado por Lotes</span>
                     <span className="text-emerald-700 dark:text-emerald-400 font-extrabold bg-emerald-50 dark:bg-emerald-950/45 px-2.5 py-0.5 rounded-md">
@@ -586,7 +557,7 @@ export default function BatchCooking({ plan, metadata, onSelectRecipe }: BatchCo
                         <div className={`p-5 rounded-2xl border transition-all duration-200 bg-white dark:bg-zinc-900 ${
                           isCompleted 
                             ? "border-emerald-500/25 dark:border-emerald-500/10 shadow-sm" 
-                            : "border-slate-200/75 dark:border-zinc-850 shadow-sm hover:border-slate-350 dark:hover:border-zinc-700 hover:shadow-md"
+                            : "border-slate-200/75 dark:border-zinc-800 shadow-sm hover:border-slate-350 dark:hover:border-zinc-700 hover:shadow-md"
                         }`}>
                           <div className="mb-3.5 select-none text-left space-y-2">
                             <h3 className={`font-black text-base md:text-lg ${
@@ -639,28 +610,38 @@ export default function BatchCooking({ plan, metadata, onSelectRecipe }: BatchCo
                           {/* Affected Recipes Badges */}
                           {step.recipesAffected && step.recipesAffected.length > 0 && (
                             <div className="flex flex-wrap gap-2 items-center select-none pt-3.5 border-t border-slate-100/50 dark:border-zinc-800/40 text-left">
-                              <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-550 uppercase tracking-wider">Comidas pautadas:</span>
+                              <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-555 uppercase tracking-wider">Comidas pautadas:</span>
                               {step.recipesAffected.map(r => {
-                                const found = findRecipeDayMeal(r);
+                                if (!r.id) {
+                                  return (
+                                    <span
+                                      key={r.name}
+                                      className="bg-slate-50 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400 text-[10px] font-black px-2.5 py-0.5 rounded-full border border-slate-200/50 dark:border-zinc-800/60"
+                                    >
+                                      {r.name}
+                                    </span>
+                                  );
+                                }
+                                const found = findRecipeDayMeal(r.id);
                                 if (found) {
                                   return (
                                     <button
-                                      key={r}
+                                      key={r.id}
                                       type="button"
                                       onClick={() => onSelectRecipe?.(found.day, found.meal, found.recipe)}
                                       className="bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/20 dark:hover:bg-emerald-900/30 text-emerald-800 dark:text-emerald-400 text-[10px] font-black px-2.5 py-0.5 rounded-full border border-emerald-500/10 hover:border-emerald-500/35 transition cursor-pointer active:scale-95 duration-150 shadow-2xs"
-                                      title={`Ver receta de ${r}`}
+                                      title={`Ver receta de ${r.name}`}
                                     >
-                                      {r}
+                                      {r.name}
                                     </button>
                                   );
                                 }
                                 return (
                                   <span
-                                    key={r}
-                                    className="bg-slate-50 dark:bg-zinc-850 text-slate-500 dark:text-zinc-400 text-[10px] font-black px-2.5 py-0.5 rounded-full border border-slate-200/50 dark:border-zinc-800/60"
+                                    key={r.id}
+                                    className="bg-slate-50 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400 text-[10px] font-black px-2.5 py-0.5 rounded-full border border-slate-200/50 dark:border-zinc-800/60"
                                   >
-                                    {r}
+                                    {r.name}
                                   </span>
                                 );
                               })}

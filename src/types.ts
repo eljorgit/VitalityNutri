@@ -23,14 +23,24 @@ export interface CategorizedSteps {
 }
 
 export interface Recipe {
+  id?: number;
   recipeName: string;
   calories: number;
   time: string;
-  tag: string;
-  image: string;
+  tag?: string; // optional
+  image?: string; // optional
   ingredients: CategorizedIngredients | Ingredient[];
   tips: string;
   steps?: CategorizedSteps | string[]; // optional: detailed culinary steps
+  servings?: number; // optional, minimum 1
+  nutritionistTips?: string; // optional
+  source?: "plan" | "manual" | "ocr" | "document" | "text"; // optional since plans parsed from PDFs might not have it initially
+  sourcePlanId?: number; // optional
+  isAiGenerated?: boolean; // optional
+  isFavorite?: boolean; // optional
+  season?: string; // optional
+  createdAt?: string; // optional
+  updatedAt?: string; // optional
 }
 
 export type MealType = "desayuno" | "almuerzo" | "merienda" | "cena";

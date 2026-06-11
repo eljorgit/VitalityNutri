@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { DayType, MealType, Recipe, MealPlan, PlanMetadata } from "../types";
 import ConfirmationModal from "./ConfirmationModal";
+import ImagePlaceholder from "./ImagePlaceholder";
 
 const formatAmountAndUnit = (amount: number, unit: string) => {
   let normalizedUnit = unit.trim().toLowerCase();
@@ -30,21 +31,24 @@ const formatAmountAndUnit = (amount: number, unit: string) => {
 };
 
 interface RecipeDetailProps {
-  day: DayType;
-  meal: MealType;
+  day?: DayType;
+  meal?: MealType;
   recipe: Recipe;
   onGoBack: () => void;
   onUpdateRecipeOnServer?: (day: DayType, meal: MealType, updatedRecipe: Recipe) => void;
   plan?: MealPlan | null;
   metadata?: PlanMetadata | null;
   onNavigate?: (day: DayType, meal: MealType, recipe: Recipe) => void;
-  completedRecipes: Record<string, boolean>;
-  onToggleComplete: (day: DayType, meal: MealType) => void;
-  onToggleDayComplete: (day: DayType, meals: MealType[], targetState: boolean) => void;
+  completedRecipes?: Record<string, boolean>;
+  onToggleComplete?: (day: DayType, meal: MealType) => void;
+  onToggleDayComplete?: (day: DayType, meals: MealType[], targetState: boolean) => void;
   isPlanActive?: boolean;
   onRestorePlan?: () => void;
   activePlan?: MealPlan | null;
   onNavigateActive?: (day: DayType, meal: MealType, recipe: Recipe) => void;
+  mode?: "standard" | "recetario";
+  onEdit?: (recipe: Recipe) => void;
+  onDelete?: (recipe: Recipe) => void;
 }
 
 export default function RecipeDetail({
@@ -56,17 +60,24 @@ export default function RecipeDetail({
   plan,
   metadata,
   onNavigate,
-  completedRecipes,
+  completedRecipes = {},
   onToggleComplete,
   onToggleDayComplete,
   isPlanActive = true,
   onRestorePlan,
   activePlan,
   onNavigateActive,
+  mode = "standard",
+  onEdit,
+  onDelete,
 }: RecipeDetailProps) {
   const searchParams = new URLSearchParams(window.location.search);
   const isFromBatchCooking = searchParams.get("from") === "batch-cooking";
-  const backLabel = isFromBatchCooking ? "Volver a Batch Cooking" : "Volver al Calendario";
+  const backLabel = mode === "recetario"
+    ? "Volver al Recetario"
+    : isFromBatchCooking
+      ? "Volver a Batch Cooking"
+      : "Volver al Calendario";
 
   // Ratio defaults to 1 ración (base)
   const [multiplier, setMultiplier] = useState<number>(1);
@@ -75,6 +86,95 @@ export default function RecipeDetail({
   const [checkedSteps, setCheckedSteps] = useState<Record<string, boolean>>({});
   const [showDayMealsDropdown, setShowDayMealsDropdown] = useState<boolean>(false);
   const [showAllRecipesDropdown, setShowAllRecipesDropdown] = useState<boolean>(false);
+  const [imageUrl, setImageUrl] = useState<string>(recipe.image || "");
+  const [imageError, setImageError] = useState<boolean>(false);
+
+  const handleImageError = async () => {
+    if (imageError) return;
+    setImageError(true);
+    try {
+      console.log(`[RecipeDetail] Image failed to load: ${imageUrl}. Reporting to server...`);
+      const res = await fetch("/api/recipes/report-broken-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          recipeName: recipe.recipeName,
+          day,
+          meal,
+          planId: metadata?.id,
+          recipeId: recipe.id,
+          brokenUrl: imageUrl
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.newImageUrl) {
+          console.log(`[RecipeDetail] Hot-swapping broken image with: ${data.newImageUrl}`);
+          setImageUrl(data.newImageUrl);
+          setImageError(false);
+          if (day && meal && onUpdateRecipeOnServer) {
+            onUpdateRecipeOnServer(day, meal, { ...recipe, image: data.newImageUrl });
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error reporting broken image:", error);
+    }
+  };
+
+  const [isFav, setIsFav] = useState<boolean>(!!recipe.isFavorite);
+  // Always work by ID. Recipes that arrive without an id (e.g. from weekly plan)
+  // resolve their DB id once via the favorite-status endpoint and cache it here.
+  const resolvedFavId = React.useRef<number | null>(recipe.id ?? null);
+
+  React.useEffect(() => {
+    resolvedFavId.current = recipe.id ?? null;
+    setIsFav(!!recipe.isFavorite);
+
+    const fetchFavoriteStatus = async () => {
+      try {
+        if (!resolvedFavId.current) return;
+        const res = await fetch(`/api/recipes/favorite-status?id=${resolvedFavId.current}`);
+        if (res.ok) {
+          const data = await res.json();
+          setIsFav(!!data.isFavorite);
+          // Cache the resolved id so all future requests use it
+          if (data.id) {
+            resolvedFavId.current = data.id;
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching favorite status:", err);
+      }
+    };
+
+    fetchFavoriteStatus();
+  }, [recipe]);
+
+  const handleFavoriteToggle = async () => {
+    const previous = isFav;
+    setIsFav(!previous);
+    try {
+      const favId = resolvedFavId.current;
+      if (!favId) {
+        // Recipe not in the recipe book yet — nothing to toggle
+        setIsFav(previous);
+        return;
+      }
+      const res = await fetch(`/api/recipes/${favId}/toggle-favorite`, {
+        method: "PUT"
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setIsFav(!!data.isFavorite);
+      } else {
+        throw new Error();
+      }
+    } catch (e) {
+      console.error("Error toggling favorite inside RecipeDetail:", e);
+      setIsFav(previous);
+    }
+  };
 
   // Mobile Drawer settings state
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
@@ -95,6 +195,104 @@ export default function RecipeDetail({
   const bottomAllRecipesDropdownRef = React.useRef<HTMLDivElement>(null);
   const servingsPanelRef = React.useRef<HTMLDivElement>(null);
   const [highlightServings, setHighlightServings] = useState<boolean>(false);
+
+  const getPlanMatches = () => {
+    const targetPlan = activePlan || plan;
+    if (!targetPlan || !targetPlan.days) return [];
+    const matches: { day: DayType; meal: MealType; label: string }[] = [];
+    const orderedDays: DayType[] = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"];
+    const orderedMeals: MealType[] = ["desayuno", "almuerzo", "merienda", "cena"];
+
+    orderedDays.forEach(d => {
+      orderedMeals.forEach(m => {
+        const r = targetPlan.days[d]?.[m];
+        if (
+          r &&
+          ((r.id !== undefined && r.id !== null && recipe.id !== undefined && recipe.id !== null && r.id === recipe.id) ||
+           ((r.id === undefined || r.id === null || recipe.id === undefined || recipe.id === null) &&
+            r.recipeName &&
+            recipe.recipeName &&
+            r.recipeName.trim().toLowerCase() === recipe.recipeName.trim().toLowerCase()))
+        ) {
+          matches.push({
+            day: d,
+            meal: m,
+            label: `${dayNames[d] || d} (${mealNames[m] || m})`
+          });
+        }
+      });
+    });
+    return matches;
+  };
+
+  const renderPlanMatches = () => {
+    const matches = getPlanMatches();
+    return (
+      <div className="bg-white/40 dark:bg-zinc-900/40 p-5 rounded-2xl border border-zinc-200/50 dark:border-zinc-800/50 shadow-xs text-left space-y-3">
+        <h2 className="text-xs font-black text-slate-800 dark:text-zinc-200 flex items-center gap-1.5 uppercase tracking-wider select-none">
+          <span className="material-symbols-outlined text-indigo-600 dark:text-indigo-400 text-[18px]">calendar_today</span>
+          Coincidencias del Menú
+        </h2>
+        {matches.length > 0 ? (
+          <>
+            <p className="text-[11px] text-slate-550 dark:text-zinc-400 leading-relaxed">
+              Esta receta está asignada en tu planificación de esta semana. Haz clic para ver el seguimiento:
+            </p>
+            <div className="flex flex-col gap-2 pt-1 select-none">
+              {matches.map((match, idx) => {
+                const isCompleted = completedRecipes ? !!completedRecipes[`${match.day}-${match.meal}`] : false;
+                return (
+                  <div
+                    key={idx}
+                    className="w-full flex items-center justify-between gap-2.5 py-2 px-3 rounded-xl bg-indigo-50/55 hover:bg-indigo-100/40 dark:bg-indigo-950/10 dark:hover:bg-indigo-950/20 border border-indigo-100/35 dark:border-indigo-900/30 text-xs font-bold text-indigo-700 dark:text-indigo-300 transition duration-150"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (onNavigateActive) {
+                          onNavigateActive(match.day, match.meal, recipe);
+                        } else if (onNavigate) {
+                          onNavigate(match.day, match.meal, recipe);
+                        }
+                      }}
+                      className="flex-grow text-left cursor-pointer flex items-center justify-between group"
+                    >
+                      <span>{match.label}</span>
+                      <span className="material-symbols-outlined text-[15px] transform group-hover:translate-x-0.5 transition-transform mr-2">arrow_forward</span>
+                    </button>
+                    {onToggleComplete && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onToggleComplete(match.day, match.meal);
+                        }}
+                        className={`px-2.5 py-1 rounded-lg text-[10px] font-black cursor-pointer flex items-center gap-1 transition ${
+                          isCompleted
+                            ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                            : "bg-white hover:bg-slate-100 dark:bg-zinc-800 dark:hover:bg-zinc-700 border border-slate-200 dark:border-zinc-750 text-slate-650 dark:text-zinc-305"
+                        }`}
+                        title={isCompleted ? "Marcar como pendiente" : "Completar para este día"}
+                      >
+                        <span className="material-symbols-outlined text-[14px]">
+                          {isCompleted ? "task_alt" : "circle"}
+                        </span>
+                        <span>{isCompleted ? "Realizada" : "Completar"}</span>
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        ) : (
+          <p className="text-[11px] text-slate-400 dark:text-zinc-550 leading-relaxed italic">
+            Esta receta no está planificada en el menú semanal actual.
+          </p>
+        )}
+      </div>
+    );
+  };
 
   const daysKeys: DayType[] = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"];
   const mealsKeys: MealType[] = ["desayuno", "almuerzo", "merienda", "cena"];
@@ -278,6 +476,9 @@ export default function RecipeDetail({
   }, []);
 
   const getRecipeUrl = (): string => {
+    if (mode === "recetario") {
+      return `${window.location.protocol}//${window.location.host}/recipe-book/recipe/${recipe.id}`;
+    }
     const meta = metadata || (plan as any)?.metadata;
     const getVersionBuster = () => {
       if (meta?.id) return meta.id;
@@ -290,16 +491,23 @@ export default function RecipeDetail({
   };
 
   const generateRecipeShareText = (): string => {
-    const capitalizedDay = day.charAt(0).toUpperCase() + day.slice(1);
-    const capitalizedMeal = meal.charAt(0).toUpperCase() + meal.slice(1);
+    const capitalizedDay = day ? day.charAt(0).toUpperCase() + day.slice(1) : "";
+    const capitalizedMeal = meal ? meal.charAt(0).toUpperCase() + meal.slice(1) : "";
     const recipeUrl = getRecipeUrl();
 
     if (!shareFullRecipe) {
+      if (mode === "recetario") {
+        return `🍳 *${recipe.recipeName}*\n\nDescubre esta deliciosa receta saludable en el Recetario de VitalityNutri:\n🔗 ${recipeUrl}\n\n¡Buen provecho! 🌱`;
+      }
       return `🍳 *${recipe.recipeName}* (${capitalizedMeal} - ${capitalizedDay})\n\nDescubre esta deliciosa receta saludable planificada en VitalityNutri:\n🔗 ${recipeUrl}\n\n¡Buen provecho! 🌱`;
     }
 
     let text = `🍳 *RECETA: ${recipe.recipeName.toUpperCase()}*\n`;
-    text += `📅 *Planificación:* ${capitalizedMeal} de ${capitalizedDay}\n`;
+    if (mode === "recetario") {
+      text += `📅 *Planificación:* Recetario\n`;
+    } else {
+      text += `📅 *Planificación:* ${capitalizedMeal} de ${capitalizedDay}\n`;
+    }
     text += `⏱️ *Tiempo:* ${recipe.time || "20 min"}\n`;
     text += `🔥 *Calorías:* ${Math.round(recipe.calories * multiplier)} kcal (${multiplier} ración/es)\n`;
     text += `🏷️ *Categoría:* ${recipe.tag || "Nutritivo"}\n\n`;
@@ -538,7 +746,7 @@ export default function RecipeDetail({
     return bestMatch;
   };
 
-  const nextMeal = getNextMealRecipe();
+  const nextMeal = mode === "recetario" ? null : getNextMealRecipe();
   const dayKeysInOrder: DayType[] = ["domingo", "lunes", "martes", "miercoles", "jueves", "viernes", "sabado"];
 
   // Sophisticated culinary step generator if legacy/default dataset doesn't have "steps"
@@ -560,12 +768,13 @@ export default function RecipeDetail({
     setSelectedStepCategory(cat);
   };
 
-  // Reset selected categories and checklists when recipe changes
   React.useEffect(() => {
     setSelectedIngCategory("Todo");
     setSelectedStepCategory("Todo");
     setCheckedIngredients({});
     setCheckedSteps({});
+    setImageUrl(recipe.image || "");
+    setImageError(false);
   }, [recipe, day, meal]);
 
   const categoryNames: Record<string, string> = {
@@ -632,17 +841,17 @@ export default function RecipeDetail({
       case "frutas":
         return "bg-red-50 dark:bg-red-950/35 text-red-600 dark:text-red-400 border-red-100 dark:border-red-900/40";
       case "carnes, huevos y tofu":
-        return "bg-amber-50 dark:bg-amber-950/35 text-amber-700 dark:text-amber-450 border-amber-100 dark:border-amber-900/40";
+        return "bg-amber-50 dark:bg-amber-950/35 text-amber-700 dark:text-amber-400 border-amber-100 dark:border-amber-900/40";
       case "pescados y mariscos":
-        return "bg-cyan-50 dark:bg-cyan-950/35 text-cyan-750 dark:text-cyan-400 border-cyan-100 dark:border-cyan-900/40";
+        return "bg-cyan-50 dark:bg-cyan-950/35 text-cyan-700 dark:text-cyan-400 border-cyan-100 dark:border-cyan-900/40";
       case "lácteos y bebidas":
         return "bg-blue-50 dark:bg-blue-950/35 text-blue-700 dark:text-blue-400 border-blue-100 dark:border-blue-900/40";
       case "granos, harinas y semillas":
-        return "bg-yellow-50/50 dark:bg-yellow-950/35 text-yellow-750 dark:text-yellow-400 border-yellow-100/70 dark:border-yellow-900/40";
+        return "bg-yellow-50/50 dark:bg-yellow-950/35 text-yellow-700 dark:text-yellow-400 border-yellow-100/70 dark:border-yellow-900/40";
       case "despensa y condimentos":
-        return "bg-orange-50 dark:bg-orange-950/35 text-orange-700 dark:text-orange-450 border-orange-100 dark:border-orange-900/40";
+        return "bg-orange-50 dark:bg-orange-950/35 text-orange-700 dark:text-orange-400 border-orange-100 dark:border-orange-900/40";
       default:
-        return "bg-slate-100 dark:bg-zinc-800 text-slate-550 dark:text-zinc-400 border-slate-200 dark:border-zinc-700";
+        return "bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400 border-slate-200 dark:border-zinc-700";
     }
   };
 
@@ -722,9 +931,9 @@ export default function RecipeDetail({
     ? normalizedSteps
     : normalizedSteps.filter(step => step.categoryKey === selectedStepCategory);
 
-  const isRecipeCompleted = !!completedRecipes[`${day}-${meal}`];
+  const isRecipeCompleted = day && meal && completedRecipes ? !!completedRecipes[`${day}-${meal}`] : false;
   const weeklyStats = (() => {
-    if (!plan) return { completed: 0, total: 0, percentage: 0 };
+    if (!plan || !completedRecipes || mode === "recetario") return { completed: 0, total: 0, percentage: 0 };
     let completed = 0;
     let total = 0;
     const daysKeys: DayType[] = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"];
@@ -744,33 +953,46 @@ export default function RecipeDetail({
   })();
 
   const renderCompletionPanel = () => {
+    const matches = getPlanMatches();
+    const singleMatch = matches.length === 1 ? matches[0] : null;
+    
+    const targetDay = day || (singleMatch ? singleMatch.day : null);
+    const targetMeal = meal || (singleMatch ? singleMatch.meal : null);
+
+    if (!targetDay || !targetMeal || !onToggleComplete) return null;
+    if (mode === "recetario" && matches.length !== 1) return null;
+
+    const isCompleted = completedRecipes ? !!completedRecipes[`${targetDay}-${targetMeal}`] : false;
+
     return (
       <div className="bg-white/40 dark:bg-zinc-900/40 p-5 rounded-2xl border border-zinc-200/50 dark:border-zinc-800/50 shadow-xs text-left space-y-4">
         <h2 className="text-xs font-black text-slate-800 dark:text-zinc-200 flex items-center gap-1.5 uppercase tracking-wider select-none">
           <span className="material-symbols-outlined text-emerald-600 dark:text-emerald-400 text-[18px]">
-            {isRecipeCompleted ? "check_circle" : "radio_button_unchecked"}
+            {isCompleted ? "check_circle" : "radio_button_unchecked"}
           </span>
-          Estado de la Receta
+          {mode === "recetario" ? `Estado para ${dayNames[targetDay]} (${mealNames[targetMeal]})` : "Estado de la Receta"}
         </h2>
-        <p className="text-[11px] text-slate-550 dark:text-zinc-400 leading-relaxed">
-          Marca esta receta como realizada para registrar tu constancia dietética semanal.
+        <p className="text-[11px] text-slate-500 dark:text-zinc-400 leading-relaxed">
+          {mode === "recetario" 
+            ? `Marca esta receta como completada para el día ${dayNames[targetDay]} en tu planificación activa.`
+            : "Marca esta receta como realizada para registrar tu constancia dietética semanal."}
         </p>
 
         <button
           type="button"
-          onClick={() => onToggleComplete(day, meal)}
+          onClick={() => onToggleComplete(targetDay, targetMeal)}
           className={`w-full py-3 font-extrabold text-sm rounded-xl transition duration-200 cursor-pointer shadow-sm flex items-center justify-center gap-2 active:scale-[0.98] ${
-            isRecipeCompleted
-              ? "bg-emerald-600 text-white border border-emerald-600 hover:bg-emerald-750 hover:border-emerald-750"
+            isCompleted
+              ? "bg-emerald-600 text-white border border-emerald-600 hover:bg-emerald-700 hover:border-emerald-700"
               : "bg-white hover:bg-slate-50 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-200 border border-slate-200/60 dark:border-zinc-700/50"
           }`}
         >
           <span className="w-5 h-5 flex items-center justify-center shrink-0">
             <span className="material-symbols-outlined text-[18px]">
-              {isRecipeCompleted ? "task_alt" : "circle"}
+              {isCompleted ? "task_alt" : "circle"}
             </span>
           </span>
-          <span>Marcar como completado</span>
+          <span>{isCompleted ? "Completada" : "Marcar como completada"}</span>
         </button>
 
         {/* Weekly progress summary bar */}
@@ -827,7 +1049,14 @@ export default function RecipeDetail({
       <div className="space-y-6">
         {/* Progreso Semanal / Completar Receta Panel */}
         {showAdjust && !showOnly && (
-          isPlanActive ? renderCompletionPanel() : renderHistoricalWarning()
+          mode === "recetario" ? (
+            <div className="space-y-6">
+              {renderPlanMatches()}
+              {renderCompletionPanel()}
+            </div>
+          ) : (
+            isPlanActive ? renderCompletionPanel() : renderHistoricalWarning()
+          )
         )}
 
         {/* Raciones Ajustables */}
@@ -871,7 +1100,7 @@ export default function RecipeDetail({
             {/* Custom factor control */}
             <div className="space-y-2 text-left">
               <div className="flex items-center justify-between select-none">
-                <label htmlFor="custom-factor" className="text-[10px] font-bold text-zinc-400 dark:text-zinc-550 uppercase tracking-widest">
+                <label htmlFor="custom-factor" className="text-[10px] font-bold text-zinc-400 dark:text-zinc-600 uppercase tracking-widest">
                   Personalizar
                 </label>
                 {multiplier !== 1 && (
@@ -964,13 +1193,13 @@ export default function RecipeDetail({
             <span className="material-symbols-outlined text-emerald-600 dark:text-emerald-400 text-[18px]">share</span>
             Compartir Receta
           </h2>
-          <p className="text-[11px] text-slate-550 dark:text-zinc-400 leading-relaxed">
+          <p className="text-[11px] text-slate-500 dark:text-zinc-400 leading-relaxed">
             Comparte esta prescripción nutricional o envíala a tus aplicaciones de notas preferidas.
           </p>
 
           {/* Checkbox selector */}
           <div className="bg-zinc-50/70 dark:bg-zinc-950/40 p-3 rounded-xl border border-zinc-200/30 dark:border-zinc-800/40 select-none">
-            <label className="flex items-center gap-2 cursor-pointer text-xs text-gray-750 dark:text-zinc-300 relative group/tooltip flex-wrap">
+            <label className="flex items-center gap-2 cursor-pointer text-xs text-gray-700 dark:text-zinc-300 relative group/tooltip flex-wrap">
               <input
                 type="checkbox"
                 checked={shareFullRecipe}
@@ -979,7 +1208,7 @@ export default function RecipeDetail({
               />
               <span className="flex items-center gap-1 font-semibold">
                 Compartir receta completa
-                <span className="material-symbols-outlined text-slate-400 dark:text-zinc-550 cursor-help" style={{ fontSize: "14px" }}>info</span>
+                <span className="material-symbols-outlined text-slate-400 dark:text-zinc-600 cursor-help" style={{ fontSize: "14px" }}>info</span>
               </span>
               <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-48 p-2 bg-slate-900 text-white text-[10px] rounded-lg opacity-0 pointer-events-none group-hover/tooltip:opacity-100 transition-opacity duration-150 shadow-md z-30 leading-normal font-medium text-center">
                 Al activarlo se copiarán todos los ingredientes y preparación detallados. Si está inactivo, solo se compartirá el enlace.
@@ -1066,7 +1295,7 @@ export default function RecipeDetail({
   };
 
   const renderMealNavigator = (isMobileSticky = false) => {
-    if (!isPlanActive || activeRecipes.length === 0) return null;
+    if (mode === "recetario" || !isPlanActive || activeRecipes.length === 0) return null;
 
     const dayMealsRef = isMobileSticky ? bottomDayMealsDropdownRef : topDayMealsDropdownRef;
     const allRecipesRef = isMobileSticky ? bottomAllRecipesDropdownRef : topAllRecipesDropdownRef;
@@ -1191,7 +1420,7 @@ export default function RecipeDetail({
                       }`}>
                         {dayLabel}
                         {isToday && (
-                          <span className="text-[8px] font-black lowercase text-emerald-600 dark:text-emerald-450 bg-emerald-500/10 dark:bg-emerald-400/20 px-1 py-0.2 rounded-sm select-none">
+                          <span className="text-[8px] font-black lowercase text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 dark:bg-emerald-400/20 px-1 py-0.5 rounded-sm select-none">
                             hoy
                           </span>
                         )}
@@ -1276,6 +1505,57 @@ export default function RecipeDetail({
             <span className="hidden md:inline ml-1.5">{backLabel}</span>
           </button>
 
+          <div className="flex flex-wrap items-center gap-1.5 md:gap-2 select-none">
+            {/* Add to Favorites Heart Button (Shown in all modes) */}
+            <button
+              type="button"
+              disabled={resolvedFavId.current === null}
+              onClick={handleFavoriteToggle}
+              className={`inline-flex items-center justify-center px-2.5 py-1.5 md:px-3 md:py-2 rounded-xl border text-[11px] font-extrabold transition duration-250 shadow-xs gap-1.5 ${
+                resolvedFavId.current === null
+                  ? "bg-slate-100 dark:bg-zinc-800/50 border-slate-200 dark:border-zinc-800 text-slate-400 dark:text-zinc-500 cursor-not-allowed opacity-60"
+                  : isFav
+                  ? "bg-rose-600 border-rose-600 text-white cursor-pointer"
+                  : "bg-slate-50 hover:bg-slate-100 dark:bg-zinc-800/40 hover:border-slate-350 dark:hover:border-zinc-700 text-slate-500 hover:text-slate-700 dark:text-zinc-400 border-slate-200 dark:border-zinc-800 cursor-pointer"
+              }`}
+              title={resolvedFavId.current === null ? "Esta receta no está en el Recetario" : isFav ? "Quitar de favoritos" : "Añadir a favoritos"}
+            >
+              <span className={`material-symbols-outlined text-[16px] ${resolvedFavId.current === null ? "text-slate-300 dark:text-zinc-650" : isFav ? "text-white fill-white font-variation-fill-1" : "text-slate-400"}`}>
+                favorite
+              </span>
+              <span className="hidden sm:inline">{isFav ? "Favorito" : "Añadir a Favoritos"}</span>
+            </button>
+
+            {/* Edit Button (Only recetario mode, muted icon-only style) */}
+            {mode === "recetario" && onEdit && (
+              <button
+                type="button"
+                onClick={() => onEdit(recipe)}
+                className="inline-flex items-center justify-center p-2 rounded-xl text-slate-400 hover:text-indigo-650 dark:text-zinc-500 dark:hover:text-indigo-400 bg-slate-50/50 hover:bg-slate-100 dark:bg-zinc-800/30 dark:hover:bg-zinc-805/80 border border-slate-200/50 dark:border-zinc-800/50 transition duration-200 cursor-pointer shadow-xs"
+                title="Editar receta"
+              >
+                <span className="material-symbols-outlined text-[16px]">edit</span>
+              </button>
+            )}
+
+            {/* Delete Button (Only recetario mode, muted icon-only style, disabled for plan recipes) */}
+            {mode === "recetario" && (
+              <button
+                type="button"
+                disabled={recipe.source === "plan"}
+                onClick={() => onDelete && onDelete(recipe)}
+                className={`inline-flex items-center justify-center p-2 rounded-xl border transition duration-200 ${
+                  recipe.source === "plan"
+                    ? "bg-slate-100/30 text-slate-300 dark:bg-zinc-850/10 dark:text-zinc-750 border-slate-200/30 dark:border-zinc-850/30 cursor-not-allowed"
+                    : "bg-slate-50 hover:bg-red-50 text-slate-400 hover:text-red-500 border-slate-200 dark:border-zinc-800 hover:border-red-200/50 dark:hover:border-red-900/35 cursor-pointer shadow-xs"
+                }`}
+                title={recipe.source === "plan" ? "No se puede borrar porque proviene de un plan semanal" : "Eliminar receta"}
+              >
+                <span className="material-symbols-outlined text-[16px]">delete</span>
+              </button>
+            )}
+          </div>
+
           {nextMeal && (
             <button
               type="button"
@@ -1286,7 +1566,7 @@ export default function RecipeDetail({
                   onNavigate(nextMeal.day, nextMeal.meal, nextMeal.recipe);
                 }
               }}
-              className="inline-flex items-center gap-1.5 text-[11px] md:text-xs font-extrabold text-emerald-800 hover:text-emerald-950 dark:text-emerald-300 dark:hover:text-emerald-100 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-950/60 px-3 py-2 md:px-3.5 md:py-2.5 rounded-xl transition duration-200 cursor-pointer border border-emerald-100/50 dark:border-emerald-900/40 shadow-sm"
+              className="inline-flex items-center gap-1.5 text-[11px] md:text-xs font-extrabold text-emerald-800 hover:text-emerald-950 dark:text-emerald-300 dark:hover:text-emerald-100 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-950/60 px-3 py-2 md:px-3.5 md:py-2.5 rounded-xl transition duration-200 cursor-pointer border border-emerald-100/55 dark:border-emerald-900/40 shadow-sm"
               title={`Ir a la próxima comida: ${mealNames[nextMeal.meal]}`}
             >
               <span className="material-symbols-outlined text-[14px] md:text-[15px]">fastfood</span>
@@ -1303,7 +1583,7 @@ export default function RecipeDetail({
           {renderMealNavigator(false)}
         </div>
 
-        {isPlanActive && (
+        {isPlanActive && mode !== "recetario" && (
           <div className="text-xs text-slate-400 order-3 md:order-2 lg:order-3 md:justify-self-end md:w-[150px] text-right">
             Pauta {currentIndex + 1} de {activeRecipes.length}
           </div>
@@ -1312,12 +1592,17 @@ export default function RecipeDetail({
 
       {/* Hero Header Presentation */}
       <section className="relative overflow-hidden rounded-3xl bg-slate-100 dark:bg-zinc-900 border border-slate-200/50 dark:border-zinc-800 min-h-[250px] flex flex-col md:flex-row items-stretch shadow-sm">
-        <div className="w-full md:w-5/12 min-h-[200px] relative shrink-0">
-          <img
-            src={recipe.image || "https://images.unsplash.com/photo-1490645935967-10de6ba17061?q=80&w=1000&auto=format&fit=crop"}
-            alt={recipe.recipeName}
-            className="absolute inset-0 w-full h-full object-cover animate-fade-in"
-          />
+        <div className="w-full md:w-5/12 min-h-[200px] relative shrink-0 overflow-hidden flex items-center justify-center bg-emerald-50/40 dark:bg-zinc-950 text-slate-400 dark:text-zinc-500">
+          {imageUrl && !imageError ? (
+            <img
+              src={imageUrl}
+              alt={recipe.recipeName}
+              onError={handleImageError}
+              className="absolute inset-0 w-full h-full object-cover animate-fade-in"
+            />
+          ) : (
+            <ImagePlaceholder text="Sin Imagen" iconSizeClass="text-5xl" />
+          )}
         </div>
         <div className="w-full md:w-7/12 p-6 md:p-8 flex flex-col justify-center bg-white dark:bg-zinc-900">
           <span className="inline-flex items-center gap-1 text-[10px] font-bold tracking-widest bg-emerald-50 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-400 px-3 py-1 rounded-full w-max mb-3 uppercase">
@@ -1646,9 +1931,39 @@ export default function RecipeDetail({
           </div>
 
           {/* Mobile-only inline completion panel at the very bottom */}
-          {isPlanActive && (
+          {isPlanActive && mode !== "recetario" && (
             <div className="lg:hidden mt-6 no-print">
               {renderCompletionPanel()}
+            </div>
+          )}
+
+          {/* Mobile-only matches and completion panel for recetario mode */}
+          {mode === "recetario" && (
+            <div className="lg:hidden mt-6 no-print space-y-4">
+              {renderPlanMatches()}
+              {renderCompletionPanel()}
+            </div>
+          )}
+
+          {/* Subtle Audit Footer */}
+          {mode === "recetario" && (recipe.createdAt || recipe.updatedAt) && (
+            <div className="mt-8 pt-4 border-t border-slate-100 dark:border-zinc-800/40 flex flex-col sm:flex-row sm:items-center justify-between text-[10px] text-slate-450 dark:text-zinc-500 select-none gap-2">
+              {recipe.createdAt && (
+                <div className="flex items-center gap-1 select-none">
+                  <span className="material-symbols-outlined text-[13px] opacity-70">calendar_month</span>
+                  <span>
+                    Creada: {new Date(recipe.createdAt).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })}
+                  </span>
+                </div>
+              )}
+              {recipe.updatedAt && recipe.updatedAt !== recipe.createdAt && (
+                <div className="flex items-center gap-1 select-none">
+                  <span className="material-symbols-outlined text-[13px] opacity-70">edit_note</span>
+                  <span>
+                    Modificada: {new Date(recipe.updatedAt).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })}
+                  </span>
+                </div>
+              )}
             </div>
           )}
 
@@ -1700,7 +2015,7 @@ export default function RecipeDetail({
 
 
       {/* Mobile Sticky Bottom Recipe Switcher - positioned exactly above the mobile appbar (bottom-16) */}
-      {isPlanActive && activeRecipes.length > 0 && (
+      {isPlanActive && mode !== "recetario" && activeRecipes.length > 0 && (
         <div className="recipe-bottom-switcher fixed bottom-16 left-0 right-0 z-40 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border-t border-slate-200/50 dark:border-zinc-800 p-2.5 md:hidden shadow-lg flex justify-center no-print">
           {renderMealNavigator(true)}
         </div>
