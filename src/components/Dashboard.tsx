@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { PlanMetadata, MealPlan } from "../types";
 import ConfirmationModal from "./ConfirmationModal";
 import DuplicatePlanModal from "./DuplicatePlanModal";
+import { logger } from "../utils/logger";
 
 interface DashboardProps {
   metadata: PlanMetadata | null;
@@ -162,7 +163,9 @@ export default function Dashboard({
         try {
           const errorData = await response.json();
           errMsg = errorData.error || errMsg;
-        } catch (_) {}
+        } catch {
+          // response body may be empty
+        }
         throw new Error(errMsg);
       }
       const data = await response.json();
@@ -176,7 +179,7 @@ export default function Dashboard({
     } catch (err: any) {
       clearInterval(progressInterval);
       if (err.name === "AbortError") {
-        console.log("Reprocesamiento cancelado por el usuario.");
+        logger.info("Reprocesamiento cancelado por el usuario.");
         return;
       }
       console.error(err);
@@ -425,9 +428,11 @@ export default function Dashboard({
           try {
             const textText = await response.text();
             if (textText) {
-              errMsg = `Server Network Error: ${textText.substring(0, 160)}`;
+              errMsg = `${t("dashboard.server_network_error")}: ${textText.substring(0, 160)}`;
             }
-          } catch (_) {}
+          } catch {
+            // response body may be empty
+          }
         }
         throw new Error(errMsg);
       }
@@ -449,7 +454,7 @@ export default function Dashboard({
     } catch (err: any) {
       clearInterval(progressInterval);
       if (err.name === "AbortError") {
-        console.log("Upload canceled by user.");
+        logger.info("Upload canceled by user.");
         return;
       }
       console.error(err);

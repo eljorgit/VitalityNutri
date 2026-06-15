@@ -81,7 +81,8 @@
     "no_db_access_msg": "Could not connect to the shared nutritional plan database.",
     "retry": "Retry Connection",
     "delete_recipe_title": "Could not delete recipe",
-    "delete_recipe_msg": "Please try again in a few seconds."
+    "delete_recipe_msg": "Please try again in a few seconds.",
+    "download_plan_error": "Could not download the active plan from the database."
   },
 
   "confirm": {
@@ -247,6 +248,7 @@
     "network_restore_error": "Network error while trying to restore the plan.",
     "export_error": "Could not export the backup.",
     "import_error": "Error uploading/importing the backup file.",
+    "server_network_error": "Server Network Error",
     "import_parse_error": "Error reading the backup file. Make sure it is a valid JSON.",
     "import_invalid_format": "The backup file does not have a valid format.",
     "import_confirm_title": "Import backup",

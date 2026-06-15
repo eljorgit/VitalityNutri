@@ -833,7 +833,9 @@ app.post("/api/plan/batch-cooking", batchCookingLimiter, async (req, res) => {
           cachedParams.hasAirfryer === clientParams.hasAirfryer &&
           cachedParams.hasRobot === clientParams.hasRobot &&
           String(cachedParams.customTools || "").trim() === String(clientParams.customTools || "").trim();
-      } catch (_) {}
+      } catch (_) {
+        logger.warn("[BatchCooking] Failed to compare cached params; forcing regeneration.");
+      }
     }
 
     if (cachedGuide && paramsMatch && !forceRegenerate) {
@@ -983,7 +985,9 @@ app.post("/api/upload", uploadLimiter, async (req, res) => {
       if (filePath.startsWith(uploadsDir)) {
         try {
           await fs.promises.unlink(filePath);
-        } catch (_) {}
+        } catch {
+          // temp file may not exist
+        }
       }
     }
 
@@ -1098,7 +1102,9 @@ app.delete("/api/history/:id", deleteHistoryLimiter, async (req, res) => {
       if (filePath.startsWith(uploadsDir)) {
         try {
           await fs.promises.unlink(filePath);
-        } catch (_) {}
+        } catch {
+          // temp file may not exist
+        }
       }
     }
     res.json({ success: true });
@@ -1825,7 +1831,9 @@ function getMetaDataForRequest(req: express.Request): { title: string; descripti
     if (parsedUrl.protocol === "http:" || parsedUrl.protocol === "https:") {
       // already safe
     }
-  } catch (_) {}
+  } catch {
+    // invalid URL — fall through to defaults
+  }
 
   // Default website-wide metadata
   let title = "VitalityNutri - Planificador de Alimentación Consciente y Saludable";

@@ -4,6 +4,7 @@ import { Recipe, MealPlan, MealType } from "../types";
 import ConfirmationModal from "./ConfirmationModal";
 import ImagePlaceholder from "./ImagePlaceholder";
 import { MEAL_TAGS, MEAL_TAG_ICONS, getMealTag, translateTag } from "../utils/tags";
+import { logger } from "../utils/logger";
 
 interface RecetarioProps {
   onSelectRecipe: (recipe: Recipe) => void;
@@ -51,7 +52,7 @@ export default function Recetario({
     setFailedImages((prev) => ({ ...prev, [key]: true }));
 
     try {
-      console.log(`[Recetario] Image failed for "${r.recipeName}". Reporting to server...`);
+      logger.info(`[Recetario] Image failed for "${r.recipeName}". Reporting to server...`);
       const res = await fetch("/api/recipes/report-broken-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -66,7 +67,7 @@ export default function Recetario({
       if (res.ok) {
         const data = await res.json();
         if (data.newImageUrl) {
-          console.log(`[Recetario] Hot-swapping card image with: ${data.newImageUrl}`);
+          logger.info(`[Recetario] Hot-swapping card image with: ${data.newImageUrl}`);
           setRecipes((prev) =>
             prev.map((item) => {
               if (item.id === r.id) {

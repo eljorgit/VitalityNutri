@@ -411,7 +411,7 @@ export default function App() {
     try {
       const res = await fetch("/api/plan");
       if (!res.ok) {
-        throw new Error("No se pudo descargar la planificación activa de la base.");
+        throw new Error(t("error.download_plan_error"));
       }
       const data = await res.json();
       setPlan(data.plan);

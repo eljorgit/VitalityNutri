@@ -5,6 +5,7 @@ import ConfirmationModal from "./ConfirmationModal";
 import ImagePlaceholder from "./ImagePlaceholder";
 import { getSiteVisibility } from "../utils/siteVisibility";
 import { translateTag } from "../utils/tags";
+import { logger } from "../utils/logger";
 
 const formatAmountAndUnit = (amount: number, unit: string) => {
   let normalizedUnit = unit.trim().toLowerCase();
@@ -97,7 +98,7 @@ export default function RecipeDetail({
     if (imageError) return;
     setImageError(true);
     try {
-      console.log(`[RecipeDetail] Image failed to load: ${imageUrl}. Reporting to server...`);
+      logger.info(`[RecipeDetail] Image failed to load: ${imageUrl}. Reporting to server...`);
       const res = await fetch("/api/recipes/report-broken-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -113,7 +114,7 @@ export default function RecipeDetail({
       if (res.ok) {
         const data = await res.json();
         if (data.newImageUrl) {
-          console.log(`[RecipeDetail] Hot-swapping broken image with: ${data.newImageUrl}`);
+          logger.info(`[RecipeDetail] Hot-swapping broken image with: ${data.newImageUrl}`);
           setImageUrl(data.newImageUrl);
           setImageError(false);
           if (day && meal && onUpdateRecipeOnServer) {

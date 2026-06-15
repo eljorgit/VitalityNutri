@@ -117,7 +117,9 @@ export default function BatchCooking({ plan, metadata, onSelectRecipe }: BatchCo
             if (savedChecks) {
               try {
                 setCheckedSteps(JSON.parse(savedChecks));
-              } catch (_) {}
+              } catch {
+                // stale localStorage entry, ignore
+              }
             }
           }
         }
@@ -182,7 +184,9 @@ export default function BatchCooking({ plan, metadata, onSelectRecipe }: BatchCo
         try {
           const errData = await response.json();
           errMsg = errData.error || errMsg;
-        } catch (_) {}
+        } catch {
+          // response body may be empty
+        }
         throw new Error(errMsg);
       }
       const data = await response.json();
