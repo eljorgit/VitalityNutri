@@ -7,6 +7,9 @@ import BatchCooking from "./components/BatchCooking";
 import Recetario from "./components/Recetario";
 import RecipeForm from "./components/RecipeForm";
 import ConfirmationModal, { ConfirmationVariant } from "./components/ConfirmationModal";
+import { useTranslation } from "react-i18next";
+import { getCanonicalPath, navigateTo } from "./utils/routes";
+import { SUPPORTED_LANGS, storeLang, type SupportedLang } from "./i18n/config";
 import { MealPlan, PlanMetadata, DayType, MealType, Recipe } from "./types";
 import {
   normalizeSearchText,
@@ -14,8 +17,6 @@ import {
   matchesSearchText,
   getRecipeNameSearchScore,
   highlightText,
-  MEAL_LABELS,
-  DAY_LABELS
 } from "./utils/searchHelpers";
 
 // --- Search Types ---
@@ -51,6 +52,7 @@ interface SearchHistoryItem {
 
 
 export default function App() {
+  const { t, i18n } = useTranslation();
   const [activeTab, setActiveTab] = useState<string>("dashboard");
   const [showResetPlanConfirmation, setShowResetPlanConfirmation] = useState(false);
   const [appNotification, setAppNotification] = useState<{
@@ -68,6 +70,7 @@ export default function App() {
   // --- Recetario States ---
   const [recetarioRecipeDetail, setRecetarioRecipeDetail] = useState<Recipe | null>(null);
   const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null);
+  const [recetarioRecipeToDelete, setRecetarioRecipeToDelete] = useState<Recipe | null>(null);
 
   // --- Search Engine State ---
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -170,8 +173,9 @@ export default function App() {
   // Sync state from URL pathname
   const syncStateFromUrl = (urlPath: string) => {
     const qIndex = urlPath.indexOf("?");
-    const pathname = qIndex === -1 ? urlPath : urlPath.slice(0, qIndex);
+    const rawPathname = qIndex === -1 ? urlPath : urlPath.slice(0, qIndex);
     const searchParams = new URLSearchParams(urlPath.slice(qIndex));
+    const pathname = getCanonicalPath(rawPathname, i18n.language);
     const vParam = searchParams.get("v");
     
     if (!pathname || pathname === "/" || pathname.startsWith("/dashboard")) {
@@ -355,23 +359,23 @@ export default function App() {
   // Sync page title in browser tab
   useEffect(() => {
     if (activeTab === "recipe-detail" && selectedRecipeDetail) {
-      const mealName = selectedRecipeDetail.meal;
-      const dayName = selectedRecipeDetail.day;
+      const mealName = t(`meals.${selectedRecipeDetail.meal}`);
+      const dayName = t(`days.${selectedRecipeDetail.day}`);
       const capitalizedDay = dayName.charAt(0).toUpperCase() + dayName.slice(1);
       const capitalizedMeal = mealName.charAt(0).toUpperCase() + mealName.slice(1);
       document.title = `${selectedRecipeDetail.recipe.recipeName} (${capitalizedMeal} - ${capitalizedDay}) | VitalityNutri`;
     } else if (activeTab === "calendar") {
-      document.title = "Calendario | VitalityNutri";
+      document.title = t("titles.calendar");
     } else if (activeTab === "grocery") {
-      document.title = "Lista de Compra | VitalityNutri";
+      document.title = t("titles.grocery");
     } else if (activeTab === "batch-cooking") {
-      document.title = "Batch Cooking | VitalityNutri";
+      document.title = t("titles.batch-cooking");
     } else if (activeTab === "dashboard") {
-      document.title = "Dashboard | VitalityNutri - Planificador de Alimentación Consciente";
+      document.title = t("titles.dashboard");
     } else {
-      document.title = "VitalityNutri - Planificador de Alimentación Consciente y Saludable";
+      document.title = t("titles.default");
     }
-  }, [activeTab, selectedRecipeDetail]);
+  }, [activeTab, selectedRecipeDetail, t]);
 
   const navigate = (path: string) => {
     let cleanPath = path;
@@ -379,8 +383,9 @@ export default function App() {
       const separator = cleanPath.includes("?") ? "&" : "?";
       cleanPath = `${cleanPath}${separator}v=${metadata.id}`;
     }
-    window.history.pushState(null, "", cleanPath);
-    syncStateFromUrl(cleanPath);
+    const localizedPath = navigateTo(cleanPath);
+    window.history.pushState(null, "", localizedPath);
+    syncStateFromUrl(localizedPath);
   };
 
   const handleSetActiveTab = (tab: string) => {
@@ -429,7 +434,7 @@ export default function App() {
       }
     } catch (err: any) {
       console.error(err);
-      setErrorMsg("Error al conectar con la base de datos de pautas nutricionales compartidas.");
+      setErrorMsg(t("error.no_db_access_msg"));
     } finally {
       setIsLoading(false);
     }
@@ -645,8 +650,8 @@ export default function App() {
               onWheel={e => e.stopPropagation()}
             >
               <div className="px-3 pt-2.5 pb-1 flex items-center justify-between">
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-zinc-500">Resultados</span>
-                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded-md">{searchResults.length} {searchResults.length === 1 ? 'receta' : 'recetas'}</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-zinc-500">{t("search.results")}</span>
+                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded-md">{searchResults.length} {t("search.recipes")}</span>
               </div>
               {searchResults.map((item, idx) => (
                 <button
@@ -676,7 +681,7 @@ export default function App() {
                     <div className="flex flex-wrap gap-1 mt-1">
                       {item.isRecetario ? (
                         <span className="text-[9px] font-black px-1.5 py-0.5 rounded-md bg-indigo-55 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-400 border border-indigo-100/30 dark:border-indigo-900/30 uppercase tracking-wider">
-                          Recetario
+                          {t("search.recetario_badge")}
                         </span>
                       ) : (
                         item.occurrences.map((occ, oi) => (
@@ -693,15 +698,15 @@ export default function App() {
                                 : "bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40"
                             }`}
                           >
-                            {MEAL_LABELS[occ.meal] || occ.meal} · {DAY_LABELS[occ.day] || occ.day}
-                            {!occ.isActive && <span className="ml-0.5 opacity-70">(ant.)</span>}
+                            {t(`meals.${occ.meal}`) || occ.meal} · {t(`days.${occ.day}`) || occ.day}
+                            {!occ.isActive && <span className="ml-0.5 opacity-70">({t("search.previous")})</span>}
                           </span>
                         ))
                       )}
                     </div>
                     {item.matchedIngredient && (
                       <p className="text-[10px] text-slate-400 dark:text-zinc-500 mt-0.5 truncate">
-                        Ingrediente: {highlightText(item.matchedIngredient, searchQuery)}
+                        {t("search.ingredient")}: {highlightText(item.matchedIngredient, searchQuery)}
                       </p>
                     )}
                   </div>
@@ -719,7 +724,7 @@ export default function App() {
           ) : (
             <div className="px-4 py-8 text-center">
               <span className="material-symbols-outlined text-slate-300 dark:text-zinc-600 text-3xl mb-2">search_off</span>
-              <p className="text-xs font-semibold text-slate-400 dark:text-zinc-500">Sin resultados para &ldquo;{searchQuery}&rdquo;</p>
+              <p className="text-xs font-semibold text-slate-400 dark:text-zinc-500">{t("search.no_results")} &ldquo;{searchQuery}&rdquo;</p>
             </div>
           )
         ) : (
@@ -727,28 +732,28 @@ export default function App() {
           !searchPoolLoaded ? (
             <div className="px-4 py-7 text-center">
               <div className="w-5 h-5 rounded-full border-2 border-emerald-200 dark:border-zinc-700 border-t-emerald-600 dark:border-t-emerald-400 animate-spin mx-auto mb-2"></div>
-              <p className="text-xs font-semibold text-slate-400 dark:text-zinc-500">Cargando recetas...</p>
+              <p className="text-xs font-semibold text-slate-400 dark:text-zinc-500">{t("search.loading")}</p>
             </div>
           ) : searchPool.length === 0 ? (
             <div className="px-4 py-8 text-center">
               <span className="material-symbols-outlined text-emerald-300 dark:text-emerald-800 text-3xl mb-2">restaurant_menu</span>
-              <p className="text-xs font-semibold text-slate-500 dark:text-zinc-400">Sube un plan nutricional para iniciar la búsqueda de recetas.</p>
+              <p className="text-xs font-semibold text-slate-500 dark:text-zinc-400">{t("search.empty_pool")}</p>
             </div>
           ) : searchHistory.length === 0 ? (
             <div className="px-4 py-7 text-center">
               <span className="material-symbols-outlined text-slate-200 dark:text-zinc-700 text-3xl mb-2">history</span>
-              <p className="text-xs font-semibold text-slate-400 dark:text-zinc-500">Aún no tienes búsquedas recientes.</p>
-              <p className="text-[10px] text-slate-300 dark:text-zinc-600 mt-1">Tus recetas visitadas aparecerán aquí.</p>
+              <p className="text-xs font-semibold text-slate-400 dark:text-zinc-500">{t("search.no_history")}</p>
+              <p className="text-[10px] text-slate-300 dark:text-zinc-600 mt-1">{t("search.no_history_hint")}</p>
             </div>
           ) : (
             <div className="overflow-y-auto flex-1">
               <div className="px-3 pt-2.5 pb-1 flex items-center justify-between">
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-zinc-500">Recientes</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-zinc-500">{t("search.recent")}</span>
                 <button
                   type="button"
                   onClick={clearAllHistory}
                   className="text-[10px] font-bold text-slate-400 hover:text-red-500 dark:text-zinc-500 dark:hover:text-red-400 transition-colors cursor-pointer"
-                >Limpiar todo</button>
+                >{t("search.clear_all")}</button>
               </div>
               {searchHistory.map((item) => (
                 <div
@@ -775,9 +780,9 @@ export default function App() {
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-bold text-slate-700 dark:text-zinc-200 truncate">{item.recipeName}</p>
                       <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
-                        {MEAL_LABELS[item.meal] || item.meal} · {DAY_LABELS[item.day] || item.day}
+                        {t(`meals.${item.meal}`) || item.meal} · {t(`days.${item.day}`) || item.day}
                         {!item.isActive && (
-                          <span className="ml-1 text-amber-500 dark:text-amber-400">(anterior)</span>
+                          <span className="ml-1 text-amber-500 dark:text-amber-400">({t("search.previous")})</span>
                         )}
                       </p>
                     </div>
@@ -786,7 +791,7 @@ export default function App() {
                     type="button"
                     onClick={() => deleteHistoryEntry(item.id)}
                     className="shrink-0 opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-400 dark:text-zinc-600 dark:hover:text-red-400 transition-all duration-150 cursor-pointer"
-                    title="Eliminar del historial"
+                    title={t("search.clear_all")}
                   >
                     <span className="material-symbols-outlined text-[16px]">close</span>
                   </button>
@@ -903,8 +908,8 @@ export default function App() {
       navigate("/dashboard");
     } catch {
       setAppNotification({
-        title: "No se pudo eliminar el plan",
-        description: "Inténtalo de nuevo en unos segundos. Si el problema continúa, revisa la conexión con el servidor.",
+        title: t("confirm.delete_plan_title"),
+        description: t("error.delete_recipe_msg"),
         icon: "error",
         variant: "danger"
       });
@@ -945,7 +950,7 @@ export default function App() {
                     : "text-slate-500 hover:text-emerald-700 dark:text-zinc-400 dark:hover:text-emerald-300 hover:bg-gray-50/50 dark:hover:bg-zinc-800"
                 }`}
               >
-                Calendario
+                {t("nav.calendar")}
               </button>
               <button
                 type="button"
@@ -958,7 +963,7 @@ export default function App() {
                     : "text-slate-500 dark:text-zinc-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-gray-50/50 dark:hover:bg-zinc-800"
                 }`}
               >
-                Recetario
+                {t("nav.recipe-book")}
               </button>
               <button
                 type="button"
@@ -971,7 +976,7 @@ export default function App() {
                     : "text-slate-500 hover:text-emerald-700 dark:text-zinc-400 dark:hover:text-emerald-300 hover:bg-gray-50/50 dark:hover:bg-zinc-800"
                 }`}
               >
-                Lista Compra
+                {t("nav.grocery")}
               </button>
               <button
                 type="button"
@@ -985,7 +990,7 @@ export default function App() {
                     : "text-slate-500 dark:text-zinc-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-gray-50/50 dark:hover:bg-zinc-800 disabled:opacity-40 disabled:cursor-not-allowed"
                 }`}
               >
-                Batch Cooking
+                {t("nav.batch-cooking")}
               </button>
             </nav>
           </div>
@@ -1012,10 +1017,10 @@ export default function App() {
                   onFocus={() => setSearchFocused(true)}
                   placeholder={
                     !searchPoolLoaded
-                      ? "Cargando recetas..."
+                      ? t("search.loading")
                       : searchPool.length === 0
-                      ? "Sube un plan para buscar..."
-                      : "Buscar receta..."
+                      ? t("search.no_plan")
+                      : t("search.placeholder")
                   }
                   disabled={searchPoolLoaded && searchPool.length === 0}
                   className="flex-1 bg-transparent text-xs font-semibold text-slate-700 dark:text-zinc-200 placeholder:text-slate-400 dark:placeholder:text-zinc-500 focus:outline-none disabled:cursor-not-allowed w-full min-w-0"
@@ -1029,7 +1034,7 @@ export default function App() {
                       setSearchFocused(false);
                     }}
                     className="shrink-0 text-slate-400 hover:text-slate-600 dark:text-zinc-500 dark:hover:text-zinc-300 transition-colors cursor-pointer"
-                    title="Limpiar búsqueda"
+                    title={t("search.clear_all")}
                   >
                     <span className="material-symbols-outlined text-[16px]">close</span>
                   </button>
@@ -1052,17 +1057,43 @@ export default function App() {
               type="button" 
               onClick={() => setMobileSearchOpen(true)}
               className="flex md:hidden p-2.5 text-slate-500 hover:text-emerald-700 dark:text-zinc-400 dark:hover:text-emerald-300 hover:bg-gray-50 dark:hover:bg-zinc-800 rounded-xl transition duration-200 select-none cursor-pointer items-center justify-center shadow-sm border border-transparent dark:border-zinc-800/40 bg-slate-50/40 dark:bg-zinc-900 shrink-0"
-              title="Buscar receta"
+              title={t("search.placeholder")}
             >
               <span className="material-symbols-outlined text-xl font-bold">search</span>
             </button>
+
+            {/* Language Switcher */}
+            <div className="relative flex items-center">
+              <select
+                value={i18n.language}
+                onChange={(e) => {
+                  const newLang = e.target.value as SupportedLang;
+                  i18n.changeLanguage(newLang);
+                  storeLang(newLang);
+                  const currentPath = window.location.pathname + window.location.search;
+                  if (!currentPath.startsWith("/api")) {
+                    const canonicalPath = getCanonicalPath(currentPath, newLang);
+                    navigate(canonicalPath);
+                  }
+                }}
+                className="appearance-none bg-transparent text-xs font-black text-slate-500 hover:text-emerald-700 dark:text-zinc-400 dark:hover:text-emerald-300 py-2 px-2 pr-5 rounded-xl cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-zinc-700 transition-colors outline-none"
+                title={t("theme.toggle")}
+              >
+                {SUPPORTED_LANGS.map((l) => (
+                  <option key={l} value={l} className="text-slate-800 dark:text-zinc-200">
+                    {l === "es" ? "ES" : "EN"}
+                  </option>
+                ))}
+              </select>
+              <span className="material-symbols-outlined text-[14px] text-slate-400 dark:text-zinc-500 pointer-events-none absolute right-0">language</span>
+            </div>
 
             {/* Dark/Night mode toggle */}
             <button 
               type="button" 
               onClick={() => setDarkMode(!darkMode)}
               className="p-2.5 text-gray-500 hover:text-emerald-700 dark:text-zinc-400 dark:hover:text-emerald-300 hover:bg-gray-50 dark:hover:bg-zinc-800 rounded-xl transition duration-200 material-symbols-outlined select-none text-xl font-bold cursor-pointer flex items-center justify-center shadow-sm border border-transparent dark:border-zinc-800/40 bg-slate-50/40 dark:bg-zinc-900 shrink-0"
-              title="Alternar Modo Oscuro"
+              title={t("theme.toggle")}
             >
               {darkMode ? "light_mode" : "dark_mode"}
             </button>
@@ -1092,10 +1123,10 @@ export default function App() {
                   onChange={e => setSearchQuery(e.target.value)}
                   placeholder={
                     !searchPoolLoaded
-                      ? "Cargando recetas..."
+                      ? t("search.loading")
                       : searchPool.length === 0
-                      ? "Sube un plan para buscar..."
-                      : "Buscar receta..."
+                      ? t("search.no_plan")
+                      : t("search.placeholder")
                   }
                   autoFocus
                   disabled={searchPoolLoaded && searchPool.length === 0}
@@ -1119,7 +1150,7 @@ export default function App() {
                 }}
                 className="text-xs font-black text-slate-500 hover:text-emerald-700 dark:text-zinc-400 dark:hover:text-emerald-300 transition-colors cursor-pointer px-1 py-1"
               >
-                Cerrar
+                {t("search.close")}
               </button>
             </div>
 
@@ -1135,19 +1166,19 @@ export default function App() {
         {isLoading ? (
           <div className="py-24 text-center">
             <div className="w-12 h-12 rounded-full border-4 border-emerald-100 dark:border-zinc-800 border-t-emerald-600 dark:border-t-emerald-400 animate-spin mx-auto mb-4"></div>
-            <p className="text-sm font-semibold text-gray-550 dark:text-zinc-400">Descargando base de pautas compartidas...</p>
+            <p className="text-sm font-semibold text-gray-550 dark:text-zinc-400">{t("loading.fetching_plan")}</p>
           </div>
         ) : errorMsg ? (
           <div className="bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-950/40 rounded-3xl p-8 text-center max-w-md mx-auto">
             <span className="material-symbols-outlined text-red-650 text-3xl mb-3">cloud_off</span>
-            <p className="font-bold text-gray-950 dark:text-red-200 mb-1">Sin acceso a la base global</p>
+            <p className="font-bold text-gray-950 dark:text-red-200 mb-1">{t("error.no_db_access_title")}</p>
             <p className="text-sm text-red-750 dark:text-red-300 opacity-90 mb-6">{errorMsg}</p>
             <button 
               type="button" 
               onClick={fetchGlobalPlan} 
               className="px-6 py-2.5 bg-[#0f5238] hover:bg-[#116c4a] text-white font-semibold text-sm rounded-full transition cursor-pointer"
             >
-              Reintentar Conexión
+              {t("error.retry")}
             </button>
           </div>
         ) : (
@@ -1263,22 +1294,8 @@ export default function App() {
                   setActiveTab("recipe-form");
                   window.history.pushState(null, "", `/recipe-book/edit/${recipe.id}`);
                 }}
-                onDelete={async (recipe) => {
-                  if (!recipe.id) return;
-                  if (confirm(`¿Estás seguro de que deseas eliminar "${recipe.recipeName}" del recetario?`)) {
-                    try {
-                      const res = await fetch(`/api/recipes/${recipe.id}`, { method: "DELETE" });
-                      if (res.ok) {
-                        setRecetarioRecipeDetail(null);
-                        navigate("/recipe-book");
-                      } else {
-                        alert("No se pudo eliminar la receta.");
-                      }
-                    } catch (err) {
-                      console.error("Error deleting recipe:", err);
-                      alert("Error de conexión al eliminar la receta.");
-                    }
-                  }
+                onDelete={(recipe) => {
+                  setRecetarioRecipeToDelete(recipe);
                 }}
                 activePlan={plan}
                 onNavigateActive={(day, meal, recipe) => {
@@ -1335,7 +1352,7 @@ export default function App() {
             {activeTab === "recipe-detail" && !selectedRecipeDetail && !inactiveRecipeDetail && !recetarioRecipeDetail && (
               <div className="flex flex-col items-center justify-center py-24 gap-4">
                 <div className="w-8 h-8 rounded-full border-[3px] border-emerald-100 dark:border-zinc-800 border-t-emerald-600 dark:border-t-emerald-400 animate-spin"></div>
-                <p className="text-sm font-semibold text-slate-400 dark:text-zinc-500">Cargando receta...</p>
+                <p className="text-sm font-semibold text-slate-400 dark:text-zinc-500">{t("loading.loading_recipe")}</p>
               </div>
             )}
 
@@ -1360,7 +1377,7 @@ export default function App() {
         <div className="flex flex-col md:flex-row justify-between items-center w-full px-6 pt-8 pb-36 md:py-8 max-w-container-max mx-auto gap-6">
           <div className="flex flex-col items-center md:items-start gap-1">
             <span className="font-extrabold text-emerald-600 text-lg">VitalityNutri</span>
-            <p className="text-xs text-gray-450 dark:text-zinc-550">© 2026 VitalityNutri. Alimentación consciente, viva y pautada.</p>
+            <p className="text-xs text-gray-450 dark:text-zinc-550">{t("footer.tagline")}</p>
           </div>
         </div>
       </footer>
@@ -1377,7 +1394,7 @@ export default function App() {
           }`}
         >
           <span className="text-xl filter drop-shadow-sm select-none">🥑</span>
-          <span className="text-[10px] tracking-tight mt-0.5 font-bold">Inicio</span>
+          <span className="text-[10px] tracking-tight mt-0.5 font-bold">{t("mobile_nav.home")}</span>
         </button>
         <button
           type="button"
@@ -1389,7 +1406,7 @@ export default function App() {
           }`}
         >
           <span className="material-symbols-outlined text-[22px]">calendar_month</span>
-          <span className="text-[10px] tracking-tight mt-0.5 font-bold">Calendario</span>
+          <span className="text-[10px] tracking-tight mt-0.5 font-bold">{t("mobile_nav.calendar")}</span>
         </button>
         <button
           type="button"
@@ -1403,7 +1420,7 @@ export default function App() {
           }`}
         >
           <span className="material-symbols-outlined text-[22px]">restaurant_menu</span>
-          <span className="text-[10px] tracking-tight mt-0.5 font-bold">Recetario</span>
+          <span className="text-[10px] tracking-tight mt-0.5 font-bold">{t("mobile_nav.recipe-book")}</span>
         </button>
         <button
           type="button"
@@ -1415,7 +1432,7 @@ export default function App() {
           }`}
         >
           <span className="material-symbols-outlined text-[22px]">shopping_basket</span>
-          <span className="text-[10px] tracking-tight mt-0.5 font-bold">Lista Compra</span>
+          <span className="text-[10px] tracking-tight mt-0.5 font-bold">{t("mobile_nav.grocery")}</span>
         </button>
         <button
           type="button"
@@ -1428,7 +1445,7 @@ export default function App() {
           }`}
         >
           <span className="material-symbols-outlined text-[22px]">outdoor_grill</span>
-          <span className="text-[10px] tracking-tight mt-0.5 font-bold">Batch Cooking</span>
+          <span className="text-[10px] tracking-tight mt-0.5 font-bold">{t("mobile_nav.batch-cooking")}</span>
         </button>
       </nav>
 
@@ -1439,7 +1456,7 @@ export default function App() {
             type="button"
             onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
             className="w-11 h-11 rounded-full bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border border-slate-200 dark:border-zinc-800 text-slate-700 dark:text-zinc-350 hover:text-emerald-600 dark:hover:text-emerald-400 hover:border-emerald-500/30 dark:hover:border-emerald-500/30 shadow-lg hover:shadow-emerald-500/10 active:scale-95 transition-all duration-200 cursor-pointer flex items-center justify-center font-bold"
-            title="Volver arriba"
+            title={t("scroll.top")}
           >
             <span className="material-symbols-outlined text-xl">arrow_upward</span>
           </button>
@@ -1460,7 +1477,7 @@ export default function App() {
               }
             }}
             className="w-11 h-11 rounded-full bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border border-slate-200 dark:border-zinc-800 text-slate-700 dark:text-zinc-350 hover:text-emerald-600 dark:hover:text-emerald-400 hover:border-emerald-500/30 dark:hover:border-emerald-500/30 shadow-lg hover:shadow-emerald-500/10 active:scale-95 transition-all duration-200 cursor-pointer flex items-center justify-center font-bold md:hidden"
-            title="Bajar al final"
+            title={t("scroll.bottom")}
           >
             <span className="material-symbols-outlined text-xl">arrow_downward</span>
           </button>
@@ -1469,9 +1486,9 @@ export default function App() {
 
       <ConfirmationModal
         isOpen={showResetPlanConfirmation}
-        title="Eliminar plan activo"
-        description="Se eliminará el plan de alimentación activo de la base de datos. Tendrás que subir un nuevo PDF para volver a acceder a las planificaciones."
-        confirmLabel="Eliminar plan"
+        title={t("confirm.delete_plan_title")}
+        description={t("confirm.delete_plan_desc")}
+        confirmLabel={t("confirm.delete_plan_confirm")}
         icon="delete"
         variant="danger"
         onCancel={() => setShowResetPlanConfirmation(false)}
@@ -1485,12 +1502,40 @@ export default function App() {
         isOpen={!!appNotification}
         title={appNotification?.title || ""}
         description={appNotification?.description || ""}
-        confirmLabel="Entendido"
+        confirmLabel={t("confirm.understood")}
         icon={appNotification?.icon}
         variant={appNotification?.variant}
         showCancel={false}
         onCancel={() => setAppNotification(null)}
         onConfirm={() => setAppNotification(null)}
+      />
+
+      <ConfirmationModal
+        isOpen={!!recetarioRecipeToDelete}
+        title={t("confirm.delete_recipe_title")}
+        description={t("confirm.delete_recipe_desc", { name: recetarioRecipeToDelete?.recipeName })}
+        confirmLabel={t("confirm.delete_recipe_confirm")}
+        icon="delete"
+        variant="danger"
+        onCancel={() => setRecetarioRecipeToDelete(null)}
+        onConfirm={async () => {
+          const recipe = recetarioRecipeToDelete;
+          setRecetarioRecipeToDelete(null);
+          if (!recipe?.id) return;
+          try {
+            const res = await fetch(`/api/recipes/${recipe.id}`, { method: "DELETE" });
+            if (!res.ok) throw new Error("Error al eliminar");
+            setRecetarioRecipeDetail(null);
+            navigate("/recipe-book");
+          } catch {
+            setAppNotification({
+              title: t("error.delete_recipe_title"),
+              description: t("error.delete_recipe_msg"),
+              icon: "error",
+              variant: "danger"
+            });
+          }
+        }}
       />
 
     </div>

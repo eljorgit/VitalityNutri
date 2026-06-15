@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { MealPlan, DayType, MealType, Recipe } from "../types";
 
 interface CalendarGridProps {
@@ -11,21 +12,19 @@ interface CalendarGridProps {
 }
 
 export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, completedRecipes, onToggleComplete, onToggleDayComplete }: CalendarGridProps) {
-  const daysKeys: DayType[] = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"];
-  const mealsKeys: MealType[] = ["desayuno", "almuerzo", "merienda", "cena"];
+  const { t, i18n } = useTranslation();
+  const daysKeys: DayType[] = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+  const mealsKeys: MealType[] = ["breakfast", "lunch", "snack", "dinner"];
 
-  // Mobile day selection state (defaults to today, fallback to "lunes")
-  const todayNameMap = ["domingo", "lunes", "martes", "miercoles", "jueves", "viernes", "sabado"];
+  const todayNameMap = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
   const currentDayOfWeekName = todayNameMap[new Date().getDay()];
-  const initialMobileDay = daysKeys.includes(currentDayOfWeekName as DayType) ? (currentDayOfWeekName as DayType) : "lunes";
+  const initialMobileDay = daysKeys.includes(currentDayOfWeekName as DayType) ? (currentDayOfWeekName as DayType) : "monday";
   const [activeMobileDay, setActiveMobileDay] = React.useState<DayType>(initialMobileDay);
   const [showProgressModal, setShowProgressModal] = React.useState<boolean>(false);
 
-  // Refs for auto-scrolling the desktop grid to today's column
   const gridScrollContainerRef = React.useRef<HTMLDivElement>(null);
   const todayColumnRef = React.useRef<HTMLDivElement>(null);
 
-  // Lock background scroll when progress modal is open
   React.useEffect(() => {
     if (showProgressModal) {
       document.body.classList.add("modal-open");
@@ -44,17 +43,12 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, compl
     const container = gridScrollContainerRef.current;
     const todayCol = todayColumnRef.current;
     if (!container || !todayCol) return;
-
-    // Check if the today column is fully visible inside the scrollable container
     const containerRect = container.getBoundingClientRect();
     const colRect = todayCol.getBoundingClientRect();
-
     const isFullyVisible =
       colRect.left >= containerRect.left &&
       colRect.right <= containerRect.right;
-
     if (!isFullyVisible) {
-      // Scroll so today's column is centred (or at least fully visible)
       const colOffsetLeft = todayCol.offsetLeft;
       const colWidth = todayCol.offsetWidth;
       const containerWidth = container.clientWidth;
@@ -63,7 +57,6 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, compl
     }
   }, []);
 
-  // Touch gesture states for mobile swiping
   const [touchStartX, setTouchStartX] = React.useState<number | null>(null);
   const [touchStartY, setTouchStartY] = React.useState<number | null>(null);
 
@@ -74,62 +67,45 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, compl
 
   const handleTouchEnd = (e: React.TouchEvent) => {
     if (touchStartX === null || touchStartY === null) return;
-    
     const touchEndX = e.changedTouches[0].clientX;
     const touchEndY = e.changedTouches[0].clientY;
-    
     const diffX = touchStartX - touchEndX;
     const diffY = touchStartY - touchEndY;
-    
-    // Threshold in pixels to define a swipe
     const threshold = 60;
-    
-    // Only trigger if horizontal movement is dominant and exceeds the threshold
     if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > threshold) {
       const currentIndex = daysKeys.indexOf(activeMobileDay);
       if (diffX > 0) {
-        // Swiped left -> show next day
         if (currentIndex < daysKeys.length - 1) {
           setActiveMobileDay(daysKeys[currentIndex + 1]);
         }
       } else {
-        // Swiped right -> show previous day
         if (currentIndex > 0) {
           setActiveMobileDay(daysKeys[currentIndex - 1]);
         }
       }
     }
-    
     setTouchStartX(null);
     setTouchStartY(null);
   };
 
-  // Dynamic calculation of current week dates
   const getCurrentWeekDates = () => {
     const today = new Date();
-    const dayOfWeek = today.getDay(); // 0 is Sunday, 1 is Monday, etc.
-    
-    // Find Monday of the current week
+    const dayOfWeek = today.getDay();
     const distanceToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
     const mondayVal = new Date(today);
     mondayVal.setDate(today.getDate() + distanceToMonday);
 
     const datesMap: Record<DayType, { short: string; long: string; num: number; isToday: boolean; dateString: string }> = {} as any;
-    const dayKeys: DayType[] = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"];
+    const dayKeys: DayType[] = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
     const labels = {
-      lunes: { short: "LUN", long: "Lunes" },
-      martes: { short: "MAR", long: "Martes" },
-      miercoles: { short: "MIÉ", long: "Miércoles" },
-      jueves: { short: "JUE", long: "Jueves" },
-      viernes: { short: "VIE", long: "Viernes" },
-      sabado: { short: "SÁB", long: "Sábado" },
-      domingo: { short: "DOM", long: "Domingo" }
+      monday: { short: "LUN", long: t("weekdays.monday") },
+      tuesday: { short: "MAR", long: t("weekdays.tuesday") },
+      wednesday: { short: "MIÉ", long: t("weekdays.wednesday") },
+      thursday: { short: "JUE", long: t("weekdays.thursday") },
+      friday: { short: "VIE", long: t("weekdays.friday") },
+      saturday: { short: "SÁB", long: t("weekdays.saturday") },
+      sunday: { short: "DOM", long: t("weekdays.sunday") }
     };
-
-    const monthNames = [
-      "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-      "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
-    ];
 
     let startDayNum = 0;
     let endDayNum = 0;
@@ -139,10 +115,8 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, compl
     dayKeys.forEach((key, idx) => {
       const current = new Date(mondayVal);
       current.setDate(mondayVal.getDate() + idx);
-      
       const num = current.getDate();
-      const month = monthNames[current.getMonth()];
-      
+      const month = new Intl.DateTimeFormat(i18n.language, { month: "long" }).format(current);
       if (idx === 0) {
         startDayNum = num;
         startMonthLabel = month;
@@ -151,25 +125,22 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, compl
         endDayNum = num;
         endMonthLabel = month;
       }
-
-      // Check if this date matches today
       const isToday =
         current.getDate() === today.getDate() &&
         current.getMonth() === today.getMonth() &&
         current.getFullYear() === today.getFullYear();
-
       datesMap[key] = {
         short: labels[key].short,
         long: labels[key].long,
         num: num,
-        dateString: `${num} de ${month}`,
+        dateString: `${num} ${month}`,
         isToday
       };
     });
 
     const weekRangeLabel = startMonthLabel === endMonthLabel
-      ? `${startDayNum} - ${endDayNum} de ${startMonthLabel}`
-      : `${startDayNum} de ${startMonthLabel} a ${endDayNum} de ${endMonthLabel}`;
+      ? `${startDayNum} - ${endDayNum} ${startMonthLabel}`
+      : `${startDayNum} ${startMonthLabel} - ${endDayNum} ${endMonthLabel}`;
 
     return { datesMap, weekRangeLabel };
   };
@@ -178,48 +149,40 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, compl
 
   const getNextMeal = (): { day: DayType; meal: MealType } => {
     const today = new Date();
-    const dayOfWeek = today.getDay(); // 0 is Sunday, 1 is Monday, etc.
+    const dayOfWeek = today.getDay();
     const hour = today.getHours();
-
-    const daysMap: DayType[] = ["domingo", "lunes", "martes", "miercoles", "jueves", "viernes", "sabado"];
+    const daysMap: DayType[] = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
     const currentDay = daysMap[dayOfWeek];
-
-    let meal: MealType = "desayuno";
+    let meal: MealType = "breakfast";
     let targetDay = currentDay;
-
     if (hour < 11) {
-      meal = "desayuno";
+      meal = "breakfast";
     } else if (hour < 15) {
-      meal = "almuerzo";
+      meal = "lunch";
     } else if (hour < 19) {
-      meal = "merienda";
+      meal = "snack";
     } else if (hour < 22) {
-      meal = "cena";
+      meal = "dinner";
     } else {
-      meal = "desayuno";
+      meal = "breakfast";
       const tomorrowIndex = (dayOfWeek + 1) % 7;
       targetDay = daysMap[tomorrowIndex];
     }
-
-    // In case targetDay is "domingo", map Sunday to domingo
-    const safeDay = (targetDay === "domingo" ? "domingo" : targetDay) as DayType;
+    const safeDay = targetDay as DayType;
     return { day: safeDay, meal };
   };
 
   const nextMeal = getNextMeal();
 
   const mealLabels: Record<MealType, string> = {
-    desayuno: "Desayuno",
-    almuerzo: "Almuerzo",
-    merienda: "Merienda",
-    cena: "Cena",
+    breakfast: t("meals.breakfast_cap"),
+    lunch: t("meals.lunch_cap"),
+    snack: t("meals.snack_cap"),
+    dinner: t("meals.dinner_cap"),
   };
 
-  // Helper to count planned meals and calculate weekly completion percentage
   const getPlannedStats = () => {
     if (!plan) return { planned: 0, total: 28, percentage: 0 };
-    
-    // Total planned meals in the calendar
     let planned = 0;
     daysKeys.forEach((day) => {
       mealsKeys.forEach((meal) => {
@@ -228,14 +191,11 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, compl
         }
       });
     });
-
     const today = new Date();
-    const dayOfWeek = today.getDay(); // 0 is Sunday, 1 is Monday, etc.
+    const dayOfWeek = today.getDay();
     const hour = today.getHours();
-    
     const dayNum = dayOfWeek === 0 ? 7 : dayOfWeek;
     const pastDaysMeals = (dayNum - 1) * 4;
-    
     let todayMeals = 0;
     if (hour >= 22) {
       todayMeals = 4;
@@ -248,10 +208,8 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, compl
     } else {
       todayMeals = 0;
     }
-    
     const elapsedSlots = pastDaysMeals + todayMeals;
     const percentage = Math.round((elapsedSlots / 28) * 100);
-
     return {
       planned,
       total: 28,
@@ -284,14 +242,12 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, compl
 
   return (
     <div className="space-y-8 select-text">
-      {/* Header without Date Filter (removed per request) */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-950 dark:text-white tracking-tight font-sans animate-fade-in">Planificador Semanal de Comidas</h1>
-          <p className="text-sm text-gray-550 dark:text-zinc-400">Visualiza, edita y organiza tu pauta nutricional compartida para todos.</p>
+          <h1 className="text-3xl font-bold text-gray-950 dark:text-white tracking-tight font-sans animate-fade-in">{t("calendar.weekly_planner_title")}</h1>
+          <p className="text-sm text-gray-550 dark:text-zinc-400">{t("calendar.weekly_planner_desc")}</p>
         </div>
         
-        {/* Leyenda and Batch Cooking Quick Access */}
         <div className="flex flex-wrap items-center gap-4 animate-fade-in no-print select-none">
           <button
             type="button"
@@ -299,28 +255,26 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, compl
             className="flex items-center gap-2 px-4.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-2xl shadow-sm hover:shadow hover:scale-[1.02] active:scale-95 transition-all duration-150 cursor-pointer border-none"
           >
             <span className="material-symbols-outlined text-[16px]">outdoor_grill</span>
-            Cocinado por Lotes (Batch Cooking)
+            {t("calendar.batch_cooking_btn")}
           </button>
           
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs bg-white dark:bg-zinc-900 px-4 py-2.5 rounded-2xl border border-slate-200/80 dark:border-zinc-800/80 w-fit">
-            <span className="font-bold text-slate-500 dark:text-zinc-400">Leyenda:</span>
+            <span className="font-bold text-slate-500 dark:text-zinc-400">{t("calendar.legend_title")}:</span>
             <span className="flex items-center gap-1.5 text-slate-700 dark:text-zinc-200">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/20"></span>
-              Rico en nutrientes
+              {t("calendar.legend_nutrient_rich")}
             </span>
             <span className="flex items-center gap-1.5 text-slate-700 dark:text-zinc-200">
               <span className="w-2.5 h-2.5 rounded-full bg-orange-400 shadow-sm shadow-orange-400/20"></span>
-              Alto aporte energético (&gt; 350 kcal)
+              {t("calendar.legend_high_energy")}
             </span>
           </div>
         </div>
       </div>      {plan ? (
         <>
-          {/* Main Desktop Grid Scrollable - Hidden on mobile, shown on desktop/print */}
           <div ref={gridScrollContainerRef} className="hidden md:block print:block bg-white dark:bg-zinc-900 rounded-3xl p-6 border border-slate-100 dark:border-zinc-800 shadow-sm overflow-x-auto print-area-container">
             <div className="min-w-[1076px] w-full grid grid-cols-7 gap-4">
 
-              {/* Days Columns without Day numbers - showing weekday names Spanish directly */}
               {daysKeys.map((day) => {
                 const label = datesMap[day];
                 const isToday = label.isToday;
@@ -329,7 +283,6 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, compl
                   <div key={day} ref={isToday ? todayColumnRef : undefined} className={`flex flex-col gap-4 rounded-2xl p-1 transition-colors ${
                     isToday ? "bg-emerald-50/70 dark:bg-emerald-950/20 border-2 border-emerald-500/10" : ""
                   }`}>
-                    {/* Column Day Info Header - Only showing name list */}
                     <div className="text-center pb-2 select-none h-10 flex items-center justify-center">
                       <span className={`block text-xs font-black uppercase tracking-wider ${
                         isToday 
@@ -340,22 +293,21 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, compl
                       </span>
                     </div>
 
-                    {/* Meal slots for the active day */}
                     {mealsKeys.map((meal) => {
                       const recipe = plan.days[day]?.[meal];
 
                       const mealBorders: Record<MealType, string> = {
-                        desayuno: "border-l-4 border-l-amber-500 border-slate-100 dark:border-zinc-800",
-                        almuerzo: "border-l-4 border-l-emerald-500 border-slate-100 dark:border-zinc-800",
-                        merienda: "border-l-4 border-l-blue-500 border-slate-100 dark:border-zinc-800",
-                        cena: "border-l-4 border-l-indigo-500 border-slate-100 dark:border-zinc-800",
+                        breakfast: "border-l-4 border-l-amber-500 border-slate-100 dark:border-zinc-800",
+                        lunch: "border-l-4 border-l-emerald-500 border-slate-100 dark:border-zinc-800",
+                        snack: "border-l-4 border-l-blue-500 border-slate-100 dark:border-zinc-800",
+                        dinner: "border-l-4 border-l-indigo-500 border-slate-100 dark:border-zinc-800",
                       };
 
                       const mealLabelColors: Record<MealType, string> = {
-                        desayuno: "text-amber-600 dark:text-amber-400",
-                        almuerzo: "text-emerald-600 dark:text-emerald-400",
-                        merienda: "text-blue-600 dark:text-blue-400",
-                        cena: "text-indigo-600 dark:text-indigo-400",
+                        breakfast: "text-amber-600 dark:text-amber-400",
+                        lunch: "text-emerald-600 dark:text-emerald-400",
+                        snack: "text-blue-600 dark:text-blue-400",
+                        dinner: "text-indigo-600 dark:text-indigo-400",
                       };
 
                       if (recipe) {
@@ -382,7 +334,7 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, compl
                                 </span>
                                 <div className="flex items-center gap-1">
                                   {isCompleted && (
-                                    <span className="bg-emerald-600 text-white rounded-full select-none shadow-sm shrink-0 flex items-center justify-center w-4 h-4 border border-emerald-500/20" title="Receta completada">
+                                    <span className="bg-emerald-600 text-white rounded-full select-none shadow-sm shrink-0 flex items-center justify-center w-4 h-4 border border-emerald-500/20" title={t("calendar.completed_recipe_tooltip")}>
                                       <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" strokeWidth="4.5" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                                       </svg>
@@ -390,7 +342,7 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, compl
                                   )}
                                   {isFocused && !isCompleted && (
                                     <span className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-extrabold text-[7.5px] px-1.5 py-0.5 rounded-full select-none animate-pulse shadow-sm shrink-0">
-                                      PRÓXIMA
+                                      {t("calendar.next_label")}
                                     </span>
                                   )}
                                 </div>
@@ -404,8 +356,8 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, compl
                             
                             <div className="flex items-center justify-between mt-auto">
                               <div className="flex gap-1 select-none">
-                                <span className="w-2 h-2 rounded-full bg-emerald-400" title="Rico en nutrientes"></span>
-                                {recipe.calories > 350 && <span className="w-2 h-2 rounded-full bg-orange-400" title="Alto aporte energético"></span>}
+                                <span className="w-2 h-2 rounded-full bg-emerald-400" title={t("calendar.legend_nutrient_rich")}></span>
+                                {recipe.calories > 350 && <span className="w-2 h-2 rounded-full bg-orange-400" title={t("calendar.legend_high_energy")}></span>}
                               </div>
                               <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded select-all ${
                                 isFocused ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300" : "bg-slate-50 dark:bg-zinc-800 text-slate-500 dark:text-zinc-405"
@@ -414,7 +366,6 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, compl
                               </span>
                             </div>
                             
-                            {/* Hover indicators - vertically centered on the right edge */}
                             <div className="absolute right-2.5 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity no-print z-20">
                               <span className="material-symbols-outlined text-[13px] text-emerald-700 bg-emerald-100 dark:bg-zinc-800 dark:text-emerald-300 p-0.5 rounded-lg select-none shadow-sm border border-emerald-500/15">
                                 arrow_forward
@@ -423,12 +374,11 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, compl
                           </div>
                         );
                       } else {
-                        // Empty Slot
                         return (
                           <div
                             key={meal}
                             className="bg-slate-50/50 dark:bg-zinc-900/30 hover:bg-slate-100/70 dark:hover:bg-zinc-800/50 border-2 border-dashed border-slate-200 dark:border-zinc-800 hover:border-emerald-500/30 rounded-xl h-28 flex flex-col items-center justify-center p-3 text-center transition-all duration-200 cursor-help"
-                            title={`Haz clic o utiliza un PDF para añadir una comida pautada en este slot de ${mealLabels[meal]}.`}
+                            title={t("calendar.empty_slot_tooltip", { meal: mealLabels[meal] })}
                           >
                             <span className={`block text-[9px] font-bold uppercase tracking-wider mb-1 select-none ${mealLabelColors[meal]}`}>
                               {mealLabels[meal]}
@@ -436,7 +386,7 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, compl
                             <span className="material-symbols-outlined text-slate-300 dark:text-zinc-600 group-hover:text-emerald-500 text-lg select-none">
                               add_circle
                             </span>
-                            <span className="text-[9px] text-slate-400 dark:text-zinc-500 font-semibold mt-0.5 select-none">Sin Pautar</span>
+                            <span className="text-[9px] text-slate-400 dark:text-zinc-500 font-semibold mt-0.5 select-none">{t("calendar.not_planned")}</span>
                           </div>
                         );
                       }
@@ -449,9 +399,7 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, compl
             </div>
           </div>
 
-          {/* Main Mobile Day Tabs View - Shown on mobile, hidden on desktop/print */}
           <div className="md:hidden print:hidden space-y-5">
-            {/* Horizontal Scrolling Day Selector */}
             <div className="flex gap-2 overflow-x-auto pb-2 select-none justify-between border-b border-gray-200 dark:border-zinc-800/60 pr-1">
               {daysKeys.map((day) => {
                 const label = datesMap[day];
@@ -479,7 +427,6 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, compl
               })}
             </div>
 
-            {/* Selected Day Meals Vertical Stack */}
             <div 
               className="space-y-3.5"
               onTouchStart={handleTouchStart}
@@ -489,17 +436,17 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, compl
                 const recipe = plan.days[activeMobileDay]?.[meal];
                 
                  const mealBorders: Record<MealType, string> = {
-                   desayuno: "border-l-4 border-l-amber-500 dark:border-l-amber-500",
-                   almuerzo: "border-l-4 border-l-emerald-500 dark:border-l-emerald-500",
-                   merienda: "border-l-4 border-l-blue-500 dark:border-l-blue-500",
-                   cena: "border-l-4 border-l-indigo-500 dark:border-l-indigo-500",
+                   breakfast: "border-l-4 border-l-amber-500 dark:border-l-amber-500",
+                   lunch: "border-l-4 border-l-emerald-500 dark:border-l-emerald-500",
+                   snack: "border-l-4 border-l-blue-500 dark:border-l-blue-500",
+                   dinner: "border-l-4 border-l-indigo-500 dark:border-l-indigo-500",
                  };
 
                  const mealLabelColors: Record<MealType, string> = {
-                   desayuno: "text-amber-600 dark:text-amber-400",
-                   almuerzo: "text-emerald-600 dark:text-emerald-400",
-                   merienda: "text-blue-600 dark:text-blue-400",
-                   cena: "text-indigo-600 dark:text-indigo-400",
+                   breakfast: "text-amber-600 dark:text-amber-400",
+                   lunch: "text-emerald-600 dark:text-emerald-400",
+                   snack: "text-blue-600 dark:text-blue-400",
+                   dinner: "text-indigo-600 dark:text-indigo-400",
                  };
 
                 const isFocused = activeMobileDay === nextMeal.day && meal === nextMeal.meal;
@@ -526,7 +473,7 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, compl
                             {mealLabels[meal]}
                           </span>
                           {isCompleted && (
-                            <span className="bg-emerald-600 text-white rounded-full select-none shadow-sm shrink-0 flex items-center justify-center w-4 h-4 border border-emerald-500/20" title="Receta completada">
+                            <span className="bg-emerald-600 text-white rounded-full select-none shadow-sm shrink-0 flex items-center justify-center w-4 h-4 border border-emerald-500/20" title={t("calendar.completed_recipe_tooltip")}>
                               <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" strokeWidth="4.5" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                               </svg>
@@ -534,7 +481,7 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, compl
                           )}
                           {isFocused && !isCompleted && (
                             <span className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-extrabold text-[8px] px-2 py-0.5 rounded-full select-none animate-pulse shadow-sm">
-                              PRÓXIMA
+                              {t("calendar.next_label")}
                             </span>
                           )}
                         </div>
@@ -550,8 +497,8 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, compl
                             {recipe.calories} kcal
                           </span>
                           <div className="flex gap-1.5 items-center mr-1">
-                            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" title="Rico en nutrientes"></span>
-                            {recipe.calories > 350 && <span className="w-2.5 h-2.5 rounded-full bg-orange-400" title="Alto aporte energético"></span>}
+                            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" title={t("calendar.legend_nutrient_rich")}></span>
+                            {recipe.calories > 350 && <span className="w-2.5 h-2.5 rounded-full bg-orange-400" title={t("calendar.legend_high_energy")}></span>}
                           </div>
                         </div>
                       </div>
@@ -574,7 +521,7 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, compl
                           <span className={`text-[10px] font-black uppercase tracking-wider block ${mealLabelColors[meal]}`}>
                             {mealLabels[meal]}
                           </span>
-                          <span className="text-xs text-slate-400 dark:text-zinc-500 font-bold">Sin Pautar</span>
+                          <span className="text-xs text-slate-400 dark:text-zinc-500 font-bold">{t("calendar.not_planned")}</span>
                         </div>
                       </div>
                     </div>
@@ -584,17 +531,15 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, compl
             </div>
           </div>
 
-          {/* Bottom stats/insights summary section */}
           <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 no-print">
             
-            {/* Weekly progress card details */}
             <div 
               onClick={() => setShowProgressModal(true)}
               className="bg-white/80 dark:bg-zinc-900 p-6 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm flex flex-col justify-between select-text cursor-pointer hover:shadow-md hover:border-emerald-500/25 transition-all duration-200 group/card"
-              title="Haz clic para ver la lista semanal de recetas y marcarlas"
+              title={t("calendar.click_for_weekly_list")}
             >
               <div className="flex items-center justify-between mb-4">
-                <h4 className="text-sm font-bold text-gray-700 dark:text-zinc-200 group-hover/card:text-emerald-700 dark:group-hover/card:text-emerald-400 transition-colors">Porcentaje de Completitud Semanal</h4>
+                <h4 className="text-sm font-bold text-gray-700 dark:text-zinc-200 group-hover/card:text-emerald-700 dark:group-hover/card:text-emerald-400 transition-colors">{t("calendar.weekly_completion")}</h4>
                 <span className="text-sm font-bold text-emerald-800 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-0.5 rounded-full flex items-center gap-1">
                   {stats.percentage}%
                   <span className="material-symbols-outlined text-[14px]">list_alt</span>
@@ -606,19 +551,23 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, compl
                   style={{ width: `${stats.percentage}%` }}
                 ></div>
               </div>
-              <p className="mt-4 text-xs text-[#404943] dark:text-zinc-400 leading-relaxed text-left">
-                ¡Excelente progreso! Tienes <span className="font-bold text-gray-900 dark:text-white">{stats.elapsedSlots} de {stats.total} comidas</span> pautadas y vinculadas con las métricas nutricionales en tu calendario.
-              </p>
+              <p className="mt-4 text-xs text-[#404943] dark:text-zinc-400 leading-relaxed text-left"
+                 dangerouslySetInnerHTML={{
+                   __html: t("calendar.weekly_completion_desc", {
+                     elapsed: stats.elapsedSlots,
+                     total: stats.total
+                   })
+                 }}
+              />
             </div>
 
-            {/* Completed recipes card details */}
             <div 
               onClick={() => setShowProgressModal(true)}
               className="bg-white/80 dark:bg-zinc-900 p-6 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm flex flex-col justify-between select-text cursor-pointer hover:shadow-md hover:border-emerald-500/25 transition-all duration-200 group/card"
-              title="Haz clic para ver la lista semanal de recetas y marcarlas"
+              title={t("calendar.click_for_weekly_list")}
             >
               <div className="flex items-center justify-between mb-4">
-                <h4 className="text-sm font-bold text-gray-700 dark:text-zinc-200 group-hover/card:text-emerald-700 dark:group-hover/card:text-emerald-400 transition-colors">Recetas Completadas</h4>
+                <h4 className="text-sm font-bold text-gray-700 dark:text-zinc-200 group-hover/card:text-emerald-700 dark:group-hover/card:text-emerald-400 transition-colors">{t("calendar.completed_recipes")}</h4>
                 <span className="text-sm font-bold text-emerald-800 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-0.5 rounded-full flex items-center gap-1">
                   {completedStats.percentage}%
                   <span className="material-symbols-outlined text-[14px]">list_alt</span>
@@ -630,33 +579,36 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, compl
                   style={{ width: `${completedStats.percentage}%` }}
                 ></div>
               </div>
-              <p className="mt-4 text-xs text-[#404943] dark:text-zinc-400 leading-relaxed text-left">
-                ¡Progreso real! Has completado y marcado <span className="font-bold text-gray-900 dark:text-white">{completedStats.completed} de {completedStats.totalPlanned} recetas</span> pautadas para esta semana.
-              </p>
+              <p className="mt-4 text-xs text-[#404943] dark:text-zinc-400 leading-relaxed text-left"
+                 dangerouslySetInnerHTML={{
+                   __html: t("calendar.completed_recipes_desc", {
+                     completed: completedStats.completed,
+                     total: completedStats.totalPlanned
+                   })
+                 }}
+              />
             </div>
 
-            {/* Top calorie macro card */}
             <div className="bg-white/80 dark:bg-zinc-900 p-6 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm flex flex-col justify-between select-text text-left">
-              <h4 className="text-sm font-bold text-gray-700 dark:text-zinc-200 mb-4">Aporte Proteico Estimado</h4>
+              <h4 className="text-sm font-bold text-gray-700 dark:text-zinc-200 mb-4">{t("calendar.estimated_protein")}</h4>
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-950/30 text-[#0f5238] dark:text-emerald-400 rounded-2xl flex items-center justify-center border border-emerald-100 dark:border-emerald-900/40 select-none">
                   <span className="material-symbols-outlined">restaurant</span>
                 </div>
                 <div>
-                  <span className="block font-bold text-md text-gray-950 dark:text-white">Proteína Balanceada</span>
+                  <span className="block font-bold text-md text-gray-950 dark:text-white">{t("calendar.balanced_protein")}</span>
                   <span className="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed block mt-0.5">
-                    Provee un aporte de alta biodisponibilidad para preservar la masa muscular activa.
+                    {t("calendar.balanced_protein_desc")}
                   </span>
                 </div>
               </div>
             </div>
 
-            {/* Shopping quick link card helper */}
             <div className="bg-white/80 dark:bg-zinc-900 p-6 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm flex items-center justify-between gap-4 select-text text-left">
               <div className="text-left">
-                <h4 className="text-sm font-bold text-gray-700 dark:text-zinc-200 mb-1">Lista de la Compra Inteligente</h4>
+                <h4 className="text-sm font-bold text-gray-700 dark:text-zinc-200 mb-1">{t("calendar.smart_grocery_list")}</h4>
                 <p className="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed">
-                  Calculada en base a los ingredientes del plan actual, organizada y optimizada de forma inmediata.
+                  {t("calendar.smart_grocery_list_desc")}
                 </p>
               </div>
               <button 
@@ -664,7 +616,7 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, compl
                 onClick={() => setActiveTab("grocery")}
                 className="bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-xs py-3 px-4 rounded-xl transition duration-200 active:scale-95 shadow-sm shrink-0 cursor-pointer"
               >
-                Ver Lista
+                {t("calendar.view_list_btn")}
               </button>
             </div>
 
@@ -673,21 +625,20 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, compl
       ) : (
         <div className="bg-white dark:bg-zinc-900 rounded-3xl p-12 text-center border border-gray-100 dark:border-zinc-800 max-w-lg mx-auto">
           <span className="material-symbols-outlined text-4xl text-gray-300 dark:text-zinc-600 mb-4 font-light">soup_kitchen</span>
-          <p className="text-slate-950 dark:text-white font-bold text-lg mb-1">No hay ningún plan cargado</p>
+          <p className="text-slate-950 dark:text-white font-bold text-lg mb-1">{t("calendar.no_plan_loaded")}</p>
           <p className="text-sm text-[#404943] dark:text-zinc-400 leading-relaxed mb-6">
-            Por favor, vuelve al Dashboard principal y sube un plan semanal de alimentación en formato PDF de forma instantánea.
+            {t("calendar.no_plan_loaded_desc")}
           </p>
           <button
             type="button"
             onClick={() => setActiveTab("dashboard")}
             className="px-6 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-sm rounded-full cursor-pointer transition-all active:scale-95 duration-150"
           >
-            Volver al Dashboard
+            {t("calendar.back_to_dashboard")}
           </button>
         </div>
       )}
 
-      {/* Progress recipes list modal overlay */}
       {showProgressModal && plan && (
         <div 
           className="modal-overlay fixed inset-0 z-[999] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in no-print !mt-0"
@@ -702,15 +653,14 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, compl
             className="bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border border-slate-150 dark:border-zinc-800 rounded-3xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden relative z-10 select-none !mt-0"
             style={{ marginTop: 0 }}
           >
-            {/* Modal Header */}
             <div className="flex items-center justify-between px-6 py-4.5 border-b border-slate-100 dark:border-zinc-800/80 bg-slate-50/50 dark:bg-zinc-950/20 shrink-0">
               <div>
                 <h3 className="text-base md:text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
                   <span className="material-symbols-outlined text-[22px] text-emerald-600 dark:text-emerald-400">task_alt</span>
-                  Progreso Semanal de Recetas
+                  {t("calendar.weekly_progress_title")}
                 </h3>
                 <p className="text-[9.5px] text-zinc-400 dark:text-zinc-500 uppercase tracking-widest font-extrabold mt-0.5">
-                  Haz clic sobre una receta para completarla o desmarcarla
+                  {t("calendar.weekly_progress_desc")}
                 </p>
               </div>
               <button
@@ -722,7 +672,6 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, compl
               </button>
             </div>
 
-            {/* Modal Body */}
             <div className="p-6 overflow-y-auto flex-grow space-y-6">
               {daysKeys.map((day) => {
                 const dayRecipes = mealsKeys.map(meal => ({ meal, recipe: plan.days[day]?.[meal] })).filter(item => !!item.recipe);
@@ -743,7 +692,7 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, compl
                         onClick={() => onToggleDayComplete(day, dayMeals, !allCompleted)}
                         className="text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors uppercase tracking-wider cursor-pointer bg-transparent border-0 outline-none"
                       >
-                        {allCompleted ? "Desmarcar todo" : "Marcar todo"}
+                        {allCompleted ? t("calendar.uncheck_all") : t("calendar.check_all")}
                       </button>
                     </h4>
                     
@@ -764,7 +713,6 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, compl
                                   : "bg-slate-50/50 hover:bg-slate-100/50 dark:bg-zinc-950/20 dark:hover:bg-zinc-800/40 border-transparent hover:border-emerald-600/10 text-slate-700 dark:text-zinc-350"
                             }`}
                           >
-                            {/* Circle toggle checkmark button */}
                             {isCompleted ? (
                               <span className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0 border border-emerald-500/20 shadow-sm transition duration-150">
                                 <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" strokeWidth="4.5" viewBox="0 0 24 24">
@@ -788,7 +736,7 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, compl
                                 </span>
                                 {isFocused && !isCompleted && (
                                   <span className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-extrabold text-[7px] px-1.5 py-0.5 rounded-full select-none animate-pulse shadow-sm leading-none">
-                                    PRÓXIMA
+                                    {t("calendar.next_label")}
                                   </span>
                                 )}
                               </div>
@@ -807,17 +755,16 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, compl
               })}
             </div>
 
-            {/* Modal Footer */}
             <div className="px-6 py-4.5 border-t border-slate-100 dark:border-zinc-800/80 bg-slate-50/50 dark:bg-zinc-950/20 shrink-0 flex items-center justify-between">
               <span className="text-[10px] font-bold text-zinc-450 dark:text-zinc-500 uppercase tracking-widest">
-                Completadas: {completedStats.completed} de {completedStats.totalPlanned} ({completedStats.percentage}%)
+                {t("calendar.completed_count", { completed: completedStats.completed, total: completedStats.totalPlanned, percentage: completedStats.percentage })}
               </span>
               <button
                 type="button"
                 onClick={() => setShowProgressModal(false)}
                 className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-sm transition active:scale-95 cursor-pointer"
               >
-                Listo
+                {t("general.close")}
               </button>
             </div>
           </div>

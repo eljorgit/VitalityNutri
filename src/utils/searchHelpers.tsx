@@ -74,19 +74,3 @@ export function highlightText(text: string, query: string): React.ReactNode {
   );
 }
 
-export const MEAL_LABELS: Record<string, string> = {
-  desayuno: "Desayuno",
-  almuerzo: "Almuerzo",
-  merienda: "Merienda",
-  cena: "Cena",
-};
-
-export const DAY_LABELS: Record<string, string> = {
-  lunes: "Lunes",
-  martes: "Martes",
-  miercoles: "Miércoles",
-  jueves: "Jueves",
-  viernes: "Viernes",
-  sabado: "Sábado",
-  domingo: "Domingo",
-};

@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useRef, useCallback } from "react";
 
 export type ConfirmationVariant = "danger" | "warning" | "success" | "info";
 
@@ -46,21 +46,58 @@ export default function ConfirmationModal({
   showCancel = true,
   variant = "danger"
 }: ConfirmationModalProps) {
+  const modalRef = useRef<HTMLDivElement>(null);
+  const prevFocusRef = useRef<HTMLElement | null>(null);
+
+  const getFocusableElements = useCallback((): HTMLElement[] => {
+    if (!modalRef.current) return [];
+    return Array.from(
+      modalRef.current.querySelectorAll<HTMLElement>(
+        "button, [href], input, select, textarea, [tabindex]:not([tabindex='-1'])"
+      )
+    );
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    prevFocusRef.current = document.activeElement as HTMLElement;
+    const timer = setTimeout(() => {
+      const focusables = getFocusableElements();
+      if (focusables.length > 0) focusables[0].focus();
+    }, 50);
+    return () => {
+      clearTimeout(timer);
+      prevFocusRef.current?.focus();
+      prevFocusRef.current = null;
+    };
+  }, [isOpen, getFocusableElements]);
+
   useEffect(() => {
     if (!isOpen) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         onCancel();
+        return;
+      }
+      if (event.key === "Tab") {
+        const focusables = getFocusableElements();
+        if (focusables.length === 0) return;
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [isOpen, onCancel]);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onCancel, getFocusableElements]);
 
   if (!isOpen) return null;
 
@@ -69,6 +106,7 @@ export default function ConfirmationModal({
   return (
     <div
       className="modal-overlay fixed inset-0 z-[10000] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-fade-in no-print !mt-0"
+      ref={modalRef}
       role="dialog"
       aria-modal="true"
       aria-labelledby="confirmation-modal-title"

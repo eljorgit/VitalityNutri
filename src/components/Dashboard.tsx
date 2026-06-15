@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { PlanMetadata, MealPlan } from "../types";
 import ConfirmationModal from "./ConfirmationModal";
 import DuplicatePlanModal from "./DuplicatePlanModal";
@@ -16,6 +17,7 @@ export default function Dashboard({
   setActiveTab,
   onResetPlan 
 }: DashboardProps) {
+  const { t, i18n } = useTranslation();
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -24,15 +26,14 @@ export default function Dashboard({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isDev = (import.meta as any).env?.DEV || (typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"));
 
-  // Reassuring messages during compilation/analysis by Gemini
   const loadingSteps = [
-    "Preparando archivo y conectando con el servidor...", // 0% - 15%
-    "Conectando de forma segura con la IA de Gemini...",   // 15% - 35%
-    "Analizando estructura del plan de alimentación...",   // 35% - 55%
-    "Calculando raciones, ingredientes y macronutrientes...", // 55% - 75%
-    "Estructurando recetas y pasos de preparación...",     // 75% - 90%
-    "Sincronizando y guardando plan en la base de datos...", // 90% - 99%
-    "¡Todo listo! Recetas optimizadas generadas con éxito."   // 100%
+    t("dashboard.loading_step_1"),
+    t("dashboard.loading_step_2"),
+    t("dashboard.loading_step_3"),
+    t("dashboard.loading_step_4"),
+    t("dashboard.loading_step_5"),
+    t("dashboard.loading_step_6"),
+    t("dashboard.loading_step_7"),
   ];
 
   const [history, setHistory] = useState<any[]>([]);
@@ -88,7 +89,6 @@ export default function Dashboard({
     fetchHistory();
   }, [metadata]);
 
-  // Lock background scroll when history modal is open or when processing with IA
   useEffect(() => {
     if (showHistoryModal || isProcessing) {
       document.body.classList.add("modal-open");
@@ -114,11 +114,10 @@ export default function Dashboard({
 
   const requestReprocessConfirmation = () => {
     if (!metadata || !metadata.savedFileName) return;
-
     setConfirmation({
-      title: "Reprocesar plan",
-      description: "Se volverá a analizar el PDF guardado con IA y se reemplazará la planificación activa con el nuevo resultado.",
-      confirmLabel: "Reprocesar plan",
+      title: t("dashboard.reprocess_title"),
+      description: t("dashboard.reprocess_desc"),
+      confirmLabel: t("dashboard.reprocess_btn"),
       icon: "refresh",
       variant: "warning",
       onConfirm: handleReprocess
@@ -127,22 +126,17 @@ export default function Dashboard({
 
   const handleReprocess = async () => {
     if (!metadata || !metadata.savedFileName) return;
-
     setIsProcessing(true);
     setProgress(0);
     setLoadingStep(0);
     setErrorMsg(null);
-
     const controller = new AbortController();
     abortControllerRef.current = controller;
-
     let currentProgress = 0;
     const progressInterval = setInterval(() => {
-      // Smooth asymptotic progress towards 99%
       currentProgress += (99 - currentProgress) * 0.015;
       const rounded = Math.min(currentProgress, 99);
       setProgress(rounded);
-
       if (rounded < 15) {
         setLoadingStep(0);
       } else if (rounded < 35) {
@@ -157,35 +151,28 @@ export default function Dashboard({
         setLoadingStep(5);
       }
     }, 200);
-
     try {
       const response = await fetch("/api/reprocess", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         signal: controller.signal
       });
-
       if (!response.ok) {
-        let errMsg = "Ocurrió un error al reprocesar el plan con IA.";
+        let errMsg = t("dashboard.reprocess_error");
         try {
           const errorData = await response.json();
           errMsg = errorData.error || errMsg;
         } catch (_) {}
         throw new Error(errMsg);
       }
-
       const data = await response.json();
       clearInterval(progressInterval);
       setProgress(100);
       setLoadingStep(6);
-
       setTimeout(() => {
         onPlanProcessed(data.plan, data.metadata);
         fetchHistory();
       }, 600);
-
     } catch (err: any) {
       clearInterval(progressInterval);
       if (err.name === "AbortError") {
@@ -193,7 +180,7 @@ export default function Dashboard({
         return;
       }
       console.error(err);
-      setErrorMsg(err.message || "No se pudo conectar con el servidor o reprocesar el archivo.");
+      setErrorMsg(err.message || t("dashboard.connection_error"));
     } finally {
       abortControllerRef.current = null;
       setIsProcessing(false);
@@ -208,17 +195,15 @@ export default function Dashboard({
       const response = await fetch(`/api/history/restore/${id}`, {
         method: "POST"
       });
-
       if (!response.ok) {
-        throw new Error("No se pudo restaurar el plan seleccionado.");
+        throw new Error(t("dashboard.restore_error"));
       }
-
       const data = await response.json();
       onPlanProcessed(data.plan, data.metadata);
       fetchHistory();
     } catch (err: any) {
       console.error(err);
-      setErrorMsg(err.message || "Error de red al intentar restaurar el plan.");
+      setErrorMsg(err.message || t("dashboard.network_restore_error"));
     } finally {
       setIsProcessing(false);
     }
@@ -227,7 +212,7 @@ export default function Dashboard({
   const handleExportBackup = async () => {
     try {
       const response = await fetch("/api/backup/export");
-      if (!response.ok) throw new Error("Error al exportar los datos.");
+      if (!response.ok) throw new Error(t("dashboard.export_error"));
       const data = await response.json();
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
       const url = URL.createObjectURL(blob);
@@ -241,7 +226,7 @@ export default function Dashboard({
       URL.revokeObjectURL(url);
     } catch (err: any) {
       console.error(err);
-      setErrorMsg(err.message || "No se pudo exportar la copia de seguridad.");
+      setErrorMsg(err.message || t("dashboard.export_error"));
     }
   };
 
@@ -253,13 +238,12 @@ export default function Dashboard({
       try {
         const parsed = JSON.parse(event.target?.result as string);
         if (!parsed || typeof parsed !== "object" || !Array.isArray(parsed.plans)) {
-          throw new Error("El archivo de copia de seguridad no tiene el formato válido.");
+          throw new Error(t("dashboard.import_invalid_format"));
         }
-
         setConfirmation({
-          title: "Importar copia de seguridad",
-          description: "Se sobrescribirán todos los datos actuales de la aplicación con la información de la copia de seguridad. Esta acción no se puede deshacer.",
-          confirmLabel: "Importar",
+          title: t("dashboard.import_confirm_title"),
+          description: t("dashboard.import_confirm_desc"),
+          confirmLabel: t("dashboard.import_confirm_btn"),
           icon: "cloud_upload",
           variant: "warning",
           onConfirm: async () => {
@@ -270,20 +254,18 @@ export default function Dashboard({
             try {
               const response = await fetch("/api/backup/import", {
                 method: "POST",
-                headers: {
-                  "Content-Type": "application/json"
-                },
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(parsed)
               });
               if (!response.ok) {
                 const errData = await response.json();
-                throw new Error(errData.error || "Error al importar el backup.");
+                throw new Error(errData.error || t("dashboard.import_error"));
               }
               setProgress(100);
               setConfirmation({
-                title: "Importación exitosa",
-                description: "Los datos han sido restaurados correctamente. La aplicación se recargará para aplicar los cambios.",
-                confirmLabel: "Aceptar",
+                title: t("dashboard.import_success_title"),
+                description: t("dashboard.import_success_desc"),
+                confirmLabel: t("dashboard.import_success_btn"),
                 icon: "check_circle",
                 variant: "success",
                 showCancel: false,
@@ -293,7 +275,7 @@ export default function Dashboard({
               });
             } catch (err: any) {
               console.error(err);
-              setErrorMsg(err.message || "Error al subir/importar el archivo de copia de seguridad.");
+              setErrorMsg(err.message || t("dashboard.import_error"));
             } finally {
               setIsProcessing(false);
             }
@@ -301,7 +283,7 @@ export default function Dashboard({
         });
       } catch (err: any) {
         console.error(err);
-        setErrorMsg(err.message || "Error al leer el archivo de copia de seguridad. Asegúrate de que es un JSON válido.");
+        setErrorMsg(err.message || t("dashboard.import_parse_error"));
       }
     };
     reader.readAsText(file);
@@ -313,11 +295,9 @@ export default function Dashboard({
       const response = await fetch(`/api/history/${id}`, {
         method: "DELETE"
       });
-
       if (!response.ok) {
-        throw new Error("No se pudo eliminar el plan.");
+        throw new Error(t("dashboard.history_delete_error"));
       }
-
       if (metadata && metadata.id === id) {
         onResetPlan({ skipConfirmation: true });
       } else {
@@ -326,9 +306,9 @@ export default function Dashboard({
     } catch (err: any) {
       console.error(err);
       setConfirmation({
-        title: "No se pudo eliminar el plan",
-        description: err.message || "Error al intentar eliminar el plan del historial.",
-        confirmLabel: "Entendido",
+        title: t("dashboard.history_delete_error_title"),
+        description: err.message || t("dashboard.history_delete_error"),
+        confirmLabel: t("dashboard.history_confirm_understood"),
         icon: "error",
         variant: "danger",
         showCancel: false,
@@ -339,9 +319,9 @@ export default function Dashboard({
 
   const requestDeleteHistoryConfirmation = (id: number, name: string) => {
     setConfirmation({
-      title: "Eliminar plan",
-      description: `Se eliminará "${name}" del historial. Esta acción borrará permanentemente el PDF y la planificación de la base de datos.`,
-      confirmLabel: "Eliminar plan",
+      title: t("dashboard.history_delete_confirm_title"),
+      description: t("dashboard.history_delete_confirm_desc", { name }),
+      confirmLabel: t("dashboard.history_delete_confirm_btn"),
       icon: "delete",
       variant: "danger",
       onConfirm: () => handleDeleteHistory(id)
@@ -360,7 +340,7 @@ export default function Dashboard({
 
   const processFile = (file: File) => {
     if (file.type !== "application/pdf") {
-      setErrorMsg("Por el momento, solo se soportan planes de alimentación en formato PDF.");
+      setErrorMsg(t("dashboard.pdf_format_error"));
       return;
     }
     setErrorMsg(null);
@@ -388,24 +368,18 @@ export default function Dashboard({
 
   const handleUploadAndProcess = async (forceParam: any = false) => {
     if (!selectedFile) return;
-
     const force = forceParam === true;
-
     setIsProcessing(true);
     setProgress(0);
     setLoadingStep(0);
     setErrorMsg(null);
-
     const controller = new AbortController();
     abortControllerRef.current = controller;
-
     let currentProgress = 0;
     const progressInterval = setInterval(() => {
-      // Smooth asymptotic progress towards 99%
       currentProgress += (99 - currentProgress) * 0.015;
       const rounded = Math.min(currentProgress, 99);
       setProgress(rounded);
-
       if (rounded < 15) {
         setLoadingStep(0);
       } else if (rounded < 35) {
@@ -420,11 +394,8 @@ export default function Dashboard({
         setLoadingStep(5);
       }
     }, 200);
-
     try {
       const reader = new FileReader();
-      
-      // Promisify file read
       const base64Promise = new Promise<string>((resolve, reject) => {
         reader.onload = () => {
           const result = reader.result as string;
@@ -433,15 +404,11 @@ export default function Dashboard({
         };
         reader.onerror = (err) => reject(err);
       });
-
       reader.readAsDataURL(selectedFile);
       const fileData = await base64Promise;
-
       const response = await fetch("/api/upload", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           fileName: selectedFile.name,
           fileData: fileData,
@@ -449,9 +416,8 @@ export default function Dashboard({
         }),
         signal: controller.signal
       });
-
       if (!response.ok) {
-        let errMsg = "Ocurrió un error al procesar el plan con IA.";
+        let errMsg = t("dashboard.upload_error");
         try {
           const errorData = await response.json();
           errMsg = errorData.error || errMsg;
@@ -459,15 +425,13 @@ export default function Dashboard({
           try {
             const textText = await response.text();
             if (textText) {
-              errMsg = `Error de Red del Servidor: ${textText.substring(0, 160)}`;
+              errMsg = `Server Network Error: ${textText.substring(0, 160)}`;
             }
           } catch (_) {}
         }
         throw new Error(errMsg);
       }
-
       const data = await response.json();
-
       if (data.duplicateDetected) {
         clearInterval(progressInterval);
         setIsProcessing(false);
@@ -475,78 +439,64 @@ export default function Dashboard({
         setShowDuplicateModal(true);
         return;
       }
-
       clearInterval(progressInterval);
       setProgress(100);
       setLoadingStep(6);
-
       setTimeout(() => {
         onPlanProcessed(data.plan, data.metadata);
         setActiveTab("calendar");
       }, 600);
-
     } catch (err: any) {
       clearInterval(progressInterval);
       if (err.name === "AbortError") {
-        console.log("Carga cancelada por el usuario.");
+        console.log("Upload canceled by user.");
         return;
       }
       console.error(err);
-      setErrorMsg(err.message || "No se pudo conectar con el servidor o procesar el archivo.");
+      setErrorMsg(err.message || t("dashboard.connection_error"));
     } finally {
       abortControllerRef.current = null;
       setIsProcessing(false);
     }
   };
 
-  // Mock plans to download/apply
-  const mockRecentPlans = [
-    { name: "Verano_Detox_V2.pdf", date: "Procesado hace 2 días", isHealthy: true },
-    { name: "Ganancia_Fuerza_Quinoa.pdf", date: "Procesado hace 1 mes", isHealthy: false }
-  ];
-
   return (
     <div className="space-y-8">
       {/* Hero Header Card */}
       <section className="relative overflow-hidden rounded-3xl bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/40 p-8 md:p-12 shadow-sm animate-fade-in">
-        {/* Background Image with Overlay */}
         <div className="absolute inset-0 z-0 pointer-events-none select-none">
           <img 
             src="/hero_background.png" 
-            alt="Fondo nutricional" 
+            alt={t("dashboard.hero_title")}
             className="w-full h-full object-cover object-right opacity-30 dark:opacity-20 transition-all duration-300" 
           />
-          {/* Subtle gradient to ensure left-aligned text is 100% readable and contrast is perfect */}
           <div className="absolute inset-0 bg-gradient-to-r from-emerald-50/90 via-emerald-50/40 to-transparent dark:from-emerald-950/90 dark:via-emerald-950/40 dark:to-transparent" />
         </div>
 
         <div className="relative z-10 max-w-3xl">
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 mb-4">
-            <span className="material-symbols-outlined text-[14px]">explore</span> Alimentación Consciente
+            <span className="material-symbols-outlined text-[14px]">explore</span> {t("dashboard.badge_conscious")}
           </span>
           <h1 className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-[#0f5238] dark:text-emerald-400 tracking-tight leading-tight mb-4">
-            Bienvenido a tu viaje de nutrición consciente.
+            {t("dashboard.hero_greeting")}
           </h1>
           <p className="text-base md:text-lg text-[#404943] dark:text-zinc-300 leading-relaxed max-w-2xl">
-            Organiza tus comidas con absoluta claridad. Sube tu PDF de alimentación profesional pautado por tu nutricionista y nuestra Inteligencia Artificial construirá un calendario totalmente interactivo con multiplicador de raciones y lista de la compra.
+            {t("dashboard.hero_description")}
           </p>
         </div>
 
-        {/* Bento Grid layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mt-10">
-          {/* File Upload card component */}
           <div className="lg:col-span-8 bg-white dark:bg-zinc-900 rounded-2xl p-6 md:p-8 border border-[#bfc9c1]/40 dark:border-zinc-800 shadow-sm relative">
             <div className="flex items-center gap-3 mb-6">
               <div className="bg-emerald-100 dark:bg-zinc-800 text-[#0f5238] dark:text-emerald-400 p-2.5 rounded-xl">
                 <span className="material-symbols-outlined block">description</span>
               </div>
               <div>
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white leading-tight">Sube tu Plan de Alimentación</h2>
-                <p className="text-xs text-gray-400 dark:text-zinc-500">Permite procesar archivos .pdf con recetas y raciones</p>
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white leading-tight">{t("dashboard.upload_card_title")}</h2>
+                <p className="text-xs text-gray-400 dark:text-zinc-500">{t("dashboard.upload_card_desc")}</p>
               </div>
             </div>
 
-            {/* Drag & Drop Area */}
             <div 
               id="drop-zone"
               onDragEnter={handleDrag}
@@ -577,12 +527,12 @@ export default function Dashboard({
               {selectedFile ? (
                 <div>
                   <p className="text-lg font-semibold text-gray-900 dark:text-white">{selectedFile.name}</p>
-                  <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400 mt-1">✓ Archivo listo para ser analizado</p>
+                  <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400 mt-1">{t("dashboard.file_ready")}</p>
                 </div>
               ) : (
                 <div>
-                  <p className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Arrastra y suelta tu PDF aquí</p>
-                  <p className="text-sm text-gray-400 dark:text-zinc-500 font-medium">o pulsa para buscar en tu dispositivo</p>
+                  <p className="text-lg font-semibold text-gray-900 dark:text-white mb-1">{t("dashboard.drag_drop_text")}</p>
+                  <p className="text-sm text-gray-400 dark:text-zinc-500 font-medium">{t("dashboard.click_to_browse")}</p>
                 </div>
               )}
 
@@ -594,17 +544,16 @@ export default function Dashboard({
                   handleSelectClick();
                 }}
               >
-                Seleccionar Archivo
+                {t("dashboard.select_file_btn")}
               </button>
             </div>
 
-            {/* Error Message banner */}
             {errorMsg && (
               <div className="mt-4 p-4 bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-950/40 rounded-xl text-sm text-red-700 dark:text-red-400 flex flex-col gap-2">
                 <div className="flex items-start gap-2.5">
                   <span className="material-symbols-outlined text-[18px] mt-0.5">error</span>
                   <div>
-                    <p className="font-semibold">Ocurrió un contratiempo con la IA</p>
+                    <p className="font-semibold">{t("dashboard.error_title")}</p>
                     <p className="opacity-90">{errorMsg}</p>
                   </div>
                 </div>
@@ -612,19 +561,18 @@ export default function Dashboard({
                   <div className="mt-2.5 p-3 bg-white dark:bg-zinc-900 rounded-lg border border-red-200 dark:border-red-950/50 text-xs text-slate-700 dark:text-zinc-300">
                     <p className="font-bold flex items-center gap-1 text-red-700 dark:text-red-400 mb-1">
                       <span className="material-symbols-outlined text-[14px]">account_balance_wallet</span>
-                      ¿Cómo solucionarlo?
+                      {t("dashboard.error_solution_title")}
                     </p>
                     <ul className="list-disc pl-4 space-y-1">
-                      <li>Tus créditos de prepago o límites diarios en <strong>Google AI Studio</strong> están agotados.</li>
-                      <li>Para volver a procesar PDFs, visita tu consola de <a href="https://aistudio.google.com/" target="_blank" rel="noreferrer" className="text-emerald-600 dark:text-emerald-400 font-extrabold hover:underline">Google AI Studio</a> y añade saldo dentro de la sección <strong>Billing / Prepay</strong>.</li>
-                      <li>También puedes revisar o registrar una clave de API diferente en los ajustes si dispones de otra cuenta con saldo.</li>
+                      <li dangerouslySetInnerHTML={{ __html: t("dashboard.error_solution_1") }} />
+                      <li dangerouslySetInnerHTML={{ __html: t("dashboard.error_solution_2") }} />
+                      <li>{t("dashboard.error_solution_3")}</li>
                     </ul>
                   </div>
                 )}
               </div>
             )}
 
-            {/* Bottom bar of Upload Area */}
             <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-[#f8f9fa] dark:bg-zinc-950/40 rounded-xl border border-gray-100 dark:border-zinc-800">
               <div className="flex items-center gap-3">
                 <div className="text-emerald-600 bg-white dark:bg-zinc-800 p-2 rounded-lg border border-emerald-50 dark:border-zinc-700/50">
@@ -634,12 +582,12 @@ export default function Dashboard({
                   {selectedFile ? (
                     <>
                       <p className="text-sm font-semibold text-gray-900 dark:text-white truncate max-w-[220px]">{selectedFile.name}</p>
-                      <p className="text-xs text-emerald-700 dark:text-emerald-400 font-bold">PDF cargado correctamente</p>
+                      <p className="text-xs text-emerald-700 dark:text-emerald-400 font-bold">{t("dashboard.file_loaded")}</p>
                     </>
                   ) : (
                     <>
-                      <p className="text-sm font-semibold text-gray-700 dark:text-zinc-300">Ningún archivo subido</p>
-                      <p className="text-xs text-gray-400 dark:text-zinc-500">Soporta formato PDF (Máx 15MB)</p>
+                      <p className="text-sm font-semibold text-gray-700 dark:text-zinc-300">{t("dashboard.no_file")}</p>
+                      <p className="text-xs text-gray-400 dark:text-zinc-500">{t("dashboard.supported_formats")}</p>
                     </>
                   )}
                 </div>
@@ -648,7 +596,7 @@ export default function Dashboard({
               {isProcessing ? (
                 <div className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-100 text-emerald-800 font-semibold rounded-full text-sm">
                   <span className="animate-spin material-symbols-outlined text-[16px]">sync</span>
-                  Procesando...
+                  {t("dashboard.processing_btn")}
                 </div>
               ) : selectedFile ? (
                 <div className="flex items-center gap-2.5">
@@ -658,17 +606,15 @@ export default function Dashboard({
                     className="inline-flex items-center gap-2 px-5 py-3 rounded-full text-sm font-semibold tracking-tight border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 transition-all duration-200 cursor-pointer active:scale-95 dark:border-red-950/40 dark:bg-red-950/20 dark:text-red-400 dark:hover:bg-red-950"
                   >
                     <span className="material-symbols-outlined text-[16px]">close</span>
-                    Quitar
+                    {t("dashboard.remove_btn")}
                   </button>
                   <button
                     type="button"
                     onClick={handleUploadAndProcess}
                     className="inline-flex items-center gap-2 px-6 py-3 bg-[#0f5238] hover:bg-[#116c4a] text-white font-semibold rounded-full text-sm tracking-tight transition-all duration-200 cursor-pointer active:scale-95"
                   >
-                    <span className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: "'FILL' 1" }}>
-                      auto_awesome
-                    </span>
-                    Procesar con IA
+                    <span className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
+                    {t("dashboard.process_btn")}
                   </button>
                 </div>
               ) : (
@@ -677,15 +623,12 @@ export default function Dashboard({
                   disabled
                   className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-sm font-semibold tracking-tight transition-all duration-200 bg-gray-100 dark:bg-[#27272a] text-gray-300 dark:text-zinc-600 cursor-not-allowed"
                 >
-                  <span className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: "'FILL' 1" }}>
-                    auto_awesome
-                  </span>
-                  Procesar con IA
+                  <span className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
+                  {t("dashboard.process_btn")}
                 </button>
               )}
             </div>
 
-            {/* Full screen loading overlay during AI compile process */}
             {isProcessing && (
               <div 
                 className="modal-overlay fixed inset-0 bg-black/60 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center z-[9999] animate-fade-in no-print !mt-0"
@@ -696,7 +639,6 @@ export default function Dashboard({
                   style={{ marginTop: 0 }}
                 >
                   <div className="relative">
-                    {/* Glowing spinner */}
                     <div className="w-20 h-20 rounded-full border-4 border-emerald-100 dark:border-zinc-800 border-t-emerald-600 dark:border-t-emerald-400 animate-spin"></div>
                     <div className="absolute inset-0 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
                       <span className="material-symbols-outlined text-2xl animate-pulse">auto_awesome</span>
@@ -704,13 +646,12 @@ export default function Dashboard({
                   </div>
 
                   <div>
-                    <h3 className="text-xl font-bold text-[#0f5238] dark:text-emerald-400 mb-2 animate-pulse">Procesando Plan Nutricional</h3>
+                    <h3 className="text-xl font-bold text-[#0f5238] dark:text-emerald-400 mb-2 animate-pulse">{t("dashboard.processing_title")}</h3>
                     <p className="text-xs text-gray-500 dark:text-zinc-400 leading-relaxed">
-                      Nuestra red neuronal está extrayendo y estructurando las comidas, ingredientes y pasos secuenciales del plan.
+                      {t("dashboard.processing_desc")}
                     </p>
                   </div>
 
-                  {/* Progress Bar Container */}
                   <div className="w-full flex flex-col gap-2">
                     <div className="flex justify-between items-center text-xs font-bold">
                       <span className="text-emerald-700 dark:text-emerald-400">
@@ -729,69 +670,60 @@ export default function Dashboard({
                   {isDev && (
                     <div className="w-full text-xs font-mono font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 rounded-xl p-2.5 flex items-center justify-center gap-1.5 animate-pulse select-none">
                       <span className="material-symbols-outlined text-[16px]">timer</span>
-                      [Entorno de Desarrollo] Tiempo transcurrido: {elapsedTime.toFixed(1)}s
+                      {t("dashboard.dev_timer", { time: elapsedTime.toFixed(1) })}
                     </div>
                   )}
 
-                  {/* Cancel Button */}
                   <button
                     type="button"
                     onClick={handleCancel}
                     className="mt-2 px-6 py-2.5 bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-950 transition-colors cursor-pointer flex items-center justify-center gap-1.5 border border-red-100 dark:border-red-900/30 font-bold text-xs rounded-xl"
                   >
                     <span className="material-symbols-outlined text-[15px]">cancel</span>
-                    Cancelar Proceso
+                    {t("dashboard.cancel_process_btn")}
                   </button>
                 </div>
               </div>
             )}
           </div>
 
-          {/* Right column sidebar */}
           <div className="lg:col-span-4 flex flex-col gap-6 relative z-10">
             <div className="bg-[#0f5238] dark:bg-[#073322] text-white p-6 rounded-2xl shadow-md h-full flex flex-col justify-between border border-emerald-800 dark:border-emerald-900/40">
               <div>
                 <h3 className="text-lg font-extrabold mb-3 flex items-center gap-2 text-white">
-                  <span className="material-symbols-outlined text-emerald-300">query_stats</span> Análisis Automático
+                  <span className="material-symbols-outlined text-emerald-300">query_stats</span> {t("dashboard.sidebar_analysis_title")}
                 </h3>
                 <p className="text-sm text-emerald-100 leading-relaxed mb-6 font-medium">
-                  Nuestra tecnología de inteligencia artificial estructura los planes más complejos en cuestion de segundos de forma comprensible:
+                  {t("dashboard.sidebar_analysis_desc")}
                 </p>
                 <ul className="space-y-3.5 text-sm">
                   <li className="flex items-center gap-2.5">
-                    <span className="material-symbols-outlined text-emerald-300 text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>
-                      check_circle
-                    </span>
-                    <span className="font-semibold text-white">Extracción de macronutrientes</span>
+                    <span className="material-symbols-outlined text-emerald-300 text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                    <span className="font-semibold text-white">{t("dashboard.sidebar_feature_1")}</span>
                   </li>
                   <li className="flex items-center gap-2.5">
-                    <span className="material-symbols-outlined text-emerald-300 text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>
-                      check_circle
-                    </span>
-                    <span className="font-semibold text-white">Pesos e ingredientes precisos</span>
+                    <span className="material-symbols-outlined text-emerald-300 text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                    <span className="font-semibold text-white">{t("dashboard.sidebar_feature_2")}</span>
                   </li>
                   <li className="flex items-center gap-2.5">
-                    <span className="material-symbols-outlined text-emerald-300 text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>
-                      check_circle
-                    </span>
-                    <span className="font-semibold text-white">Lista automática de la compra</span>
+                    <span className="material-symbols-outlined text-emerald-300 text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                    <span className="font-semibold text-white">{t("dashboard.sidebar_feature_3")}</span>
                   </li>
                 </ul>
               </div>
 
               <div className="mt-6 pt-6 border-t border-emerald-800/60 dark:border-emerald-900/50 flex items-center justify-between">
-                <span className="text-xs text-emerald-200">Impulsado por Gemini 3.5</span>
-                <span className="text-xs font-bold bg-emerald-900/80 dark:bg-emerald-900/60 text-emerald-100 px-2.5 py-1 rounded-md">VITALITY AI</span>
+                <span className="text-xs text-emerald-200">{t("dashboard.sidebar_ai_label")}</span>
+                <span className="text-xs font-bold bg-emerald-900/80 dark:bg-emerald-900/60 text-emerald-100 px-2.5 py-1 rounded-md">{t("dashboard.sidebar_badge")}</span>
               </div>
             </div>
 
-            {/* Active Plan / Reset widget */}
             {metadata && (
               <div className="bg-white dark:bg-zinc-900 rounded-2xl p-5 border border-gray-200 dark:border-zinc-800/80 shadow-sm relative flex flex-col gap-3">
                 <div className="flex items-center justify-between text-xs tracking-wider text-gray-400 dark:text-zinc-500 font-bold uppercase">
-                  <span>Plan de Alimentación Activo</span>
+                  <span>{t("dashboard.active_plan_label")}</span>
                   <span className="text-[#0f5238] dark:text-emerald-400 flex items-center gap-0.5 font-bold">
-                    <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> COMPARTIDO
+                    <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> {t("dashboard.active_plan_status")}
                   </span>
                 </div>
                 <div className="flex items-start gap-3 p-3 bg-[#f8f9fa] dark:bg-zinc-950/40 rounded-xl border border-gray-50 dark:border-zinc-800">
@@ -801,7 +733,10 @@ export default function Dashboard({
                       {metadata.fileName}
                     </p>
                     <p className="text-[10px] text-gray-400 dark:text-zinc-500">
-                      Sincronizado: {new Date(metadata.processedAt).toLocaleDateString("es-ES")} {new Date(metadata.processedAt).toLocaleTimeString("es-ES", { hour: '2-digit', minute: '2-digit' })}
+                      {t("dashboard.active_plan_sync", {
+                        date: new Date(metadata.processedAt).toLocaleDateString(i18n.language),
+                        time: new Date(metadata.processedAt).toLocaleTimeString(i18n.language, { hour: '2-digit', minute: '2-digit' })
+                      })}
                     </p>
                   </div>
                 </div>
@@ -812,14 +747,14 @@ export default function Dashboard({
                       onClick={() => setActiveTab("calendar")}
                       className="py-2.5 px-4 bg-emerald-50 dark:bg-emerald-950/30 text-[#0f5238] dark:text-emerald-400 font-bold text-xs rounded-xl hover:bg-emerald-100 dark:hover:bg-emerald-950 transition-colors cursor-pointer flex items-center justify-center gap-1"
                     >
-                      <span className="material-symbols-outlined text-[14px]">calendar_month</span> Ver Calendario
+                      <span className="material-symbols-outlined text-[14px]">calendar_month</span> {t("dashboard.view_calendar_btn")}
                     </button>
                     <button 
                       type="button"
                       onClick={onResetPlan}
                       className="py-2.5 px-4 bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 font-bold text-xs rounded-xl hover:bg-red-100 dark:hover:bg-red-950 transition-colors cursor-pointer flex items-center justify-center gap-1"
                     >
-                      <span className="material-symbols-outlined text-[14px]">delete</span> Eliminar Plan
+                      <span className="material-symbols-outlined text-[14px]">delete</span> {t("dashboard.delete_plan_title")}
                     </button>
                   </div>
                   {metadata.savedFileName && (
@@ -829,7 +764,7 @@ export default function Dashboard({
                       className="w-full py-2.5 px-4 bg-amber-50 dark:bg-amber-950/30 hover:bg-amber-100 dark:hover:bg-amber-900/40 text-amber-800 dark:text-amber-300 font-bold text-xs rounded-xl border border-amber-200 dark:border-amber-900/50 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
                     >
                       <span className="material-symbols-outlined text-[16px]">refresh</span>
-                      Reprocesar Plan
+                      {t("dashboard.reprocess_btn")}
                     </button>
                   )}
                   <button 
@@ -838,17 +773,16 @@ export default function Dashboard({
                     className="w-full py-2.5 px-4 bg-[#f1f5f9] dark:bg-zinc-800 hover:bg-[#e2e8f0] dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-300 font-bold text-xs rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5 border border-[#e2e8f0] dark:border-zinc-700/60"
                   >
                     <span className="material-symbols-outlined text-[16px]">history</span>
-                    Ver Historial de Planes
+                    {t("dashboard.history_title_btn")}
                   </button>
                 </div>
               </div>
             )}
 
-            {/* Inactive Plan / History access widget */}
             {!metadata && (
               <div className="bg-white dark:bg-zinc-900 rounded-2xl p-5 border border-gray-200 dark:border-zinc-800/80 shadow-sm flex flex-col gap-3">
                 <div className="flex items-center justify-between text-xs tracking-wider text-gray-400 dark:text-zinc-500 font-bold uppercase">
-                  <span>Planes Anteriores</span>
+                  <span>{t("dashboard.previous_plans_title")}</span>
                 </div>
                 <button
                   type="button"
@@ -856,19 +790,18 @@ export default function Dashboard({
                   className="w-full py-2.5 px-4 bg-emerald-50 dark:bg-emerald-950/30 hover:bg-emerald-100 dark:hover:bg-emerald-950 text-[#0f5238] dark:text-emerald-400 font-bold text-xs rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5 border border-emerald-100 dark:border-emerald-900/40"
                 >
                   <span className="material-symbols-outlined text-[16px]">history</span>
-                  Ver Historial de Planes
+                  {t("dashboard.history_title_btn")}
                 </button>
               </div>
             )}
 
-            {/* Backup Management widget */}
             <div className="bg-white dark:bg-zinc-900 rounded-2xl p-5 border border-gray-200 dark:border-zinc-800/80 shadow-sm flex flex-col gap-3">
               <div className="text-xs tracking-wider text-gray-400 dark:text-zinc-500 font-bold uppercase flex items-center justify-between">
-                <span>Copia de Seguridad</span>
+                <span>{t("dashboard.backup_section_title")}</span>
                 <span className="material-symbols-outlined text-[16px] text-gray-400 dark:text-zinc-500">settings_backup_restore</span>
               </div>
               <p className="text-xs text-gray-500 dark:text-zinc-400 leading-relaxed">
-                Exporta tus datos o restaura una copia de seguridad previa.
+                {t("dashboard.backup_section_desc")}
               </p>
               <div className="flex flex-col gap-2">
                 {history.length > 0 ? (
@@ -878,22 +811,22 @@ export default function Dashboard({
                     className="w-full py-2.5 px-4 bg-emerald-50 dark:bg-emerald-950/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-[#0f5238] dark:text-emerald-400 font-bold text-xs rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5 border border-emerald-100 dark:border-emerald-900/40"
                   >
                     <span className="material-symbols-outlined text-[16px]">download</span>
-                    Exportar Copia
+                    {t("dashboard.export_btn")}
                   </button>
                 ) : (
                   <button
                     type="button"
                     disabled
                     className="w-full py-2.5 px-4 bg-gray-50 dark:bg-zinc-800/20 text-gray-400 dark:text-zinc-500 font-bold text-xs rounded-xl border border-gray-200 dark:border-zinc-800/50 flex items-center justify-center gap-1.5 cursor-not-allowed select-none"
-                    title="No hay datos disponibles para exportar"
+                    title={t("dashboard.export_disabled_tooltip")}
                   >
                     <span className="material-symbols-outlined text-[16px]">download</span>
-                    Exportar no disponible
+                    {t("dashboard.export_disabled")}
                   </button>
                 )}
                 <label className="w-full py-2.5 px-4 bg-[#f1f5f9] dark:bg-zinc-800 hover:bg-[#e2e8f0] dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-300 font-bold text-xs rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5 border border-[#e2e8f0] dark:border-zinc-700/60 text-center">
                   <span className="material-symbols-outlined text-[16px]">upload</span>
-                  Importar Copia
+                  {t("dashboard.import_btn")}
                   <input
                     type="file"
                     accept=".json"
@@ -907,15 +840,14 @@ export default function Dashboard({
         </div>
       </section>
 
-      {/* Feature informational bento blocks */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-[0_4px_24px_rgba(0,0,0,0.02)] transition-transform duration-200 hover:-translate-y-0.5">
           <div className="w-12 h-12 bg-emerald-50 dark:bg-zinc-800 text-[#0f5238] dark:text-emerald-400 rounded-xl flex items-center justify-center mb-4">
             <span className="material-symbols-outlined text-2xl">calendar_month</span>
           </div>
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1.5 font-sans tracking-tight">Calendario Dinámico</h3>
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1.5 font-sans tracking-tight">{t("dashboard.feature_dynamic_calendar")}</h3>
           <p className="text-sm text-[#404943] dark:text-zinc-300 leading-relaxed">
-            Tu plan se mapea instantáneamente en una rejilla interactiva de Lunes a Domingo de forma limpia, separando las cuatro raciones diarias. No más desorden.
+            {t("dashboard.feature_dynamic_calendar_desc")}
           </p>
         </div>
 
@@ -923,9 +855,9 @@ export default function Dashboard({
           <div className="w-12 h-12 bg-emerald-50 dark:bg-zinc-800 text-[#0f5238] dark:text-emerald-400 rounded-xl flex items-center justify-center mb-4">
             <span className="material-symbols-outlined text-2xl">shopping_basket</span>
           </div>
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1.5 font-sans tracking-tight">Comida de la Semana</h3>
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1.5 font-sans tracking-tight">{t("dashboard.feature_weekly_food")}</h3>
           <p className="text-sm text-[#404943] dark:text-zinc-300 leading-relaxed">
-            Los ingredientes de tus recetas se agregan y ordenan automáticamente por pasillo (Carnes, Verduras, Especias) para facilitar un supermercado eficiente.
+            {t("dashboard.feature_weekly_food_desc")}
           </p>
         </div>
 
@@ -933,14 +865,13 @@ export default function Dashboard({
           <div className="w-12 h-12 bg-emerald-50 dark:bg-zinc-800 text-[#0f5238] dark:text-emerald-400 rounded-xl flex items-center justify-center mb-4">
             <span className="material-symbols-outlined text-2xl">insights</span>
           </div>
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1.5 font-sans tracking-tight">Métricas Energéticas</h3>
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1.5 font-sans tracking-tight">{t("dashboard.feature_metrics")}</h3>
           <p className="text-sm text-[#404943] dark:text-zinc-300 leading-relaxed">
-            Ten constancia de cuántas calorías absorbe cada comida y visualiza un resumen macroscópico rápido para mantener la adherencia dietética ideal.
+            {t("dashboard.feature_metrics_desc")}
           </p>
         </div>
       </section>
 
-      {/* History Modal overlay */}
       {showHistoryModal && (
         <div 
           className="modal-overlay fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in no-print !mt-0"
@@ -950,10 +881,9 @@ export default function Dashboard({
             className="bg-white dark:bg-zinc-900 rounded-3xl w-full max-w-lg border border-gray-100 dark:border-zinc-800 shadow-2xl flex flex-col max-h-[80vh] overflow-hidden relative z-10 select-none !mt-0"
             style={{ marginTop: 0 }}
           >
-            {/* Modal Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-zinc-800/85 bg-gray-50/50 dark:bg-zinc-950/20">
               <h3 className="text-lg font-bold text-[#0f5238] dark:text-emerald-400 flex items-center gap-2">
-                <span className="material-symbols-outlined text-[22px]">history</span> Historial de Planes
+                <span className="material-symbols-outlined text-[22px]">history</span> {t("dashboard.history_modal_title")}
               </h3>
               <button
                 type="button"
@@ -964,22 +894,21 @@ export default function Dashboard({
               </button>
             </div>
 
-            {/* Modal Body */}
             <div className="p-6 overflow-y-auto flex-grow flex flex-col gap-4">
               {loadingHistory ? (
                 <div className="py-12 text-center text-sm text-gray-400 dark:text-zinc-500">
                   <span className="animate-spin inline-block material-symbols-outlined text-[20px] mr-2 align-middle font-bold">sync</span>
-                  Cargando historial...
+                  {t("dashboard.history_loading")}
                 </div>
               ) : history.length === 0 ? (
                 <div className="py-16 text-center text-sm text-gray-400 dark:text-zinc-500 flex flex-col items-center gap-3">
                   <span className="material-symbols-outlined text-4xl font-light text-gray-300 dark:text-zinc-700">folder_open</span>
-                  <p className="font-semibold text-gray-700 dark:text-zinc-300">No hay planes en el historial.</p>
-                  <p className="text-xs text-gray-400 dark:text-zinc-500 max-w-xs leading-relaxed">Sube tu primer plan de alimentación en PDF para comenzar a registrar tu historial.</p>
+                  <p className="font-semibold text-gray-700 dark:text-zinc-300">{t("dashboard.history_modal_empty")}</p>
+                  <p className="text-xs text-gray-400 dark:text-zinc-500 max-w-xs leading-relaxed">{t("dashboard.history_modal_empty_hint")}</p>
                 </div>
               ) : (
                 <div className="flex flex-col gap-3.5 pr-1">
-                  {history.map((item) => (
+                  {history.map((item: any) => (
                     <div 
                       key={item.id} 
                       className={`p-4 rounded-2xl border transition-all duration-200 flex flex-col gap-3.5 ${
@@ -1000,12 +929,15 @@ export default function Dashboard({
                           </p>
                           <p className="text-[11px] text-gray-400 dark:text-zinc-500 mt-1 flex items-center gap-1 font-medium">
                             <span className="material-symbols-outlined text-[13px]">calendar_month</span>
-                            {new Date(item.createdAt).toLocaleDateString("es-ES")} {new Date(item.createdAt).toLocaleTimeString("es-ES", { hour: '2-digit', minute: '2-digit' })}
+                            {t("dashboard.history_modal_date", {
+                              date: new Date(item.createdAt).toLocaleDateString(i18n.language),
+                              time: new Date(item.createdAt).toLocaleTimeString(i18n.language, { hour: '2-digit', minute: '2-digit' })
+                            })}
                           </p>
                         </div>
                         {item.isActive && (
                           <span className="text-[10px] bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 font-bold px-2.5 py-0.5 rounded-full select-none shrink-0 flex items-center gap-1 border border-emerald-200 dark:border-emerald-800">
-                            <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Activo
+                            <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500"></span> {t("dashboard.history_modal_active")}
                           </span>
                         )}
                       </div>
@@ -1019,18 +951,18 @@ export default function Dashboard({
                               setShowHistoryModal(false);
                             }}
                             className="py-1.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-colors cursor-pointer flex items-center gap-1"
-                            title="Restaurar este plan como el plan activo"
+                            title={t("dashboard.history_modal_restore_tooltip")}
                           >
-                            <span className="material-symbols-outlined text-[14px]">restore</span> Restaurar
+                            <span className="material-symbols-outlined text-[14px]">restore</span> {t("dashboard.history_modal_restore")}
                           </button>
                         )}
                         <button
                           type="button"
                           onClick={() => requestDeleteHistoryConfirmation(item.id, item.fileName)}
                           className="py-1.5 px-3 bg-red-50 dark:bg-red-950/30 text-red-750 dark:text-red-400 font-bold text-xs rounded-xl hover:bg-red-100 dark:hover:bg-red-950 transition-colors cursor-pointer flex items-center gap-1"
-                          title="Eliminar del historial"
+                          title={t("dashboard.history_modal_delete_tooltip")}
                         >
-                          <span className="material-symbols-outlined text-[14px]">delete</span> Eliminar
+                          <span className="material-symbols-outlined text-[14px]">delete</span> {t("dashboard.history_modal_delete")}
                         </button>
                       </div>
                     </div>
@@ -1039,14 +971,13 @@ export default function Dashboard({
               )}
             </div>
 
-            {/* Modal Footer */}
             <div className="px-6 py-4 border-t border-gray-100 dark:border-zinc-800/80 flex justify-end bg-gray-50/20 dark:bg-zinc-950/10">
               <button
                 type="button"
                 onClick={() => setShowHistoryModal(false)}
                 className="px-5 py-2.5 bg-gray-100 dark:bg-zinc-800 hover:bg-gray-200 dark:hover:bg-zinc-700 text-gray-700 dark:text-zinc-350 font-bold text-xs rounded-xl transition-colors cursor-pointer"
               >
-                Cerrar
+                {t("dashboard.history_modal_close")}
               </button>
             </div>
           </div>
@@ -1078,7 +1009,7 @@ export default function Dashboard({
         isOpen={!!confirmation}
         title={confirmation?.title || ""}
         description={confirmation?.description || ""}
-        confirmLabel={confirmation?.confirmLabel || "Confirmar"}
+        confirmLabel={confirmation?.confirmLabel || t("general.confirm")}
         icon={confirmation?.icon}
         variant={confirmation?.variant}
         showCancel={confirmation?.showCancel}

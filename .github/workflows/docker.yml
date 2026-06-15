@@ -33,6 +33,9 @@ jobs:
       - name: Run TypeScript type-check
         run: npm run lint
 
+      - name: Run tests
+        run: npm test
+
   # ──────────────────────────────────────────────
   # Job 2: Build & push Docker image to GHCR
   # ──────────────────────────────────────────────

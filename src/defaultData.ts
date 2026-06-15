@@ -6,8 +6,8 @@ export const DEFAULT_PLAN_METADATA: PlanMetadata = {
 };
 export const DEFAULT_MEAL_PLAN: MealPlan = {
   days: {
-    lunes: {
-      desayuno: {
+    monday: {
+      breakfast: {
         recipeName: "Avena con bayas y chía",
         calories: 350,
         time: "10 min",
@@ -21,7 +21,7 @@ export const DEFAULT_PLAN_METADATA: PlanMetadata = {
         ],
         tips: "Deja remojar la chía y la avena desde la noche anterior en la nevera para obtener una textura increíblemente cremosa."
       },
-      almuerzo: {
+      lunch: {
         recipeName: "Pollo a la plancha con quinoa",
         calories: 450,
         time: "25 min",
@@ -50,8 +50,8 @@ export const DEFAULT_PLAN_METADATA: PlanMetadata = {
         },
         tips: "Tuesta la quinoa en seco durante 2 minutos antes de hervirla para intensificar su sabor a nuez y mejorar la textura final del plato."
       },
-      merienda: null,
-      cena: {
+      snack: null,
+      dinner: {
         recipeName: "Salmón al horno con espárragos",
         calories: 410,
         time: "20 min",
@@ -66,8 +66,8 @@ export const DEFAULT_PLAN_METADATA: PlanMetadata = {
         tips: "Coloca rodajas de limón y eneldo fresco sobre el salmón mientras se hornea para mantener su sabor silvestre y jugoso."
       }
     },
-    martes: {
-      desayuno: {
+    tuesday: {
+      breakfast: {
         recipeName: "Tostada de aguacate",
         calories: 380,
         time: "10 min",
@@ -81,7 +81,7 @@ export const DEFAULT_PLAN_METADATA: PlanMetadata = {
         ],
         tips: "Rocía unas gotas de jugo de lima sobre el aguacate triturado para evitar la oxidación y potenciar los contrastes lípidos."
       },
-      almuerzo: {
+      lunch: {
         recipeName: "Ensalada César con Garbanzos",
         calories: 390,
         time: "15 min",
@@ -95,7 +95,7 @@ export const DEFAULT_PLAN_METADATA: PlanMetadata = {
         ],
         tips: "Tuesta los garbanzos en horno con pimentón dulce, comino y ajo en polvo para darles un toque extra crujiente y sustituir los costrones clásicos."
       },
-      merienda: {
+      snack: {
         recipeName: "Yogur griego con nueces",
         calories: 290,
         time: "5 min",
@@ -108,7 +108,7 @@ export const DEFAULT_PLAN_METADATA: PlanMetadata = {
         ],
         tips: "Usa nueces ligeramente rotas y tostadas en sartén limpia para liberar sus aceites esenciales aromáticos."
       },
-      cena: {
+      dinner: {
         recipeName: "Tacos de pavo en hoja de lechuga",
         calories: 320,
         time: "15 min",
@@ -123,8 +123,8 @@ export const DEFAULT_PLAN_METADATA: PlanMetadata = {
         tips: "Sazona el pavo picado con pimentón dulce, comino molido y un toque de chile en polvo para maximizar su potencia sápida."
       }
     },
-    miercoles: {
-      desayuno: {
+    wednesday: {
+      breakfast: {
         recipeName: "Batido Verde Proteico",
         calories: 310,
         time: "5 min",
@@ -138,7 +138,7 @@ export const DEFAULT_PLAN_METADATA: PlanMetadata = {
         ],
         tips: "Añade hielo picado o congela previamente el plátano para un resultado refrescante estilo 'smoothie cremoso'."
       },
-      almuerzo: {
+      lunch: {
         recipeName: "Bowl de Lentejas",
         calories: 360,
         time: "30 min",
@@ -152,8 +152,8 @@ export const DEFAULT_PLAN_METADATA: PlanMetadata = {
         ],
         tips: "Un chorrito de vinagre de manzana o limón justo al servirlo ayuda a potenciar la asimilación del hierro no hemo presente en la legumbre."
       },
-      merienda: null,
-      cena: {
+      snack: null,
+      dinner: {
         recipeName: "Pescado blanco al vapor",
         calories: 280,
         time: "15 min",
@@ -168,8 +168,8 @@ export const DEFAULT_PLAN_METADATA: PlanMetadata = {
         tips: "Coloca hojas de laurel, pimienta jamaicana y rodajas finas de jengibre en la vaporera para aromatizar el vapor de cocción."
       }
     },
-    jueves: {
-      desayuno: {
+    thursday: {
+      breakfast: {
         recipeName: "Huevos revueltos con espinaca",
         calories: 310,
         time: "8 min",
@@ -183,7 +183,7 @@ export const DEFAULT_PLAN_METADATA: PlanMetadata = {
         ],
         tips: "Cocina a fuego lento, removiendo constantemente desde fuera hacia dentro para que los huevos mantengan su humedad interna perfecta."
       },
-      almuerzo: {
+      lunch: {
         recipeName: "Pasta integral boloñesa ligera",
         calories: 480,
         time: "20 min",
@@ -197,7 +197,7 @@ export const DEFAULT_PLAN_METADATA: PlanMetadata = {
         ],
         tips: "Mézclala con una parte de los espaguetis cocinados 'al dente' en la misma sartén de la salsa con dos cucharadas de agua de cocción."
       },
-      merienda: {
+      snack: {
         recipeName: "Manzana con crema de cacahuete",
         calories: 220,
         time: "3 min",
@@ -209,7 +209,7 @@ export const DEFAULT_PLAN_METADATA: PlanMetadata = {
         ],
         tips: "Corta la manzana en gajos finos y decora con canela en polvo por encima para endulzar el contraste amargo-ácido."
       },
-      cena: {
+      dinner: {
         recipeName: "Sopa de verduras depurativa",
         calories: 210,
         time: "25 min",
@@ -224,8 +224,8 @@ export const DEFAULT_PLAN_METADATA: PlanMetadata = {
         tips: "Añade una cucharadita de pasta de miso blanco al final de la ebullición para añadir probióticos naturales sanadores."
       }
     },
-    viernes: {
-      desayuno: {
+    friday: {
+      breakfast: {
         recipeName: "Tortitas fitness de avena",
         calories: 280,
         time: "12 min",
@@ -239,7 +239,7 @@ export const DEFAULT_PLAN_METADATA: PlanMetadata = {
         ],
         tips: "Cocina a temperatura media tapado en sartén de teflón para potenciar que las tortitas doblen su esponjosidad."
       },
-      almuerzo: {
+      lunch: {
         recipeName: "Wrap integral de Atún",
         calories: 340,
         time: "10 min",
@@ -253,7 +253,7 @@ export const DEFAULT_PLAN_METADATA: PlanMetadata = {
         ],
         tips: "Sustituye la mayonesa industrial por yogur natural mezclado con ajo en polvo para reducir drásticamente las calorías del wrap."
       },
-      merienda: {
+      snack: {
         recipeName: "Hummus con bastones de zanahorias",
         calories: 190,
         time: "5 min",
@@ -265,7 +265,7 @@ export const DEFAULT_PLAN_METADATA: PlanMetadata = {
         ],
         tips: "Añade un chorrito de limón exprimido y pimentón ahumado de la Vera justo encima del hummus para potenciar el sabor a pimiento."
       },
-      cena: {
+      dinner: {
         recipeName: "Pizza fit con base de coliflor",
         calories: 390,
         time: "25 min",
@@ -280,8 +280,8 @@ export const DEFAULT_PLAN_METADATA: PlanMetadata = {
         tips: "Si elaboras la masa tú mismo de forma casera, escurre muy bien toda el agua de la coliflor rallada con un paño limpio antes de hornearla."
       }
     },
-    sabado: {
-      desayuno: {
+    saturday: {
+      breakfast: {
         recipeName: "Completo Desayuno Continental",
         calories: 330,
         time: "10 min",
@@ -295,7 +295,7 @@ export const DEFAULT_PLAN_METADATA: PlanMetadata = {
         ],
         tips: "Combina este plato con té verde estilo sencha caliente para acelerar de forma natural el metabolismo lípido."
       },
-      almuerzo: {
+      lunch: {
         recipeName: "Risotto gourmet de champiñones",
         calories: 420,
         time: "30 min",
@@ -309,7 +309,7 @@ export const DEFAULT_PLAN_METADATA: PlanMetadata = {
         ],
         tips: "Remueve continuamente el arroz añadiendo caldo poco a poco: esto desprende el almidón logrando una excelente cremosidad natural."
       },
-      merienda: {
+      snack: {
         recipeName: "Batido cremoso de fresas",
         calories: 160,
         time: "5 min",
@@ -322,7 +322,7 @@ export const DEFAULT_PLAN_METADATA: PlanMetadata = {
         ],
         tips: "Congela las fresas de antemano el día anterior y bátelas directamente para un resultado estilo granizado lácteo."
       },
-      cena: {
+      dinner: {
         recipeName: "Cena Libre Saludable",
         calories: 600,
         time: "5 min",
@@ -334,8 +334,8 @@ export const DEFAULT_PLAN_METADATA: PlanMetadata = {
         tips: "Disfruta de esta ración sin remordimientos; un cheat meal bien pautado ayuda a desestresar la mente de la dieta."
       }
     },
-    domingo: {
-      desayuno: {
+    sunday: {
+      breakfast: {
         recipeName: "Brunch Dominical Familiar",
         calories: 350,
         time: "15 min",
@@ -347,9 +347,9 @@ export const DEFAULT_PLAN_METADATA: PlanMetadata = {
           { name: "Rodajas de tomates maduros", originalAmount: 50, unit: "g", category: "verduras y hortalizas", preparation: "en rodajas" },
           { name: "Queso cottage alto en proteína", originalAmount: 60, unit: "g", category: "lácteos y bebidas" }
         ],
-        tips: "Disfruta de este fantástico desayuno pausadamente en compañía de tus seres queridos."
+        tips: "Disfruta de este fantástico breakfast pausadamente en compañía de tus seres queridos."
       },
-      almuerzo: {
+      lunch: {
         recipeName: "Paella valenciana de verduras",
         calories: 390,
         time: "35 min",
@@ -363,7 +363,7 @@ export const DEFAULT_PLAN_METADATA: PlanMetadata = {
         ],
         tips: "Cocina con un buen azafrán puro en hebra tostado en vez de colorantes artificiales para liberar el aroma definitivo."
       },
-      merienda: {
+      snack: {
         recipeName: "Mix de frutos secos naturales",
         calories: 210,
         time: "2 min",
@@ -376,7 +376,7 @@ export const DEFAULT_PLAN_METADATA: PlanMetadata = {
         ],
         tips: "Prepara raciones individuales pesadas en bolsitas herméticas previamente para evitar exceder las cantidades con facilidad."
       },
-      cena: {
+      dinner: {
         recipeName: "Tortilla de patatas fit ligera",
         calories: 360,
         time: "20 min",

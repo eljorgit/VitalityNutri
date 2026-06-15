@@ -37,8 +37,8 @@ COPY --from=builder /app/node_modules ./node_modules
 # Copy built artifacts from builder stage
 COPY --from=builder /app/dist ./dist
 
-# Copy prompt file used at runtime by the server
-COPY promt.md ./promt.md
+# Copy prompt files used at runtime by the server
+COPY prompts/ ./prompts/
 
 # Create data directories for SQLite DB and uploaded PDFs
 RUN mkdir -p data/uploads

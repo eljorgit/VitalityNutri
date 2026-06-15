@@ -43,9 +43,9 @@ export interface Recipe {
   updatedAt?: string; // optional
 }
 
-export type MealType = "desayuno" | "almuerzo" | "merienda" | "cena";
+export type MealType = "breakfast" | "lunch" | "snack" | "dinner";
 
-export type DayType = "lunes" | "martes" | "miercoles" | "jueves" | "viernes" | "sabado" | "domingo";
+export type DayType = "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday";
 
 export interface MealPlan {
   days: {

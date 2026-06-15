@@ -1,16 +1,17 @@
 import React, { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Recipe, Ingredient } from "../types";
 import ImagePlaceholder from "./ImagePlaceholder";
 import ConfirmationModal from "./ConfirmationModal";
 
-const getIngredientHelperText = (amount: number, unit: string, totalServings: number) => {
+const getIngredientHelperText = (amount: number, unit: string, totalServings: number, t: (key: string, params?: any) => string) => {
   if (!amount || amount <= 0) return null;
   const helpers: string[] = [];
 
   // Per serving calculation
   if (totalServings > 1) {
     const perServing = (amount / totalServings).toFixed(1).replace(/\.0$/, "");
-    helpers.push(`${perServing} ${unit} por ración`);
+    helpers.push(t("recipeform.per_serving", { amount: perServing, unit }));
   }
 
   // Unit conversion approximation
@@ -40,6 +41,7 @@ interface RecipeFormProps {
 }
 
 export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps) {
+  const { t } = useTranslation();
   const isEditing = !!recipe;
 
   // Form Fields State
@@ -119,9 +121,9 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
     if (!finalCategory) {
       setAlertModal({
         isOpen: true,
-        title: "Categoría Requerida",
-        description: "Debes seleccionar o escribir una categoría para el nuevo alimento.",
-        confirmLabel: "Aceptar",
+        title: t("recipeform.alert_category_required_title"),
+        description: t("recipeform.alert_category_required_desc"),
+        confirmLabel: t("recipeform.alert_accept"),
         onConfirm: () => setAlertModal(prev => ({ ...prev, isOpen: false })),
         showCancel: false,
         variant: "warning",
@@ -161,9 +163,9 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
     } catch (err) {
       setAlertModal({
         isOpen: true,
-        title: "Error al registrar",
-        description: "No se pudo registrar el nuevo alimento en la base de datos.",
-        confirmLabel: "Aceptar",
+        title: t("recipeform.alert_register_error_title"),
+        description: t("recipeform.alert_register_error_desc"),
+        confirmLabel: t("recipeform.alert_accept"),
         onConfirm: () => setAlertModal(prev => ({ ...prev, isOpen: false })),
         showCancel: false,
         variant: "danger",
@@ -182,9 +184,9 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
     if (!finalName) {
       setAlertModal({
         isOpen: true,
-        title: "Nombre Requerido",
-        description: "El nombre del alimento no puede estar vacío.",
-        confirmLabel: "Aceptar",
+        title: t("recipeform.alert_name_required_title"),
+        description: t("recipeform.alert_name_required_desc"),
+        confirmLabel: t("recipeform.alert_accept"),
         onConfirm: () => setAlertModal(prev => ({ ...prev, isOpen: false })),
         showCancel: false,
         variant: "warning",
@@ -200,9 +202,9 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
     if (!finalCategory) {
       setAlertModal({
         isOpen: true,
-        title: "Categoría Requerida",
-        description: "Debes seleccionar o escribir una categoría para el nuevo alimento.",
-        confirmLabel: "Aceptar",
+        title: t("recipeform.alert_category_required_title"),
+        description: t("recipeform.alert_category_required_desc"),
+        confirmLabel: t("recipeform.alert_accept"),
         onConfirm: () => setAlertModal(prev => ({ ...prev, isOpen: false })),
         showCancel: false,
         variant: "warning",
@@ -268,19 +270,19 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
       } else {
         let skippedMsg = "";
         if (skippedIngredientsList.length === 1) {
-          skippedMsg = `Importación completada. Se omitió el ingrediente "${skippedIngredientsList[0]}" de la receta.`;
+          skippedMsg = t("recipeform.ai_import_skipped_singular", { name: skippedIngredientsList[0] });
         } else if (skippedIngredientsList.length > 1) {
           const listStr = skippedIngredientsList.map(name => `"${name}"`).join(", ");
-          skippedMsg = `Importación completada. Se omitieron los ingredientes ${listStr} de la receta.`;
+          skippedMsg = t("recipeform.ai_import_skipped_plural", { list: listStr });
         }
         completeImport(nextParsedRecipe, skippedMsg);
       }
     } catch (err: any) {
       setAlertModal({
         isOpen: true,
-        title: "Error al registrar",
-        description: err.message || "No se pudo registrar el alimento.",
-        confirmLabel: "Aceptar",
+        title: t("recipeform.alert_register_error_title"),
+        description: err.message || t("recipeform.alert_register_error_desc"),
+        confirmLabel: t("recipeform.alert_accept"),
         onConfirm: () => setAlertModal(prev => ({ ...prev, isOpen: false })),
         showCancel: false,
         variant: "danger",
@@ -320,14 +322,14 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
       setValidationCategory("Otros");
       setValidationNewCategory("");
       setValidationIsCreatingCategory(false);
-      setValidationSkippedMessage(`Se ha eliminado el ingrediente "${skippedName}" de la receta.`);
+      setValidationSkippedMessage(t("recipeform.ai_ingredient_removed", { name: skippedName }));
     } else {
       let skippedMsg = "";
       if (newSkippedList.length === 1) {
-        skippedMsg = `Importación completada. Se omitió el ingrediente "${newSkippedList[0]}" de la receta.`;
+        skippedMsg = t("recipeform.ai_import_skipped_singular", { name: newSkippedList[0] });
       } else {
         const listStr = newSkippedList.map(name => `"${name}"`).join(", ");
-        skippedMsg = `Importación completada. Se omitieron los ingredientes ${listStr} de la receta.`;
+        skippedMsg = t("recipeform.ai_import_skipped_plural", { list: listStr });
       }
       completeImport(nextParsedRecipe, skippedMsg);
     }
@@ -361,7 +363,8 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
     setCurrentValidationIdx(-1);
     setTempParsedRecipe(null);
     setValidationSkippedMessage("");
-    setErrorMessage(customSuccessMsg || "Importación programática completada con éxito. Todos los alimentos nuevos han sido registrados.");
+    setErrorMessage(customSuccessMsg || t("recipeform.ai_import_complete"));
+    setIsSuccessMessage(true);
   };
 
   const [dbTags, setDbTags] = useState<string[]>([]);
@@ -389,6 +392,7 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
   const [aiOptions, setAiOptions] = useState<any[]>([]);
   const [selectedAiOptionIdx, setSelectedAiOptionIdx] = useState<number | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
+  const [isSuccessMessage, setIsSuccessMessage] = useState(false);
 
   // Programmatic Import Validation Queue State
   interface ImportValidationItem {
@@ -723,14 +727,14 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
           setImageSearchResults([]);
           setImageSearchMessage(data.reason === "Unsplash client not initialized" 
             ? "Buscador de Unsplash inactivo (API key no configurada)." 
-            : "No se encontraron imágenes.");
+            : t("recipeform.image_no_results"));
         }
       } else {
         throw new Error();
       }
     } catch (err) {
       console.error("Error searching images:", err);
-      setImageSearchMessage("Error al buscar imágenes.");
+      setImageSearchMessage(t("recipeform.image_search_error"));
     } finally {
       setIsSearchingImages(false);
     }
@@ -754,17 +758,20 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
   // Programmatic Fallback Parser (Deterministic OCR/Text extraction without AI)
   const handleProgrammaticParse = async () => {
     setErrorMessage("");
+    setIsSuccessMessage(false);
     let textToParse = "";
 
     if (importType === "text" || importType === "mejora") {
       textToParse = importText;
     } else if (importType === "image" || importType === "pdf") {
-      setErrorMessage("La extracción programática directa requiere copiar texto crudo. Utiliza 'Procesar con IA' para analizar archivos de imagen/PDF.");
+      setErrorMessage(t("recipeform.parser_no_text"));
+      setIsSuccessMessage(false);
       return;
     }
 
     if (!textToParse.trim()) {
-      setErrorMessage("Por favor, introduce el texto de la receta.");
+      setErrorMessage(t("recipeform.parser_enter_text"));
+      setIsSuccessMessage(false);
       return;
     }
 
@@ -787,10 +794,10 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
         }
       }
 
-      let parsedName = "Receta Importada";
+      let parsedName = t("recipeform.parser_default_name");
       let parsedCalories: number | null = null;
       let parsedTime = "20 min";
-      let parsedTag = "Importado";
+      let parsedTag = t("recipeform.parser_default_tag");
       const parsedIngredients: Ingredient[] = [];
       const parsedSteps: string[] = [];
 
@@ -1127,16 +1134,19 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
         }
         setSteps(flatSteps);
 
-        setErrorMessage("Importación programática básica realizada con éxito. Revisa y ajusta los detalles.");
+        setErrorMessage(t("recipeform.parser_success"));
+        setIsSuccessMessage(true);
       }
     } catch (err: any) {
-      setErrorMessage("Error al analizar programáticamente: " + err.message);
+      setErrorMessage(t("recipeform.parser_error", { message: err.message }));
+      setIsSuccessMessage(false);
     }
   };
 
   // AI OCR / Document Parser (calls express server endpoint)
   const handleAIParse = async () => {
     setErrorMessage("");
+    setIsSuccessMessage(false);
     setAiOptions([]);
     setSelectedAiOptionIdx(null);
     setIsProcessingAI(true);
@@ -1147,13 +1157,13 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
 
       if (importType === "image" || importType === "pdf") {
         if (!importFile) {
-          throw new Error("Por favor, selecciona un archivo.");
+          throw new Error(t("recipeform.ai_select_file"));
         }
         fileData = await fileToBase64(importFile);
       } else if (importType === "text") {
         textData = importText;
         if (!textData.trim()) {
-          throw new Error("Por favor, introduce el texto de la receta.");
+          throw new Error(t("recipeform.ai_enter_text"));
         }
       } else if (importType === "mejora") {
         // Stringify current manual form to improve it
@@ -1173,15 +1183,15 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
 
       // Capture current manual recipe state before sending request
       const originalOption = {
-        recipeName: recipeName.trim() || "Versión manual",
+        recipeName: recipeName.trim() || t("recipeform.ai_manual_version"),
         calories: calories,
         time: `${timeValue} ${timeUnit}`,
-        tag: tag || "Manual",
+        tag: tag || t("recipeform.ai_manual_tag"),
         image: image,
         ingredients: ingredients.filter(ing => ing.name.trim() !== "").map(ing => ({ ...ing })),
         steps: steps.filter(st => st.trim() !== "").map(st => st),
         tips: tips,
-        nutritionistTips: nutritionistTips || "Tu versión antes de procesar con IA",
+        nutritionistTips: nutritionistTips || t("recipeform.ai_original_version_short"),
         servings: servings,
         isOriginalManual: true
       };
@@ -1200,7 +1210,7 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
 
       if (!response.ok) {
         const errObj = await response.json();
-        throw new Error(errObj.error || "Error al conectar con la IA de Gemini.");
+        throw new Error(errObj.error || t("recipeform.ai_connection_error"));
       }
 
       const data = await response.json();
@@ -1209,11 +1219,12 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
         setAiOptions([originalOption, ...data.options]);
         setSelectedAiOptionIdx(null); // Reset selection
       } else {
-        throw new Error("La IA no devolvió opciones estructuradas.");
+        throw new Error(t("recipeform.ai_no_options"));
       }
     } catch (err: any) {
       console.error("AI Import Exception:", err);
       setErrorMessage(err.message);
+      setIsSuccessMessage(false);
     } finally {
       setIsProcessingAI(false);
     }
@@ -1318,9 +1329,9 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
         const data = await res.json();
         setAlertModal({
           isOpen: true,
-          title: "Error al guardar",
-          description: data.error || "Hubo un problema al procesar la solicitud en el servidor.",
-          confirmLabel: "Aceptar",
+          title: t("recipeform.alert_save_error_title"),
+          description: data.error || t("recipeform.alert_save_error_desc"),
+          confirmLabel: t("recipeform.alert_accept"),
           onConfirm: () => setAlertModal(prev => ({ ...prev, isOpen: false })),
           showCancel: false,
           variant: "danger",
@@ -1330,9 +1341,9 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
     } catch (err: any) {
       setAlertModal({
         isOpen: true,
-        title: "Error de conexión",
-        description: "No se pudo conectar con el servidor: " + err.message,
-        confirmLabel: "Aceptar",
+        title: t("recipeform.alert_connection_error_title"),
+        description: t("recipeform.alert_connection_error_desc", { message: err.message }),
+        confirmLabel: t("recipeform.alert_accept"),
         onConfirm: () => setAlertModal(prev => ({ ...prev, isOpen: false })),
         showCancel: false,
         variant: "danger",
@@ -1346,9 +1357,9 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
     if (!recipeName.trim()) {
       setAlertModal({
         isOpen: true,
-        title: "Campo Obligatorio",
-        description: "El nombre de la receta es obligatorio para poder guardarla.",
-        confirmLabel: "Aceptar",
+        title: t("recipeform.alert_name_required_recipe_title"),
+        description: t("recipeform.alert_name_required_recipe_desc"),
+        confirmLabel: t("recipeform.alert_accept"),
         onConfirm: () => setAlertModal(prev => ({ ...prev, isOpen: false })),
         showCancel: false,
         variant: "warning",
@@ -1361,9 +1372,9 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
     if (activeIngs.length === 0) {
       setAlertModal({
         isOpen: true,
-        title: "Ingredientes requeridos",
-        description: "Debes añadir al menos un ingrediente válido con nombre.",
-        confirmLabel: "Aceptar",
+        title: t("recipeform.alert_ingredients_required_title"),
+        description: t("recipeform.alert_ingredients_required_desc"),
+        confirmLabel: t("recipeform.alert_accept"),
         onConfirm: () => setAlertModal(prev => ({ ...prev, isOpen: false })),
         showCancel: false,
         variant: "warning",
@@ -1376,9 +1387,9 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
     if (activeStps.length === 0) {
       setAlertModal({
         isOpen: true,
-        title: "Pasos requeridos",
-        description: "Debes añadir al menos un paso de preparación para la receta.",
-        confirmLabel: "Aceptar",
+        title: t("recipeform.alert_steps_required_title"),
+        description: t("recipeform.alert_steps_required_desc"),
+        confirmLabel: t("recipeform.alert_accept"),
         onConfirm: () => setAlertModal(prev => ({ ...prev, isOpen: false })),
         showCancel: false,
         variant: "warning",
@@ -1391,15 +1402,15 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
     if (!image.trim()) {
       setAlertModal({
         isOpen: true,
-        title: "Guardar sin imagen",
-        description: "No has añadido una imagen para la receta. ¿Deseas guardarla igualmente sin imagen o prefieres añadir una ahora?",
-        confirmLabel: "Guardar igualmente",
+        title: t("recipeform.alert_no_image_title"),
+        description: t("recipeform.alert_no_image_desc"),
+        confirmLabel: t("recipeform.alert_no_image_confirm"),
         onConfirm: () => {
           setAlertModal(prev => ({ ...prev, isOpen: false }));
           submitSave(activeIngs, activeStps);
         },
         showCancel: true,
-        cancelLabel: "Volver y añadir",
+        cancelLabel: t("recipeform.alert_no_image_cancel"),
         onCancel: () => setAlertModal(prev => ({ ...prev, isOpen: false })),
         variant: "info",
         icon: "image"
@@ -1418,10 +1429,10 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
       <div className="flex items-center justify-between border-b border-slate-200/50 dark:border-zinc-800 pb-4">
         <div>
           <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">
-            {isEditing ? "Editar Receta" : "Añadir Nueva Receta"}
+            {isEditing ? t("recipeform.edit_title") : t("recipeform.new_title")}
           </h1>
           <p className="text-xs text-slate-500 dark:text-zinc-400 mt-1">
-            {isEditing ? `Modifica los detalles de "${recipe.recipeName}"` : "Añade una receta al recetario de forma manual o con IA"}
+            {isEditing ? t("recipeform.edit_desc", { name: recipe.recipeName }) : t("recipeform.new_desc")}
           </p>
         </div>
         <button
@@ -1430,7 +1441,7 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
           className="inline-flex items-center justify-center p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-600 hover:text-emerald-700 dark:text-zinc-300 dark:hover:text-emerald-400 transition cursor-pointer font-bold text-xs shadow-sm"
         >
           <span className="material-symbols-outlined text-[16px] mr-1.5">arrow_back</span>
-          Volver
+{t("recipeform.back_btn")}
         </button>
       </div>
 
@@ -1443,11 +1454,11 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
             {/* Basic Info */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="text-[10px] font-bold text-zinc-400 dark:text-zinc-550 uppercase tracking-widest block mb-1.5">Nombre de la Receta *</label>
+                <label className="text-[10px] font-bold text-zinc-400 dark:text-zinc-550 uppercase tracking-widest block mb-1.5">{t("recipeform.name_label")}</label>
                 <input
                   type="text"
                   className="w-full px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-950 focus:outline-none focus:border-emerald-500 text-slate-700 dark:text-zinc-200"
-                  placeholder="Ej: Tacos de Quinoa"
+                  placeholder={t("recipeform.name_placeholder")}
                   value={recipeName}
                   onChange={(e) => setRecipeName(e.target.value)}
                   onBlur={() => {
@@ -1460,7 +1471,7 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
                 />
               </div>
               <div>
-                <label className="text-[10px] font-bold text-zinc-400 dark:text-zinc-550 uppercase tracking-widest block mb-1.5">Categoría / Etiqueta (Opcional)</label>
+                <label className="text-[10px] font-bold text-zinc-400 dark:text-zinc-550 uppercase tracking-widest block mb-1.5">{t("recipeform.tag_label")}</label>
                 {!isCreatingTag ? (
                   <select
                     className="w-full px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-955 focus:outline-none focus:border-emerald-500 text-slate-700 dark:text-zinc-200 cursor-pointer"
@@ -1474,12 +1485,12 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
                       }
                     }}
                   >
-                    <option value="">Ninguna</option>
+                    <option value="">{t("recipeform.tag_none")}</option>
                     {tagsList.map((t) => (
                       <option key={t} value={t}>{t}</option>
                     ))}
                     <option value="__NEW__" className="text-indigo-600 dark:text-indigo-400 font-bold">
-                      + Crear nueva categoría...
+                      {t("recipeform.tag_create")}
                     </option>
                   </select>
                 ) : (
@@ -1487,7 +1498,7 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
                     <input
                       type="text"
                       className="flex-1 px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-955 focus:outline-none focus:border-emerald-500 text-slate-700 dark:text-zinc-200"
-                      placeholder="Escribe la nueva categoría..."
+                      placeholder={t("recipeform.tag_create_placeholder")}
                       value={tag}
                       onChange={(e) => setTag(e.target.value)}
                     />
@@ -1499,7 +1510,7 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
                       }}
                       className="px-3 py-2 text-xs font-bold rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-600 dark:text-zinc-300 cursor-pointer"
                     >
-                      Cancelar
+                      {t("recipeform.cancel_btn")}
                     </button>
                   </div>
                 )}
@@ -1508,12 +1519,12 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
               <div>
-                <label className="text-[10px] font-bold text-zinc-400 dark:text-zinc-550 uppercase tracking-widest block mb-1.5">Calorías (Kcal por Ración)</label>
+                <label className="text-[10px] font-bold text-zinc-400 dark:text-zinc-550 uppercase tracking-widest block mb-1.5">{t("recipeform.calories_label")}</label>
                 <input
                   type="number"
                   min="0"
                   className="w-full px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-950 focus:outline-none focus:border-emerald-500 text-slate-700 dark:text-zinc-200"
-                  placeholder="Ej: 350 (Opcional)"
+                  placeholder={t("recipeform.calories_placeholder")}
                   value={calories !== null ? calories : ""}
                   onChange={(e) => {
                     const val = e.target.value;
@@ -1522,7 +1533,7 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
                 />
               </div>
               <div>
-                <label className="text-[10px] font-bold text-zinc-400 dark:text-zinc-550 uppercase tracking-widest block mb-1.5">Tiempo de Preparación</label>
+                <label className="text-[10px] font-bold text-zinc-400 dark:text-zinc-550 uppercase tracking-widest block mb-1.5">{t("recipeform.time_label")}</label>
                 <div className="flex items-center gap-2">
                   <input
                     type="number"
@@ -1538,12 +1549,12 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
                     onChange={(e) => setTimeUnit(e.target.value as "min" | "h")}
                   >
                     <option value="min">min</option>
-                    <option value="h">horas</option>
+                    <option value="h">{t("recipeform.time_unit_hours")}</option>
                   </select>
                 </div>
               </div>
               <div>
-                <label className="text-[10px] font-bold text-zinc-400 dark:text-zinc-550 uppercase tracking-widest block mb-1.5">Raciones Originales</label>
+                <label className="text-[10px] font-bold text-zinc-400 dark:text-zinc-550 uppercase tracking-widest block mb-1.5">{t("recipeform.servings_label")}</label>
                 <div className="flex items-center justify-between bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-xl p-1.5 w-full">
                   <button
                     type="button"
@@ -1570,7 +1581,7 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
             {/* Ingredients Editor */}
             <div>
               <div className="flex justify-between items-center mb-3">
-                <label className="text-[10px] font-bold text-zinc-400 dark:text-zinc-550 uppercase tracking-widest block">Ingredientes de la Receta *</label>
+                <label className="text-[10px] font-bold text-zinc-400 dark:text-zinc-550 uppercase tracking-widest block">{t("recipeform.ingredients_label")}</label>
                 <button
                   type="button"
                   onClick={addIngredient}
@@ -1578,7 +1589,7 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
                   className="inline-flex items-center text-[10px] font-extrabold text-emerald-600 hover:text-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-[13px] mr-1">add_circle</span>
-                  Añadir Ingrediente
+                  {t("recipeform.ingredient_add")}
                 </button>
               </div>
               <div className="space-y-3">
@@ -1589,7 +1600,7 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
                       <div className="relative flex-1 w-full">
                         <input
                           type="text"
-                          placeholder="Nombre ingrediente"
+                          placeholder={t("recipeform.ingredient_placeholder")}
                           className="w-full px-2.5 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 focus:outline-none focus:border-emerald-500 text-slate-700 dark:text-zinc-200"
                           value={ing.name}
                           onChange={(e) => handleIngredientNameChange(e.target.value, idx)}
@@ -1639,7 +1650,7 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
                         <input
                           type="number"
                           step="any"
-                          placeholder="Cant."
+                          placeholder={t("recipeform.amount_placeholder")}
                           className="w-16 px-2.5 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 focus:outline-none focus:border-emerald-500 text-slate-700 dark:text-zinc-200 text-center"
                           value={ing.originalAmount || ""}
                           onChange={(e) => {
@@ -1691,17 +1702,17 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
                           type="button"
                           onClick={() => removeIngredient(idx)}
                           className="p-1.5 text-slate-400 hover:text-red-500 cursor-pointer flex items-center justify-center shrink-0"
-                          title="Eliminar ingrediente"
+                          title={t("recipeform.ingredient_delete_title")}
                         >
                           <span className="material-symbols-outlined text-sm">delete</span>
                         </button>
                       </div>
                     </div>
 
-                    {getIngredientHelperText(ing.originalAmount, ing.unit, servings) && (
+                    {getIngredientHelperText(ing.originalAmount, ing.unit, servings, t) && (
                       <div className="pl-1.5 border-l-2 border-emerald-500/40 text-[10px] text-emerald-600/95 dark:text-emerald-400/85 font-semibold select-none flex items-center gap-1 mt-0.5 animate-fade-in">
                         <span className="material-symbols-outlined text-[13px] text-emerald-600 dark:text-emerald-450">info</span>
-                        <span>{getIngredientHelperText(ing.originalAmount, ing.unit, servings)}</span>
+                        <span>{getIngredientHelperText(ing.originalAmount, ing.unit, servings, t)}</span>
                       </div>
                     )}
                   </div>
@@ -1712,7 +1723,7 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
             {/* Preparation Steps Editor */}
             <div>
               <div className="flex justify-between items-center mb-3">
-                <label className="text-[10px] font-bold text-zinc-400 dark:text-zinc-550 uppercase tracking-widest block">Pasos de Preparación *</label>
+                <label className="text-[10px] font-bold text-zinc-400 dark:text-zinc-550 uppercase tracking-widest block">{t("recipeform.steps_label")}</label>
                 <button
                   type="button"
                   onClick={addStep}
@@ -1720,7 +1731,7 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
                   className="inline-flex items-center text-[10px] font-extrabold text-emerald-600 hover:text-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-[13px] mr-1">add_circle</span>
-                  Añadir Paso
+                  {t("recipeform.step_add")}
                 </button>
               </div>
 
@@ -1731,7 +1742,7 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
                     <textarea
                       rows={2}
                       className="flex-1 px-3 py-2 text-xs font-semibold rounded-lg border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-955 focus:outline-none focus:border-emerald-500 text-slate-700 dark:text-zinc-200 resize-none"
-                      placeholder={`Describe el paso ${idx + 1}...`}
+                      placeholder={t("recipeform.step_placeholder", { number: idx + 1 })}
                       value={step}
                       onChange={(e) => {
                         const val = e.target.value;
@@ -1781,7 +1792,7 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
                       type="button"
                       onClick={() => removeStep(idx)}
                       className="p-1.5 text-slate-400 hover:text-red-500 cursor-pointer flex items-center justify-center mt-1.5"
-                      title="Eliminar paso"
+                      title={t("recipeform.step_delete_title")}
                     >
                       <span className="material-symbols-outlined text-sm">delete</span>
                     </button>
@@ -1793,21 +1804,21 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
             {/* Chef tips & Nutritionist tips */}
             <div className="space-y-4">
               <div>
-                <label className="text-[10px] font-bold text-zinc-400 dark:text-zinc-550 uppercase tracking-widest block mb-1.5">Consejos del Chef (Tips)</label>
+                <label className="text-[10px] font-bold text-zinc-400 dark:text-zinc-550 uppercase tracking-widest block mb-1.5">{t("recipeform.chef_tips_label")}</label>
                 <textarea
                   rows={2}
                   className="w-full px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-950 focus:outline-none focus:border-emerald-500 text-slate-700 dark:text-zinc-200"
-                  placeholder="Consejos rápidos de cocinado o guarnición..."
+                  placeholder={t("recipeform.chef_tips_placeholder")}
                   value={tips}
                   onChange={(e) => setTips(e.target.value)}
                 />
               </div>
               <div>
-                <label className="text-[10px] font-bold text-zinc-400 dark:text-zinc-550 uppercase tracking-widest block mb-1.5">Consejo del Nutricionista</label>
+                <label className="text-[10px] font-bold text-zinc-400 dark:text-zinc-550 uppercase tracking-widest block mb-1.5">{t("recipeform.nutritionist_tips_label")}</label>
                 <textarea
                   rows={2}
                   className="w-full px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-950 focus:outline-none focus:border-emerald-500 text-slate-700 dark:text-zinc-200 border-l-4 border-l-indigo-500"
-                  placeholder="Aporte dietético o pauta adicional sugerida..."
+                  placeholder={t("recipeform.nutritionist_tips_placeholder")}
                   value={nutritionistTips}
                   onChange={(e) => setNutritionistTips(e.target.value)}
                 />
@@ -1821,14 +1832,14 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
                 onClick={onGoBack}
                 className="px-5 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 dark:border-zinc-800 dark:hover:bg-zinc-800/50 text-slate-600 dark:text-zinc-300 transition font-bold text-xs cursor-pointer"
               >
-                Cancelar
+                {t("recipeform.cancel_btn")}
               </button>
               <button
                 type="button"
                 onClick={handleSaveRecipe}
                 className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white transition font-black text-xs cursor-pointer shadow-sm"
               >
-                Guardar Receta
+                {t("recipeform.save_btn")}
               </button>
             </div>
 
@@ -1842,16 +1853,16 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
           <div className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-slate-200/50 dark:border-zinc-800 shadow-sm space-y-4">
             <h2 className="text-xs font-black text-slate-800 dark:text-zinc-200 flex items-center gap-1.5 uppercase tracking-wider">
               <span className="material-symbols-outlined text-emerald-600 dark:text-emerald-400 text-[18px]">image</span>
-              Imagen de la Receta
+              {t("recipeform.image_label")}
             </h2>
 
             <div>
-              <label className="text-[9px] font-bold text-zinc-400 dark:text-zinc-550 uppercase tracking-widest block mb-1.5">Enlace de Imagen (URL)</label>
+              <label className="text-[9px] font-bold text-zinc-400 dark:text-zinc-550 uppercase tracking-widest block mb-1.5">{t("recipeform.image_url_label")}</label>
               <div className="flex gap-2">
                 <input
                   type="text"
                   className="flex-1 px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-950 focus:outline-none focus:border-emerald-500 text-slate-700 dark:text-zinc-200"
-                  placeholder="https://ejemplo.com/plato.jpg"
+                  placeholder={t("recipeform.image_url_placeholder")}
                   value={image}
                   onChange={(e) => {
                     setImage(e.target.value);
@@ -1868,7 +1879,7 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
                   onClick={() => setPreviewError(false)}
                   className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-300 font-bold text-xs transition cursor-pointer"
                 >
-                  Buscar
+{t("recipeform.image_search_btn")}
                 </button>
               </div>
             </div>
@@ -1883,17 +1894,17 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <ImagePlaceholder text="Vista Previa Inactiva" />
+                <ImagePlaceholder text={t("recipeform.image_preview_inactive")} />
               )}
             </div>
 
             {/* Image Search Box */}
             <div className="space-y-3 pt-2 border-t border-slate-100 dark:border-zinc-850">
-              <label className="text-[9px] font-bold text-zinc-400 dark:text-zinc-550 uppercase tracking-widest block mb-1">Buscar en Banco de Imágenes</label>
+              <label className="text-[9px] font-bold text-zinc-400 dark:text-zinc-550 uppercase tracking-widest block mb-1">{t("recipeform.image_search_label")}</label>
               <div className="flex gap-2">
                 <input
                   type="text"
-                  placeholder="Ej: ensalada césar"
+                  placeholder={t("recipeform.image_search_placeholder")}
                   className="flex-1 px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-950 focus:outline-none focus:border-emerald-500 text-slate-700 dark:text-zinc-200"
                   value={imageSearchQuery}
                   onChange={(e) => setImageSearchQuery(e.target.value)}
@@ -1905,7 +1916,7 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
                   disabled={isSearchingImages}
                   className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-300 font-bold text-xs transition cursor-pointer disabled:opacity-50"
                 >
-                  {isSearchingImages ? "Buscando..." : "Buscar"}
+                  {isSearchingImages ? t("recipeform.image_searching") : t("recipeform.image_search_btn")}
                 </button>
               </div>
 
@@ -1936,22 +1947,23 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
           <div className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-slate-200/50 dark:border-zinc-800 shadow-sm space-y-4">
             <h2 className="text-xs font-black text-slate-800 dark:text-zinc-200 flex items-center gap-1.5 uppercase tracking-wider">
               <span className="material-symbols-outlined text-indigo-500 text-[18px]">psychology</span>
-              Importar / Mejorar con IA o Texto
+              {t("recipeform.ai_import_title")}
             </h2>
 
             {/* Type selector */}
             <div className="grid grid-cols-4 gap-1 p-1 bg-zinc-100/80 dark:bg-zinc-950 rounded-xl border border-zinc-200/40 dark:border-zinc-800/40 select-none">
-              {(["text", "image", "pdf", "mejora"] as const).map((t) => {
-                const label = t === "text" ? "Texto" : t === "image" ? "Imagen" : t === "pdf" ? "PDF" : "Mejorar";
-                const isActive = importType === t;
+              {(["text", "image", "pdf", "mejora"] as const).map((importTypeOption) => {
+                const label = importTypeOption === "text" ? t("recipeform.ai_type_text") : importTypeOption === "image" ? t("recipeform.ai_type_image") : importTypeOption === "pdf" ? t("recipeform.ai_type_pdf") : t("recipeform.ai_type_mejora");
+                const isActive = importType === importTypeOption;
                 return (
                   <button
-                    key={t}
+                    key={importTypeOption}
                     type="button"
                     onClick={() => {
-                      setImportType(t);
+                      setImportType(importTypeOption);
                       setAiOptions([]);
                       setErrorMessage("");
+                      setIsSuccessMessage(false);
                     }}
                     className={`py-1 rounded-md text-[10px] font-black tracking-tight cursor-pointer transition duration-150 ${
                       isActive
@@ -1970,15 +1982,15 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
               {(importType === "text" || importType === "mejora") && (
                 <div>
                   <label className="text-[9px] font-bold text-zinc-400 dark:text-zinc-550 uppercase tracking-widest block mb-1">
-                    {importType === "text" ? "Pega el texto de la receta" : "Modificaciones solicitadas a la IA para tu receta actual"}
+                    {importType === "text" ? t("recipeform.ai_text_label") : t("recipeform.ai_mejora_label")}
                   </label>
                   <textarea
                     rows={4}
                     className="w-full px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-950 focus:outline-none focus:border-indigo-500 text-slate-700 dark:text-zinc-200"
                     placeholder={
                       importType === "text"
-                        ? "Pega aquí los ingredientes, pasos, etc. copiados de un blog, Google Docs o Word..."
-                        : "Ej: Haz la receta vegetariana, reduce las grasas y estima calorías para 2 personas."
+                        ? t("recipeform.ai_text_placeholder")
+                        : t("recipeform.ai_mejora_placeholder")
                     }
                     value={importText}
                     onChange={(e) => setImportText(e.target.value)}
@@ -1989,14 +2001,14 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
               {(importType === "image" || importType === "pdf") && (
                 <div className="space-y-2">
                   <label className="text-[9px] font-bold text-zinc-400 dark:text-zinc-550 uppercase tracking-widest block mb-1">
-                    {importType === "image" ? "Selecciona la imagen de la receta (OCR)" : "Selecciona el documento PDF"}
+                    {importType === "image" ? t("recipeform.ai_image_label") : t("recipeform.ai_pdf_label")}
                   </label>
                   <div className="flex items-center justify-center w-full">
                     <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-2xl cursor-pointer hover:bg-slate-50 dark:hover:bg-zinc-950 border-slate-200 dark:border-zinc-800/80 bg-slate-50/20 dark:bg-zinc-900 transition duration-150">
                       <div className="flex flex-col items-center justify-center pt-3 pb-3">
                         <span className="material-symbols-outlined text-slate-400 text-2xl select-none">upload_file</span>
                         <p className="text-[10px] font-bold text-slate-500 dark:text-zinc-400 mt-1.5">
-                          {importFile ? importFile.name : "Subir archivo de receta"}
+                          {importFile ? importFile.name : t("recipeform.ai_file_upload")}
                         </p>
                       </div>
                       <input
@@ -2013,7 +2025,7 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
               {/* Extras block */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[9px] font-bold text-zinc-400 dark:text-zinc-550 uppercase tracking-widest block mb-1">Variantes a Generar (1-5)</label>
+                  <label className="text-[9px] font-bold text-zinc-400 dark:text-zinc-550 uppercase tracking-widest block mb-1">{t("recipeform.ai_variants_label")}</label>
                   <div className="flex items-center justify-between bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-xl p-1.5 w-full">
                     <button
                       type="button"
@@ -2037,10 +2049,10 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
                   </div>
                 </div>
                 <div>
-                  <label className="text-[9px] font-bold text-zinc-400 dark:text-zinc-550 uppercase tracking-widest block mb-1">Instrucciones extra para IA</label>
+                  <label className="text-[9px] font-bold text-zinc-400 dark:text-zinc-550 uppercase tracking-widest block mb-1">{t("recipeform.ai_extra_label")}</label>
                   <input
                     type="text"
-                    placeholder="Ej: sin lactosa"
+                    placeholder={t("recipeform.ai_extra_placeholder")}
                     className="w-full px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-950 focus:outline-none focus:border-indigo-500 text-slate-700 dark:text-zinc-200"
                     value={extraPrompt}
                     onChange={(e) => setExtraPrompt(e.target.value)}
@@ -2058,7 +2070,7 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
                     disabled={isProcessingAI}
                     className="flex-1 py-2 px-3 rounded-xl border border-slate-200 hover:bg-slate-50 dark:border-zinc-800 dark:hover:bg-zinc-800/50 text-slate-600 dark:text-zinc-300 font-bold text-xs transition cursor-pointer disabled:opacity-50"
                   >
-                    Importar Directo
+                    {t("recipeform.ai_import_direct")}
                   </button>
                 )}
                 <button
@@ -2070,12 +2082,12 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
                   {isProcessingAI ? (
                     <>
                       <div className="w-3.5 h-3.5 rounded-full border border-white/30 border-t-white animate-spin"></div>
-                      <span>Procesando...</span>
+                      <span>{t("recipeform.ai_processing")}</span>
                     </>
                   ) : (
                     <>
                       <span className="material-symbols-outlined text-[15px]">settings_suggest</span>
-                      <span>Procesar con IA</span>
+                      <span>{t("recipeform.ai_process_btn")}</span>
                     </>
                   )}
                 </button>
@@ -2083,7 +2095,7 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
 
               {errorMessage && (
                 <div className={`p-3 rounded-xl text-xs font-semibold border ${
-                  errorMessage.includes("éxito") 
+                  isSuccessMessage
                     ? "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 border-emerald-100/50 dark:border-emerald-900/30" 
                     : "bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-400 border-red-100/50 dark:border-red-900/30"
                 }`}>
@@ -2096,7 +2108,7 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
             {aiOptions.length > 0 && (
               <div className="pt-4 border-t border-slate-100 dark:border-zinc-850 space-y-3 select-none">
                 <p className="text-[10px] font-bold text-zinc-400 dark:text-zinc-550 uppercase tracking-widest leading-none mb-1">
-                  Opciones de Recetas Encontradas ({aiOptions.length})
+                  {t("recipeform.ai_options_found", { count: aiOptions.length })}
                 </p>
                 <div className="flex flex-col gap-2.5">
                   {aiOptions.map((opt, oi) => {
@@ -2116,11 +2128,11 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
                       >
                         <div className="flex justify-between items-center w-full">
                           <h3 className="text-xs font-bold text-slate-800 dark:text-zinc-200 leading-tight">
-                            {opt.recipeName || "Receta sin nombre"}
+                            {opt.recipeName || t("recipeform.ai_no_name")}
                           </h3>
                           {opt.isOriginalManual ? (
                             <span className="text-[9px] font-extrabold px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-400 shadow-sm border border-amber-200 dark:border-amber-900/40">
-                              Original
+{t("recipeform.ai_original_badge")}
                             </span>
                           ) : opt.tag ? (
                             <span className="text-[9px] font-extrabold px-2 py-0.5 rounded bg-white dark:bg-zinc-900 text-indigo-600 dark:text-indigo-400 shadow-sm border border-indigo-100/30 dark:border-indigo-900/40">
@@ -2134,17 +2146,17 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
                           <span>•</span>
                           <span className="font-semibold">{opt.calories || 0} kcal</span>
                           <span>•</span>
-                          <span>{opt.servings || 1} rac. orig.</span>
+                          <span>{opt.servings || 1} {t("recipeform.ai_servings_orig")}</span>
                         </div>
                         
                         {opt.nutritionistTips && (
                           <p className="text-[10px] text-slate-400 dark:text-zinc-550 italic truncate w-full">
-                            {opt.isOriginalManual ? "Tu versión antes de procesar con IA" : `Consejo Nutri: ${opt.nutritionistTips}`}
+                            {opt.isOriginalManual ? t("recipeform.ai_original_version") : t("recipeform.ai_nutri_tip", { tip: opt.nutritionistTips })}
                           </p>
                         )}
                         
                         <div className="mt-1 self-end text-[9px] font-black text-indigo-600 dark:text-indigo-400 hover:underline">
-                          {isSelected ? "Seleccionada ✓" : "Seleccionar esta opción"}
+                          {isSelected ? t("recipeform.ai_selected") : t("recipeform.ai_select_option")}
                         </div>
                       </button>
                     );
@@ -2180,16 +2192,16 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
             </div>
 
             <h3 className="text-xl font-extrabold tracking-tight text-gray-900 dark:text-white text-center">
-              Añadir Nuevo Alimento
+              {t("recipeform.new_ingredient_title")}
             </h3>
-            <p className="mt-2 text-xs leading-relaxed text-gray-500 dark:text-zinc-400 text-center">
-              El alimento <span className="font-bold text-indigo-600 dark:text-indigo-400">"{newIngredientModal.name}"</span> no está registrado en el recetario de alimentos de la aplicación. Añádelo para mejorar las sugerencias y la lista de la compra.
-            </p>
+            <p className="mt-2 text-xs leading-relaxed text-gray-500 dark:text-zinc-400 text-center"
+  dangerouslySetInnerHTML={{ __html: t("recipeform.new_ingredient_desc", { name: newIngredientModal.name }) }}>
+</p>
 
             <div className="mt-4 space-y-3">
               <div>
                 <label className="text-[9px] font-bold text-zinc-400 dark:text-zinc-550 uppercase tracking-widest block mb-1">
-                  Categoría del Alimento
+                  {t("recipeform.new_ingredient_category")}
                 </label>
                 {!newIngredientModal.isCreatingCategory ? (
                   <div className="flex gap-2">
@@ -2208,7 +2220,7 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
                         <option key={c} value={c}>{c}</option>
                       ))}
                       <option value="__NEW__" className="text-indigo-600 dark:text-indigo-400 font-bold">
-                        + Crear nueva categoría...
+                        {t("recipeform.tag_create")}
                       </option>
                     </select>
                   </div>
@@ -2217,7 +2229,7 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
                     <div className="flex gap-2">
                       <input
                         type="text"
-                        placeholder="Escribe el nombre de la nueva categoría..."
+                        placeholder={t("recipeform.new_ingredient_category_placeholder")}
                         className="flex-1 px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-955 focus:outline-none focus:border-emerald-500 text-slate-700 dark:text-zinc-200"
                         value={newIngredientModal.newCategory}
                         onChange={(e) => setNewIngredientModal(prev => ({ ...prev, newCategory: e.target.value }))}
@@ -2227,7 +2239,7 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
                         onClick={() => setNewIngredientModal(prev => ({ ...prev, isCreatingCategory: false }))}
                         className="px-3 py-2 text-xs font-bold rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-600 dark:text-zinc-300 cursor-pointer"
                       >
-                        Cancelar
+                        {t("recipeform.cancel_btn")}
                       </button>
                     </div>
                   </div>
@@ -2241,14 +2253,14 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
                 onClick={() => setNewIngredientModal(prev => ({ ...prev, isOpen: false }))}
                 className="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-xs font-bold text-gray-700 transition-colors hover:bg-gray-50 focus:outline-none focus:ring-4 focus:ring-gray-500/10 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 cursor-pointer"
               >
-                Omitir
+                {t("recipeform.new_ingredient_skip")}
               </button>
               <button
                 type="button"
                 onClick={handleConfirmNewIngredient}
                 className="rounded-xl px-4 py-2.5 text-xs font-bold transition-colors focus:outline-none focus:ring-4 cursor-pointer bg-indigo-600 hover:bg-indigo-700 text-white focus:ring-indigo-500/30"
               >
-                Guardar Alimento
+                {t("recipeform.new_ingredient_save")}
               </button>
             </div>
           </div>
@@ -2267,15 +2279,15 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
                 </div>
                 <div>
                   <h3 className="text-base font-extrabold tracking-tight text-gray-900 dark:text-white">
-                    Validar Ingrediente
+                    {t("recipeform.validation_title")}
                   </h3>
                   <p className="text-[10px] text-gray-500 dark:text-zinc-400">
-                    Procesando receta importada
+                    {t("recipeform.validation_subtitle")}
                   </p>
                 </div>
               </div>
               <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-300">
-                {currentValidationIdx + 1} de {importValidationQueue.length}
+                {t("recipeform.validation_progress", { current: currentValidationIdx + 1, total: importValidationQueue.length })}
               </span>
             </div>
 
@@ -2297,12 +2309,12 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
 
             {/* Detail */}
             <div className="bg-slate-50/50 dark:bg-zinc-955 p-3.5 rounded-2xl border border-slate-100 dark:border-zinc-850/60 text-xs text-slate-600 dark:text-zinc-400 space-y-1">
-              <span className="text-[9px] font-bold text-zinc-400 dark:text-zinc-550 uppercase tracking-widest block leading-none">Original en texto:</span>
+              <span className="text-[9px] font-bold text-zinc-400 dark:text-zinc-550 uppercase tracking-widest block leading-none">{t("recipeform.validation_original_text")}</span>
               <p className="font-bold text-slate-800 dark:text-zinc-200 leading-snug">
                 "{importValidationQueue[currentValidationIdx].amount} {importValidationQueue[currentValidationIdx].unit} de {importValidationQueue[currentValidationIdx].name}"
               </p>
               <p className="text-[10px] text-slate-400 dark:text-zinc-500 leading-tight">
-                Este alimento no está registrado en tu base de datos. Completa sus datos para añadirlo o retíralo.
+                {t("recipeform.validation_not_registered")}
               </p>
             </div>
 
@@ -2310,11 +2322,11 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
             <div className="space-y-3">
               <div>
                 <label className="text-[9px] font-bold text-zinc-400 dark:text-zinc-550 uppercase tracking-widest block mb-1">
-                  Nombre a Registrar
+                  {t("recipeform.validation_name_label")}
                 </label>
                 <input
                   type="text"
-                  placeholder="Ej: Pollo"
+                  placeholder={t("recipeform.validation_name_placeholder")}
                   className="w-full px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-955 focus:outline-none focus:border-indigo-500 text-slate-700 dark:text-zinc-200"
                   value={validationIngredientName}
                   onChange={(e) => setValidationIngredientName(e.target.value)}
@@ -2323,7 +2335,7 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
 
               <div>
                 <label className="text-[9px] font-bold text-zinc-400 dark:text-zinc-550 uppercase tracking-widest block mb-1">
-                  Categoría del Alimento
+                  {t("recipeform.validation_category_label")}
                 </label>
                 {!validationIsCreatingCategory ? (
                   <select
@@ -2341,14 +2353,14 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
                       <option key={c} value={c}>{c}</option>
                     ))}
                     <option value="__NEW__" className="text-indigo-600 dark:text-indigo-400 font-bold">
-                      + Crear nueva categoría...
+                      {t("recipeform.tag_create")}
                     </option>
                   </select>
                 ) : (
                   <div className="flex gap-2">
                     <input
                       type="text"
-                      placeholder="Nueva categoría..."
+                      placeholder={t("recipeform.validation_category_placeholder")}
                       className="flex-1 px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-955 focus:outline-none focus:border-indigo-500 text-slate-700 dark:text-zinc-200"
                       value={validationNewCategory}
                       onChange={(e) => setValidationNewCategory(e.target.value)}
@@ -2358,7 +2370,7 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
                       onClick={() => setValidationIsCreatingCategory(false)}
                       className="px-3 py-2 text-xs font-bold rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-600 dark:text-zinc-300 cursor-pointer transition"
                     >
-                      Cancelar
+                      {t("recipeform.cancel_btn")}
                     </button>
                   </div>
                 )}
@@ -2372,14 +2384,14 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
                 onClick={handleCancelValidationItem}
                 className="rounded-xl border border-red-200 bg-red-50/20 px-4 py-2.5 text-xs font-bold text-red-600 hover:bg-red-50 dark:border-red-900/35 dark:bg-red-950/10 dark:text-red-400 dark:hover:bg-red-950/20 transition cursor-pointer"
               >
-                Eliminar Ingrediente
+                {t("recipeform.validation_delete")}
               </button>
               <button
                 type="button"
                 onClick={handleConfirmValidationItem}
                 className="rounded-xl px-4 py-2.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition cursor-pointer"
               >
-                Guardar y Continuar
+                {t("recipeform.validation_save_continue")}
               </button>
             </div>
           </div>

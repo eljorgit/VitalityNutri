@@ -1,6 +1,8 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { MealPlan, Ingredient, DayType, MealType } from "../types";
 import ConfirmationModal, { ConfirmationVariant } from "./ConfirmationModal";
+import { getSiteVisibility } from "../utils/siteVisibility";
 
 const formatAmountAndUnit = (amount: number, unit: string) => {
   let normalizedUnit = unit.trim().toLowerCase();
@@ -34,6 +36,7 @@ interface GroceryListProps {
   completedRecipes?: Record<string, boolean>;
 }
 export default function GroceryList({ plan, completedRecipes }: GroceryListProps) {
+  const { t } = useTranslation();
   const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
   const [excludeCompletedRecipes, setExcludeCompletedRecipes] = useState<boolean>(false);
 
@@ -42,7 +45,7 @@ export default function GroceryList({ plan, completedRecipes }: GroceryListProps
   };
 
   const getDefaultDay = (): string => {
-    const days = ["domingo", "lunes", "martes", "miercoles", "jueves", "viernes", "sabado"];
+    const days = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
     const date = new Date();
     let dayOfWeekIndex = date.getDay();
     if (date.getHours() >= 19) {
@@ -75,6 +78,24 @@ export default function GroceryList({ plan, completedRecipes }: GroceryListProps
   const [copied, setCopied] = useState(false);
   const [copiedKeep, setCopiedKeep] = useState(false);
   const [canShare, setCanShare] = useState(false);
+  const [showShareWarning, setShowShareWarning] = useState(false);
+  const pendingShareRef = useRef<(() => void) | null>(null);
+
+  const warnBeforeShare = (shareFn: () => void) => {
+    if (getSiteVisibility() === "local") {
+      pendingShareRef.current = shareFn;
+      setShowShareWarning(true);
+    } else {
+      shareFn();
+    }
+  };
+
+  const handleDismissShareWarning = () => {
+    setShowShareWarning(false);
+    pendingShareRef.current?.();
+    pendingShareRef.current = null;
+  };
+
   const [expandedRecipes, setExpandedRecipes] = useState<Record<string, boolean>>({});
   const [configPanelExpanded, setConfigPanelExpanded] = useState(false);
   const [notification, setNotification] = useState<{
@@ -88,20 +109,16 @@ export default function GroceryList({ plan, completedRecipes }: GroceryListProps
     setNotification({ title, description, icon, variant });
   };
 
-
-  // Opciones de formato de compartido
   const [shareIncludeCheckboxes, setShareIncludeCheckboxes] = useState(false);
   const [shareGroupByCategories, setShareGroupByCategories] = useState(true);
   const [shareExcludeCompleted, setShareExcludeCompleted] = useState(false);
   const [shareIncludeQuantities, setShareIncludeQuantities] = useState(true);
 
-  // Filtros de Comida y Raciones (Multiplicadores)
   const [globalMultiplier, setGlobalMultiplier] = useState<number>(1);
   const [dayMultipliers, setDayMultipliers] = useState<Record<string, number>>({});
   const [mealMultipliers, setMealMultipliers] = useState<Record<string, number>>({});
   const [excludedMeals, setExcludedMeals] = useState<string[]>([]);
 
-  // Guardar estado en SQLite
   const handleSaveListToDB = async () => {
     try {
       const response = await fetch("/api/grocery-list", {
@@ -122,8 +139,8 @@ export default function GroceryList({ plan, completedRecipes }: GroceryListProps
       });
       if (response.ok) {
         showNotification(
-          "Lista guardada",
-          "La lista de la compra se ha guardado correctamente en la base de datos SQLite.",
+          t("grocery.save_success_title"),
+          t("grocery.save_success_desc"),
           "check_circle",
           "success"
         );
@@ -133,15 +150,14 @@ export default function GroceryList({ plan, completedRecipes }: GroceryListProps
     } catch (err) {
       console.error(err);
       showNotification(
-        "No se pudo guardar",
-        "Error al guardar la lista de la compra. Inténtalo de nuevo en unos segundos.",
+        t("grocery.save_error_title"),
+        t("grocery.save_error_desc"),
         "error",
         "danger"
       );
     }
   };
 
-  // Cargar estado de SQLite
   const handleLoadListFromDB = async () => {
     try {
       const response = await fetch("/api/grocery-list");
@@ -159,8 +175,8 @@ export default function GroceryList({ plan, completedRecipes }: GroceryListProps
           if (state.multipliers.meals) setMealMultipliers(state.multipliers.meals);
         }
         showNotification(
-          "Lista restaurada",
-          "La lista de la compra se ha restaurado correctamente.",
+          t("grocery.restore_success_title"),
+          t("grocery.restore_success_desc"),
           "check_circle",
           "success"
         );
@@ -168,15 +184,14 @@ export default function GroceryList({ plan, completedRecipes }: GroceryListProps
     } catch (err) {
       console.error(err);
       showNotification(
-        "No se pudo restaurar",
-        "Error al restaurar la lista de la compra. Inténtalo de nuevo en unos segundos.",
+        t("grocery.restore_error_title"),
+        t("grocery.restore_error_desc"),
         "error",
         "danger"
       );
     }
   };
 
-  // Restauración automática al montar el componente
   useEffect(() => {
     const autoRestore = async () => {
       try {
@@ -209,16 +224,14 @@ export default function GroceryList({ plan, completedRecipes }: GroceryListProps
     autoRestore();
   }, []);
 
-  // Manejar toggle global por tipo de comida (Desayuno / Merienda)
-  const handleToggleAllMealTypeShortcut = (mealType: "desayuno" | "merienda") => {
-    // Determinar qué días están activos en la visualización actual
+  const handleToggleAllMealTypeShortcut = (mealType: "breakfast" | "snack") => {
     const activeDays = listType === "semanal"
-      ? ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"]
+      ? ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
       : listType === "3dias"
         ? [
             selected3DaysStart,
-            ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"][(["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"].indexOf(selected3DaysStart) + 1) % 7],
-            ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"][(["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"].indexOf(selected3DaysStart) + 2) % 7]
+            ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"][(["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"].indexOf(selected3DaysStart) + 1) % 7],
+            ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"][(["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"].indexOf(selected3DaysStart) + 2) % 7]
           ]
         : [selectedSingleDay];
 
@@ -226,7 +239,6 @@ export default function GroceryList({ plan, completedRecipes }: GroceryListProps
     const someAreIncluded = mealIds.some(id => !excludedMeals.includes(id));
 
     if (someAreIncluded) {
-      // Excluir todos si al menos uno estaba activo
       setExcludedMeals(prev => {
         const next = [...prev];
         mealIds.forEach(id => {
@@ -235,7 +247,6 @@ export default function GroceryList({ plan, completedRecipes }: GroceryListProps
         return next;
       });
     } else {
-      // Si todos estaban excluidos, activarlos todos (quitarlos de la lista de exclusiones)
       setExcludedMeals(prev => prev.filter(id => !mealIds.includes(id)));
     }
   };
@@ -252,7 +263,6 @@ export default function GroceryList({ plan, completedRecipes }: GroceryListProps
     }
   }, []);
 
-  // Sync URL search query parameters with listType and selection parameters
   useEffect(() => {
     if (window.location.pathname.startsWith("/grocery")) {
       let search = `?type=${listType}`;
@@ -267,7 +277,6 @@ export default function GroceryList({ plan, completedRecipes }: GroceryListProps
     }
   }, [listType, selected3DaysStart, selectedSingleDay]);
 
-  // Listen to popstate event to update internal listType and selector states
   useEffect(() => {
     const handlePopState = () => {
       if (window.location.pathname.startsWith("/grocery")) {
@@ -295,29 +304,28 @@ export default function GroceryList({ plan, completedRecipes }: GroceryListProps
   };
 
   const mealNames: Record<string, string> = {
-    desayuno: "Desayuno",
-    almuerzo: "Almuerzo",
-    merienda: "Merienda",
-    cena: "Cena"
+    breakfast: t("meals.breakfast"),
+    lunch: t("meals.lunch"),
+    snack: t("meals.snack"),
+    dinner: t("meals.dinner")
   };
 
   const generateListText = (): string => {
-    let text = `🛒 *LISTA DE LA COMPRA - VitalityNutri*\n`;
+    let text = `🛒 *${t("grocery.share_title")}*\n`;
 
     if (listType === "semanal") {
-      text += `📅 *Tipo:* Lista Semanal (L-D)\n\n`;
+      text += `📅 *${t("grocery.share_type_weekly")}*\n\n`;
     } else if (listType === "3dias") {
-      const weekdays = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"];
+      const weekdays = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
       const startIndex = weekdays.indexOf(selected3DaysStart);
-      const day1 = getDayNameSpanish(weekdays[startIndex]);
-      const day2 = getDayNameSpanish(weekdays[(startIndex + 1) % 7]);
-      const day3 = getDayNameSpanish(weekdays[(startIndex + 2) % 7]);
-      text += `📅 *Tipo:* Plan de 3 días (${day1}, ${day2}, ${day3})\n\n`;
+      const day1 = getDayNameTranslated(weekdays[startIndex]);
+      const day2 = getDayNameTranslated(weekdays[(startIndex + 1) % 7]);
+      const day3 = getDayNameTranslated(weekdays[(startIndex + 2) % 7]);
+      text += `📅 *${t("grocery.share_type_3day", { days: `${day1}, ${day2}, ${day3}` })}*\n\n`;
     } else {
-      text += `📅 *Tipo:* Pauta Diaria (${getDayNameSpanish(selectedSingleDay)})\n\n`;
+      text += `📅 *${t("grocery.share_type_daily", { day: getDayNameTranslated(selectedSingleDay) })}*\n\n`;
     }
 
-    // Filtrar los ingredientes según la opción de omitir completados
     const itemsToExport = aggregatedIngredients.filter((item) => {
       if (shareExcludeCompleted && checkedItems[item.name]) {
         return false;
@@ -326,8 +334,8 @@ export default function GroceryList({ plan, completedRecipes }: GroceryListProps
     });
 
     if (itemsToExport.length === 0) {
-      text += `_(No hay ingredientes pendientes en esta lista)_\n\n`;
-      text += `Generado por VitalityNutri 🌱`;
+      text += `_(${t("grocery.share_no_items")})_\n\n`;
+      text += `${t("grocery.share_generated_by")}`;
       return text;
     }
 
@@ -401,91 +409,88 @@ export default function GroceryList({ plan, completedRecipes }: GroceryListProps
       text += `\n`;
     }
 
-    text += `Generado por VitalityNutri 🌱`;
+    text += `${t("grocery.share_generated_by")}`;
     return text;
   };
 
   const handleCopyToClipboard = async () => {
-    const text = generateListText();
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error("Error al copiar al portapapeles: ", err);
-    }
+    warnBeforeShare(async () => {
+      const text = generateListText();
+      try {
+        await navigator.clipboard.writeText(text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } catch (err) {
+        console.error("Error copying to clipboard: ", err);
+      }
+    });
   };
 
   const handleShareWhatsApp = () => {
-    const text = generateListText();
-    const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
-    window.open(url, "_blank");
+    warnBeforeShare(() => {
+      const text = generateListText();
+      const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+      window.open(url, "_blank");
+    });
   };
 
   const handleShareTelegram = () => {
-    const text = generateListText();
-    const url = `https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(text)}`;
-    window.open(url, "_blank");
+    warnBeforeShare(() => {
+      const text = generateListText();
+      const url = `https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(text)}`;
+      window.open(url, "_blank");
+    });
   };
 
   const handleShareInstagram = async () => {
-    const text = generateListText();
-    try {
-      await navigator.clipboard.writeText(text);
-      window.open("https://www.instagram.com/", "_blank");
-    } catch (err) {
-      console.error("Error al copiar para Instagram: ", err);
-    }
+    warnBeforeShare(async () => {
+      const text = generateListText();
+      try {
+        await navigator.clipboard.writeText(text);
+        window.open("https://www.instagram.com/", "_blank");
+      } catch (err) {
+        console.error("Error copying for Instagram: ", err);
+      }
+    });
   };
 
   const handleExportToKeep = async () => {
-    const text = generateListText();
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopiedKeep(true);
-      setTimeout(() => setCopiedKeep(false), 3000);
-      window.open("https://keep.new", "_blank");
-    } catch (err) {
-      console.error("Error al copiar para Google Keep: ", err);
-    }
+    warnBeforeShare(() => {
+      const text = generateListText();
+      navigator.clipboard.writeText(text).then(() => {
+        setCopiedKeep(true);
+        setTimeout(() => setCopiedKeep(false), 3000);
+        window.open("https://keep.new", "_blank");
+      }).catch((err) => {
+        console.error("Error copying for Google Keep: ", err);
+      });
+    });
   };
 
   const handleNativeShare = async () => {
-    const text = generateListText();
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: "Lista de la Compra - VitalityNutri",
+    warnBeforeShare(() => {
+      const text = generateListText();
+      if (navigator.share) {
+        navigator.share({
+          title: `${t("grocery.share_native_title")}`,
           text: text
+        }).catch((err) => {
+          console.error("Error using Web Share: ", err);
         });
-      } catch (err) {
-        console.error("Error al usar Web Share: ", err);
       }
-    }
+    });
   };
 
-
-
   const getTodayDayType = (): string => {
-    const dayOfWeek = new Date().getDay(); // 0 (Sunday) to 6 (Saturday)
-    const daysMap = ["domingo", "lunes", "martes", "miercoles", "jueves", "viernes", "sabado"];
+    const dayOfWeek = new Date().getDay();
+    const daysMap = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
     return daysMap[dayOfWeek];
   };
 
-  const getDayNameSpanish = (dayKeyStr: string): string => {
-    const names: Record<string, string> = {
-      lunes: "Lunes",
-      martes: "Martes",
-      miercoles: "Miércoles",
-      jueves: "Jueves",
-      viernes: "Viernes",
-      sabado: "Sábado",
-      domingo: "Domingo"
-    };
-    return names[dayKeyStr] || dayKeyStr;
+  const getDayNameTranslated = (dayKeyStr: string): string => {
+    return t("weekdays." + dayKeyStr, dayKeyStr);
   };
 
-  // Helper to standardize common ingredient names like "huevo duro" or "huevos" into "Huevo"
   const getStandardIngredientName = (rawName: string): string => {
     const nameLow = rawName.trim().toLowerCase();
 
@@ -527,12 +532,11 @@ export default function GroceryList({ plan, completedRecipes }: GroceryListProps
     return rawName.charAt(0).toUpperCase() + rawName.slice(1);
   };
 
-  // Days to aggregate based on listType selection
   const daysToAggregate = useMemo((): string[] => {
     if (listType === "semanal") {
-      return ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"];
+      return ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
     } else if (listType === "3dias") {
-      const weekdays = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"];
+      const weekdays = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
       const startIndex = weekdays.indexOf(selected3DaysStart);
       return [
         weekdays[startIndex],
@@ -544,7 +548,6 @@ export default function GroceryList({ plan, completedRecipes }: GroceryListProps
     }
   }, [listType, selected3DaysStart, selectedSingleDay]);
 
-  // Compile and aggregate list of ingredients based on listType
   const aggregatedIngredients = useMemo(() => {
     if (!plan) return [];
 
@@ -571,19 +574,15 @@ export default function GroceryList({ plan, completedRecipes }: GroceryListProps
       if (dayMeals) {
         Object.entries(dayMeals).forEach(([mealKey, recipe]) => {
           const mealId = `${dayKey}-${mealKey}`;
-          // Omit if this specific meal is deselected/excluded
           if (excludedMeals.includes(mealId)) {
             return;
           }
 
-          // Omit if excludeCompletedRecipes is true and this recipe is completed in the calendar
           if (excludeCompletedRecipes && completedRecipes && completedRecipes[mealId]) {
             return;
           }
 
           if (recipe && recipe.ingredients) {
-            // Determine the active multiplier for this specific meal.
-            // Hierarchy: Meal multiplier (if customized, i.e. not 1) > Day multiplier (if customized, i.e. not 1) > Global multiplier.
             let totalMult = globalMultiplier;
             const mealId = `${dayKey}-${mealKey}`;
             const dayMult = dayMultipliers[dayKey];
@@ -621,9 +620,8 @@ export default function GroceryList({ plan, completedRecipes }: GroceryListProps
                 }
                 if (!map[key].recipes.some(r => r.day === recipeRef.day && r.meal === recipeRef.meal)) {
                   map[key].recipes.push(recipeRef);
-                  // Sort recipes chronologically (Day order, then Meal order)
-                  const dayOrder = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"];
-                  const mealOrder = ["desayuno", "almuerzo", "merienda", "cena"];
+                  const dayOrder = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+                  const mealOrder = ["breakfast", "lunch", "snack", "dinner"];
                   map[key].recipes.sort((a, b) => {
                     const dayDiff = dayOrder.indexOf(a.day) - dayOrder.indexOf(b.day);
                     if (dayDiff !== 0) return dayDiff;
@@ -650,7 +648,6 @@ export default function GroceryList({ plan, completedRecipes }: GroceryListProps
     return Object.values(map);
   }, [plan, daysToAggregate, excludedMeals, globalMultiplier, dayMultipliers, mealMultipliers, excludeCompletedRecipes, completedRecipes]);
 
-  // Categorize ingredient by matching names with basic keywords
   const categorizeIngredient = (name: string, itemCategory?: string): string => {
     if (itemCategory) {
       const catLow = itemCategory.toLowerCase();
@@ -716,21 +713,21 @@ export default function GroceryList({ plan, completedRecipes }: GroceryListProps
   const getCategoryIcon = (category: string): string => {
     switch (category) {
       case "Verduras y Hortalizas":
-        return "spa"; // leaf icon
+        return "spa";
       case "Frutas":
-        return "nutrition"; // apple icon
+        return "nutrition";
       case "Carnes, Huevos y Tofu":
-        return "dinner_dining"; // dome dinner icon
+        return "dinner_dining";
       case "Pescados y Mariscos":
-        return "set_meal"; // fish icon
+        return "set_meal";
       case "Lácteos y Bebidas":
-        return "local_cafe"; // drink/coffee cup icon
+        return "local_cafe";
       case "Granos, Harinas y Semillas":
-        return "wheat"; // grain/seed icon
+        return "wheat";
       case "Despensa y Condimentos":
-        return "kitchen"; // pantry/fridge icon
+        return "kitchen";
       default:
-        return "shopping_bag"; // fallback icon for "Otros Ingredientes"
+        return "shopping_bag";
     }
   };
 
@@ -755,7 +752,6 @@ export default function GroceryList({ plan, completedRecipes }: GroceryListProps
     }
   };
 
-  // Group items together
   const categorizedGroups = useMemo(() => {
     const groups: Record<string, typeof aggregatedIngredients> = {};
 
@@ -767,7 +763,6 @@ export default function GroceryList({ plan, completedRecipes }: GroceryListProps
       groups[category].push(item);
     });
 
-    // Sort items alphabetically inside each category
     Object.keys(groups).forEach((key) => {
       groups[key].sort((a, b) => a.name.localeCompare(b.name, "es", { sensitivity: "base" }));
     });
@@ -798,29 +793,31 @@ export default function GroceryList({ plan, completedRecipes }: GroceryListProps
   return (
     <div className="space-y-6 text-left select-text">
 
-      {/* Header with stats */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-gray-100 dark:border-zinc-800 pb-4 no-print">
         <div>
-          <h1 className="text-3xl font-bold text-gray-950 dark:text-white tracking-tight">Lista del Supermercado Inteligente</h1>
-          <p className="text-sm text-gray-500 dark:text-zinc-400">Consolida y planifica tus compras. Filtra la duración de tu suministro de alimentos.</p>
+          <h1 className="text-3xl font-bold text-gray-950 dark:text-white tracking-tight">{t("grocery.title")}</h1>
+          <p className="text-sm text-gray-500 dark:text-zinc-400">{t("grocery.description")}</p>
         </div>
 
         {totalGroceryItemsCount > 0 && (
           <div className="bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-400 font-extrabold text-xs py-2 px-4 rounded-xl border border-emerald-100 dark:border-emerald-900/40 shrink-0 self-start lg:self-center">
-            Completados: {checkedGroceryItemsCount} de {totalGroceryItemsCount} ({totalGroceryItemsCount > 0 ? Math.round((checkedGroceryItemsCount / totalGroceryItemsCount) * 100) : 0}%)
+            {t("grocery.completed_count", {
+              checked: checkedGroceryItemsCount,
+              total: totalGroceryItemsCount,
+              percent: totalGroceryItemsCount > 0 ? Math.round((checkedGroceryItemsCount / totalGroceryItemsCount) * 100) : 0
+            })}
           </div>
         )}
       </div>
 
       {plan && (
         <div className="space-y-3 no-print select-none">
-          {/* Main selection tabs */}
           <div className="flex flex-wrap gap-2 items-center bg-slate-100 dark:bg-zinc-800 p-1.5 rounded-2xl w-max border border-slate-200/50 dark:border-zinc-800/60 text-xs">
             {(["semanal", "3dias", "diario"] as const).map((type) => {
-              const labels = {
-                semanal: "Semanal",
-                "3dias": "3 Días",
-                diario: "Diario"
+              const labels: Record<string, string> = {
+                semanal: t("grocery.weekly"),
+                "3dias": t("grocery.three_days"),
+                diario: t("grocery.daily")
               };
               const active = listType === type;
               return (
@@ -839,17 +836,16 @@ export default function GroceryList({ plan, completedRecipes }: GroceryListProps
             })}
           </div>
 
-          {/* Sub-selector for 3-day starts */}
           {listType === "3dias" && (
             <div className="flex flex-col gap-1.5 p-3.5 bg-slate-50 dark:bg-zinc-900/60 rounded-2xl border border-slate-200/60 dark:border-zinc-800/80 w-full md:w-max animate-fade-in text-xs">
-              <span className="font-extrabold text-slate-500 dark:text-zinc-400">Seleccionar rango de 3 días:</span>
+              <span className="font-extrabold text-slate-500 dark:text-zinc-400">{t("grocery.select_range")}</span>
               <div className="flex flex-wrap gap-1.5">
-                {["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"].map((startDay) => {
-                  const weekdays = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"];
+                {["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"].map((startDay) => {
+                  const weekdays = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
                   const idx = weekdays.indexOf(startDay);
-                  const day1 = getDayNameSpanish(weekdays[idx]);
-                  const day2 = getDayNameSpanish(weekdays[(idx + 1) % 7]);
-                  const day3 = getDayNameSpanish(weekdays[(idx + 2) % 7]);
+                  const day1 = t("weekdays." + weekdays[idx]);
+                  const day2 = t("weekdays." + weekdays[(idx + 1) % 7]);
+                  const day3 = t("weekdays." + weekdays[(idx + 2) % 7]);
 
                   const isSelected = selected3DaysStart === startDay;
                   return (
@@ -862,7 +858,7 @@ export default function GroceryList({ plan, completedRecipes }: GroceryListProps
                         : "bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 border border-zinc-200/80 dark:border-zinc-800"
                         }`}
                     >
-                      <span className="uppercase text-[9px] tracking-wide opacity-80">Empieza {day1}</span>
+                      <span className="uppercase text-[9px] tracking-wide opacity-80">{t("grocery.starts_on", { day: day1 })}</span>
                       <span className="text-[10px] mt-0.5">{day1.slice(0, 3)} • {day2.slice(0, 3)} • {day3.slice(0, 3)}</span>
                     </button>
                   );
@@ -871,13 +867,12 @@ export default function GroceryList({ plan, completedRecipes }: GroceryListProps
             </div>
           )}
 
-          {/* Sub-selector for single daily selection */}
           {listType === "diario" && (
             <div className="flex flex-col gap-1.5 p-3.5 bg-zinc-50 dark:bg-zinc-900/60 rounded-2xl border border-zinc-200/60 dark:border-zinc-800/80 w-full md:w-max animate-fade-in text-xs">
-              <span className="font-extrabold text-zinc-500 dark:text-zinc-400">Seleccionar día de la pauta:</span>
+              <span className="font-extrabold text-zinc-500 dark:text-zinc-400">{t("grocery.select_day")}</span>
               <div className="flex flex-wrap gap-1.5">
-                {["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"].map((dayName) => {
-                  const label = getDayNameSpanish(dayName);
+                {["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"].map((dayName) => {
+                  const label = t("weekdays." + dayName);
                   const isSelected = selectedSingleDay === dayName;
                   return (
                     <button
@@ -897,9 +892,7 @@ export default function GroceryList({ plan, completedRecipes }: GroceryListProps
             </div>
           )}
 
-          {/* Configuración de Comidas y Raciones (Multiplicadores) Panel */}
           <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-100 dark:border-zinc-800/80 shadow-sm overflow-hidden no-print animate-fade-in text-left">
-            {/* Clickable Header for Collapsing */}
             <div
               onClick={() => setConfigPanelExpanded(!configPanelExpanded)}
               className="flex items-center justify-between p-5 bg-slate-50/50 dark:bg-zinc-950/20 cursor-pointer hover:bg-slate-100/50 dark:hover:bg-zinc-950/40 transition duration-150 select-none border-b border-slate-100 dark:border-zinc-800/60"
@@ -908,12 +901,12 @@ export default function GroceryList({ plan, completedRecipes }: GroceryListProps
                 <span className="material-symbols-outlined text-emerald-700 dark:text-emerald-400" style={{ fontSize: "20px" }}>filter_alt</span>
                 <div>
                   <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
-                    Configuración de Comidas y Raciones
+                    {t("grocery.config_title")}
                   </h3>
                   <p className="text-[11px] text-slate-500 dark:text-zinc-400">
                     {listType === "semanal"
-                      ? "Excluye desayunos/meriendas o ajusta el multiplicador de cantidad global."
-                      : "Selecciona qué comidas incluir y ajusta sus raciones con multiplicadores individuales."
+                      ? t("grocery.config_desc_weekly")
+                      : t("grocery.config_desc_other")
                     }
                   </p>
                 </div>
@@ -925,42 +918,38 @@ export default function GroceryList({ plan, completedRecipes }: GroceryListProps
               </div>
             </div>
 
-            {/* Collapsible Content */}
             {configPanelExpanded && (
               <div className="p-6 space-y-5 border-t-0 animate-fade-in">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-zinc-800 pb-4">
-                  {/* Accesos rápidos de selección para Desayunos y Meriendas */}
                   <div className="flex flex-wrap gap-2 select-none">
                     <button
                       type="button"
-                      onClick={() => handleToggleAllMealTypeShortcut("desayuno")}
+                      onClick={() => handleToggleAllMealTypeShortcut("breakfast")}
                       className="px-3 py-1.5 text-[11px] font-black rounded-lg border border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 transition duration-150 cursor-pointer"
                     >
-                      Activar/Desactivar Desayunos
+                      {t("grocery.toggle_breakfast")}
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleToggleAllMealTypeShortcut("merienda")}
+                      onClick={() => handleToggleAllMealTypeShortcut("snack")}
                       className="px-3 py-1.5 text-[11px] font-black rounded-lg border border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 transition duration-150 cursor-pointer"
                     >
-                      Activar/Desactivar Meriendas
+                      {t("grocery.toggle_snack")}
                     </button>
                   </div>
 
-                  {/* Botón de reiniciar multiplicadores */}
                   <button
                     type="button"
                     onClick={handleResetMultipliers}
                     className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-black rounded-lg border border-red-100 dark:border-red-950/30 bg-red-50/50 hover:bg-red-50 dark:bg-red-950/20 dark:hover:bg-red-950/30 text-red-650 dark:text-red-400 transition duration-150 cursor-pointer"
                   >
                     <span className="material-symbols-outlined text-[14px]" style={{ fontSize: "14px" }}>restart_alt</span>
-                    Reiniciar Raciones
+                    {t("grocery.reset_rations")}
                   </button>
                 </div>
 
-                {/* Renglón de Multiplicador Global */}
                 <div className="flex items-center gap-3 bg-zinc-50 dark:bg-zinc-950/40 p-3 rounded-2xl border border-zinc-200/60 dark:border-zinc-800/40 w-max max-w-full">
-                  <span className="text-xs font-bold text-zinc-550 dark:text-zinc-400">Multiplicador Global:</span>
+                  <span className="text-xs font-bold text-zinc-550 dark:text-zinc-400">{t("grocery.global_multiplier")}</span>
                   <div className="flex items-center gap-1.5">
                     <button
                       type="button"
@@ -1007,12 +996,11 @@ export default function GroceryList({ plan, completedRecipes }: GroceryListProps
                   </div>
                 </div>
 
-                {/* Grid de selección de comidas y multiplicadores (Solo para 3 días o Diario) */}
                 {listType !== "semanal" && (
                   <div className="space-y-3 pt-1">
                     {daysToAggregate.map((dayKey) => {
                       const dayMeals = plan.days[dayKey as keyof typeof plan.days] || {};
-                      const dayLabel = getDayNameSpanish(dayKey);
+                      const dayLabel = t("weekdays." + dayKey);
                       const dayMult = dayMultipliers[dayKey] ?? 1;
 
                       return (
@@ -1020,11 +1008,10 @@ export default function GroceryList({ plan, completedRecipes }: GroceryListProps
                           key={dayKey}
                           className="grid grid-cols-2 sm:grid-cols-[165px_1fr_1fr_1fr_1fr] gap-3 items-center p-3.5 bg-slate-50/50 dark:bg-zinc-950/20 rounded-2xl border border-slate-100 dark:border-zinc-800/40"
                         >
-                          {/* Celda del Día + Multiplicador del Día */}
                           <div className="col-span-2 sm:col-span-1 flex flex-row sm:flex-col justify-between items-center sm:items-start gap-1.5 p-1">
                             <span className="text-xs font-black text-slate-800 dark:text-zinc-200">{dayLabel}</span>
                             <div className="flex flex-col gap-1 text-[10px] font-bold text-slate-500 dark:text-zinc-400">
-                              <span className="mb-0.5">Mult. Día:</span>
+                              <span className="mb-0.5">{t("grocery.day_multiplier")}</span>
                               <div className="flex items-center gap-1">
                                 <button
                                   type="button"
@@ -1053,8 +1040,7 @@ export default function GroceryList({ plan, completedRecipes }: GroceryListProps
                             </div>
                           </div>
 
-                          {/* Celdas de las comidas */}
-                          {(["desayuno", "almuerzo", "merienda", "cena"] as const).map((mealKey) => {
+                          {(["breakfast", "lunch", "snack", "dinner"] as const).map((mealKey) => {
                             const recipe = dayMeals[mealKey];
                             const exists = !!recipe;
                             const mealId = `${dayKey}-${mealKey}`;
@@ -1068,7 +1054,7 @@ export default function GroceryList({ plan, completedRecipes }: GroceryListProps
                                   key={mealKey}
                                   className="col-span-1 min-h-[64px] flex items-center justify-center p-2 rounded-xl bg-slate-100/30 dark:bg-zinc-900/20 border border-dashed border-slate-200/50 dark:border-zinc-800/60 text-[9px] text-slate-350 dark:text-zinc-650 font-extrabold uppercase select-none"
                                 >
-                                  N/A
+                                  {t("grocery.na")}
                                 </div>
                               );
                             }
@@ -1140,7 +1126,6 @@ export default function GroceryList({ plan, completedRecipes }: GroceryListProps
 
       {totalGroceryItemsCount > 0 ? (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-          {/* Left / Middle Group list columns */}
           <div className="lg:col-span-2 space-y-6">
             {sortedGroupKeys.map((groupName) => (
               <div key={groupName} className="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-100 dark:border-zinc-800/80 p-6 shadow-sm">
@@ -1185,9 +1170,9 @@ export default function GroceryList({ plan, completedRecipes }: GroceryListProps
                                 type="button"
                                 onClick={(e) => toggleRecipesExpanded(e, item.name)}
                                 className="text-[9px] font-extrabold text-slate-400 dark:text-zinc-500 hover:text-emerald-600 dark:hover:text-emerald-400 bg-slate-50 dark:bg-zinc-800 px-1.5 py-0.5 rounded border border-slate-200/50 dark:border-zinc-700/50 cursor-pointer transition active:scale-95 no-print"
-                                title="Ver recetas en las que se usa"
+                                title={t("grocery.see_recipes_title")}
                               >
-                                {item.recipes.length === 1 ? "1 receta" : `${item.recipes.length} recetas`}
+                                {item.recipes.length === 1 ? t("grocery.recipe_count_singular") : t("grocery.recipe_count_plural", { count: item.recipes.length })}
                               </button>
                             )}
                           </div>
@@ -1218,15 +1203,15 @@ export default function GroceryList({ plan, completedRecipes }: GroceryListProps
                             onClick={(e) => e.stopPropagation()}
                           >
                             <p className="text-[10px] font-extrabold uppercase text-slate-400 dark:text-zinc-500 tracking-wider">
-                              Se utiliza en:
+                              {t("grocery.used_in")}
                             </p>
                             <div className="flex flex-col gap-1.5">
                               {item.recipes.map((recRef) => {
                                 const mealStyleMap: Record<string, string> = {
-                                  desayuno: "bg-orange-50 dark:bg-orange-950/20 text-orange-700 dark:text-orange-400 border-orange-100/50 dark:border-orange-900/30",
-                                  almuerzo: "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 border-emerald-100/50 dark:border-emerald-900/30",
-                                  merienda: "bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 border-amber-100/50 dark:border-amber-900/30",
-                                  cena: "bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-400 border-blue-100/50 dark:border-blue-900/30"
+                                  breakfast: "bg-orange-50 dark:bg-orange-950/20 text-orange-700 dark:text-orange-400 border-orange-100/50 dark:border-orange-900/30",
+                                  lunch: "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 border-emerald-100/50 dark:border-emerald-900/30",
+                                  snack: "bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 border-amber-100/50 dark:border-amber-900/30",
+                                  dinner: "bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-400 border-blue-100/50 dark:border-blue-900/30"
                                 };
                                 return (
                                   <a
@@ -1241,7 +1226,7 @@ export default function GroceryList({ plan, completedRecipes }: GroceryListProps
                                   >
                                     <div className="flex items-center gap-1.5 shrink-0 select-none">
                                       <span className="text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-350 w-16 text-center">
-                                        {getDayNameSpanish(recRef.day).slice(0, 3)}
+                                        {t("weekdays." + recRef.day).slice(0, 3)}
                                       </span>
                                       <span className={`text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md border w-20 text-center ${mealStyleMap[recRef.meal] || "bg-slate-50 text-slate-500"}`}>
                                         {mealNames[recRef.meal] || recRef.meal}
@@ -1278,21 +1263,19 @@ export default function GroceryList({ plan, completedRecipes }: GroceryListProps
             ))}
           </div>
 
-          {/* Right sidebar quick helpers */}
           <aside className="space-y-6">
             <div id="share-section" className="bg-white dark:bg-zinc-900 w-full p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm space-y-4 no-print animate-fade-in">
               <h3 className="text-md font-bold text-gray-900 dark:text-white flex items-center gap-2">
                 <span className="material-symbols-outlined text-emerald-700 dark:text-emerald-400" style={{ fontSize: "20px" }}>content_paste_search</span>
-                Gestionar y Compartir Lista
+                {t("grocery.manage_share_title")}
               </h3>
               <p className="text-xs text-[#404943] dark:text-zinc-400 leading-relaxed">
-                Personaliza la visualización, guarda tus configuraciones en SQLite o exporta el listado.
+                {t("grocery.manage_share_desc")}
               </p>
 
-              {/* Opciones de Filtro y Exportación */}
               <div className="bg-zinc-50 dark:bg-zinc-800/40 p-3.5 rounded-xl border border-zinc-200/60 dark:border-zinc-800/80 space-y-2.5">
                 <span className="text-[10px] font-extrabold uppercase text-zinc-400 dark:text-zinc-500 tracking-wider block mb-1">
-                  Opciones de Filtro
+                  {t("grocery.filter_options")}
                 </span>
 
                 <label className="flex items-center gap-2.5 cursor-pointer text-xs text-gray-700 dark:text-zinc-200 select-none relative group/tooltip">
@@ -1303,12 +1286,11 @@ export default function GroceryList({ plan, completedRecipes }: GroceryListProps
                     className="w-4 h-4 rounded border-gray-300 dark:border-zinc-700 text-emerald-600 focus:ring-emerald-500 cursor-pointer dark:bg-zinc-900"
                   />
                   <span className="flex items-center gap-1">
-                    Excluir recetas completadas
+                    {t("grocery.exclude_completed")}
                     <span className="material-symbols-outlined text-zinc-400 dark:text-zinc-550 cursor-help" style={{ fontSize: "14px" }}>info</span>
                   </span>
-                  {/* Tooltip */}
                   <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-48 p-2 bg-zinc-950 text-white text-[10px] rounded-lg opacity-0 pointer-events-none group-hover/tooltip:opacity-100 transition-opacity duration-150 shadow-md z-30 leading-normal font-medium text-center">
-                    Los ingredientes correspondientes a las comidas marcadas como realizadas en el calendario no se sumarán a la lista de compra.
+                    {t("grocery.exclude_completed_tooltip")}
                   </span>
                 </label>
 
@@ -1320,12 +1302,11 @@ export default function GroceryList({ plan, completedRecipes }: GroceryListProps
                     className="w-4 h-4 rounded border-gray-300 dark:border-zinc-700 text-emerald-600 focus:ring-emerald-500 cursor-pointer dark:bg-zinc-900"
                   />
                   <span className="flex items-center gap-1">
-                    Omitir completados
+                    {t("grocery.omit_checked")}
                     <span className="material-symbols-outlined text-zinc-400 dark:text-zinc-550 cursor-help" style={{ fontSize: "14px" }}>info</span>
                   </span>
-                  {/* Tooltip */}
                   <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-48 p-2 bg-zinc-950 text-white text-[10px] rounded-lg opacity-0 pointer-events-none group-hover/tooltip:opacity-100 transition-opacity duration-150 shadow-md z-30 leading-normal font-medium text-center">
-                    Los ingredientes marcados como completados se omitirán al exportar, imprimir o compartir la lista.
+                    {t("grocery.omit_checked_tooltip")}
                   </span>
                 </label>
 
@@ -1337,12 +1318,11 @@ export default function GroceryList({ plan, completedRecipes }: GroceryListProps
                     className="w-4 h-4 rounded border-gray-300 dark:border-zinc-700 text-emerald-600 focus:ring-emerald-500 cursor-pointer dark:bg-zinc-900"
                   />
                   <span className="flex items-center gap-1">
-                    Incluir casillas de verificación
+                    {t("grocery.include_checkboxes")}
                     <span className="material-symbols-outlined text-zinc-400 dark:text-zinc-500 cursor-help" style={{ fontSize: "14px" }}>info</span>
                   </span>
-                  {/* Tooltip */}
                   <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-48 p-2 bg-zinc-950 text-white text-[10px] rounded-lg opacity-0 pointer-events-none group-hover/tooltip:opacity-100 transition-opacity duration-150 shadow-md z-30 leading-normal font-medium text-center">
-                    Añade casillas vacías (⬜) o completadas (✅) al copiar el texto para WhatsApp o Google Keep.
+                    {t("grocery.include_checkboxes_tooltip")}
                   </span>
                 </label>
 
@@ -1354,12 +1334,11 @@ export default function GroceryList({ plan, completedRecipes }: GroceryListProps
                     className="w-4 h-4 rounded border-gray-300 dark:border-zinc-700 text-emerald-600 focus:ring-emerald-500 cursor-pointer dark:bg-zinc-900"
                   />
                   <span className="flex items-center gap-1">
-                    Organizar por categorías
+                    {t("grocery.group_by_categories")}
                     <span className="material-symbols-outlined text-zinc-400 dark:text-zinc-500 cursor-help" style={{ fontSize: "14px" }}>info</span>
                   </span>
-                  {/* Tooltip */}
                   <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-48 p-2 bg-zinc-950 text-white text-[10px] rounded-lg opacity-0 pointer-events-none group-hover/tooltip:opacity-100 transition-opacity duration-150 shadow-md z-30 leading-normal font-medium text-center">
-                    Agrupa los ingredientes en secciones (verduras, carnes, lácteos...) al exportar o compartir.
+                    {t("grocery.group_by_categories_tooltip")}
                   </span>
                 </label>
 
@@ -1371,17 +1350,15 @@ export default function GroceryList({ plan, completedRecipes }: GroceryListProps
                     className="w-4 h-4 rounded border-gray-300 dark:border-zinc-700 text-emerald-600 focus:ring-emerald-500 cursor-pointer dark:bg-zinc-900"
                   />
                   <span className="flex items-center gap-1">
-                    Incluir cantidades
+                    {t("grocery.include_quantities")}
                     <span className="material-symbols-outlined text-zinc-400 dark:text-zinc-500 cursor-help" style={{ fontSize: "14px" }}>info</span>
                   </span>
-                  {/* Tooltip */}
                   <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-48 p-2 bg-zinc-950 text-white text-[10px] rounded-lg opacity-0 pointer-events-none group-hover/tooltip:opacity-100 transition-opacity duration-150 shadow-md z-30 leading-normal font-medium text-center">
-                    Añade las cantidades y unidades a los ingredientes al exportar o compartir la lista.
+                    {t("grocery.include_quantities_tooltip")}
                   </span>
                 </label>
               </div>
 
-              {/* Botón Guardar / Cargar en SQLite */}
               <div className="grid grid-cols-2 gap-2 pt-1">
                 <button
                   type="button"
@@ -1389,7 +1366,7 @@ export default function GroceryList({ plan, completedRecipes }: GroceryListProps
                   className="flex items-center justify-center gap-1.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition duration-200 font-bold text-xs cursor-pointer active:scale-[0.98] shadow-sm"
                 >
                   <span className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: "'FILL' 1", fontSize: "16px" }}>save</span>
-                  Guardar Lista
+                  {t("grocery.save_list")}
                 </button>
                 <button
                   type="button"
@@ -1397,20 +1374,18 @@ export default function GroceryList({ plan, completedRecipes }: GroceryListProps
                   className="flex items-center justify-center gap-1.5 py-2.5 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 rounded-xl transition duration-200 font-bold text-xs cursor-pointer active:scale-[0.98] border border-zinc-200 dark:border-zinc-700"
                 >
                   <span className="material-symbols-outlined text-[16px]" style={{ fontSize: "16px" }}>folder_open</span>
-                  Restaurar
+                  {t("grocery.restore")}
                 </button>
               </div>
 
-              {/* Acciones principales de exportar */}
               <div className="space-y-2.5 pt-3 border-t border-zinc-100 dark:border-zinc-800/60">
-                {/* Print button */}
                 <button
                   type="button"
                   onClick={() => window.print()}
                   className="w-full bg-[#0f5238] hover:bg-[#116c4a] text-white font-bold text-xs py-3 rounded-xl transition duration-200 shadow-sm active:scale-95 cursor-pointer flex items-center justify-center gap-2"
                 >
                   <span className="material-symbols-outlined text-[16px]" style={{ fontSize: "16px" }}>print</span>
-                  Imprimir Lista de Compras
+                  {t("grocery.print_list")}
                 </button>
 
                 <div className="grid grid-cols-2 gap-2">
@@ -1422,7 +1397,7 @@ export default function GroceryList({ plan, completedRecipes }: GroceryListProps
                     <span className="material-symbols-outlined text-zinc-500 dark:text-zinc-400 text-[16px]" style={{ fontSize: "16px" }}>
                       {copied ? "check_circle" : "content_copy"}
                     </span>
-                    <span>{copied ? "Copiada" : "Copiar"}</span>
+                    <span>{copied ? t("grocery.copied") : t("grocery.copy")}</span>
                   </button>
                   <button
                     type="button"
@@ -1467,7 +1442,7 @@ export default function GroceryList({ plan, completedRecipes }: GroceryListProps
                     className="flex items-center justify-center gap-1.5 py-2.5 bg-[#FBBC05]/10 hover:bg-[#FBBC05]/20 dark:bg-[#FBBC05]/15 dark:hover:bg-[#FBBC05]/25 text-[#c29202] dark:text-[#fcd34d] rounded-xl transition duration-200 font-bold text-xs border border-[#FBBC05]/20 cursor-pointer active:scale-[0.98]"
                   >
                     <span className="material-symbols-outlined text-[16px] text-[#FBBC05]" style={{ fontSize: "16px" }}>lightbulb</span>
-                    <span>{copiedKeep ? "Keep..." : "Google Keep"}</span>
+                    <span>{copiedKeep ? t("grocery.keep_ellipsis") : t("grocery.google_keep")}</span>
                   </button>
 
                   {canShare && (
@@ -1477,7 +1452,7 @@ export default function GroceryList({ plan, completedRecipes }: GroceryListProps
                       className="flex items-center justify-center gap-1.5 py-2.5 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/20 dark:hover:bg-emerald-950/30 text-emerald-800 dark:text-emerald-400 rounded-xl transition duration-200 font-bold text-xs border border-emerald-100/80 dark:border-emerald-900/30 cursor-pointer active:scale-[0.98]"
                     >
                       <span className="material-symbols-outlined text-[16px]" style={{ fontSize: "16px" }}>share</span>
-                      <span>Compartir</span>
+                      {t("grocery.share")}
                     </button>
                   )}
                 </div>
@@ -1486,15 +1461,16 @@ export default function GroceryList({ plan, completedRecipes }: GroceryListProps
 
             <div className="bg-slate-50 dark:bg-zinc-900 w-full p-6 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm text-left">
               <h3 className="text-md font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-emerald-700 dark:text-emerald-400" style={{ fontSize: "18px" }}>fact_check</span> Consejos de Compra
+                <span className="material-symbols-outlined text-emerald-700 dark:text-emerald-400" style={{ fontSize: "18px" }}>fact_check</span>
+                {t("grocery.shopping_tips_title")}
               </h3>
               <p className="text-xs text-[#404943] dark:text-zinc-300 leading-relaxed mb-4">
-                Optimiza tus visitas al supermercado comprando alimentos a granel o congelando carnes y pescados para preservar sus propiedades nutrientes intactas.
+                {t("grocery.shopping_tips_desc")}
               </p>
               <ul className="space-y-2.5 text-xs text-gray-650 dark:text-zinc-400 list-disc list-inside">
-                <li>Compra verduras frescas de temporada.</li>
-                <li>Verifica las fechas de caducidad.</li>
-                <li>Usa bolsas reutilizables ecológicas.</li>
+                <li>{t("grocery.tip_fresh_veggies")}</li>
+                <li>{t("grocery.tip_expiration")}</li>
+                <li>{t("grocery.tip_reusable_bags")}</li>
               </ul>
             </div>
           </aside>
@@ -1502,18 +1478,33 @@ export default function GroceryList({ plan, completedRecipes }: GroceryListProps
       ) : (
         <div className="bg-white dark:bg-zinc-900 rounded-3xl p-12 text-center border border-gray-200 dark:border-zinc-800 max-w-lg mx-auto shadow-sm">
           <span className="material-symbols-outlined text-4xl text-gray-300 dark:text-zinc-600 mb-4 font-light">shopping_bag</span>
-          <p className="text-gray-900 dark:text-white font-bold text-lg mb-1">Tu lista está vacía</p>
+          <p className="text-gray-900 dark:text-white font-bold text-lg mb-1">{t("grocery.empty_title")}</p>
           <p className="text-sm text-[#404943] dark:text-zinc-400 leading-relaxed">
-            Sube tu plan de alimentación en PDF en el Dashboard principal para ver la lista de ingredientes consolidada de forma automática.
+            {t("grocery.empty_desc")}
           </p>
         </div>
       )}
 
       <ConfirmationModal
+        isOpen={showShareWarning}
+        title={t("general.share_local_warning_title")}
+        description={t("general.share_local_warning")}
+        confirmLabel={t("general.understood")}
+        icon="info"
+        variant="info"
+        showCancel={false}
+        onCancel={() => {
+          setShowShareWarning(false);
+          pendingShareRef.current = null;
+        }}
+        onConfirm={handleDismissShareWarning}
+      />
+
+      <ConfirmationModal
         isOpen={!!notification}
         title={notification?.title || ""}
         description={notification?.description || ""}
-        confirmLabel="Entendido"
+        confirmLabel={t("grocery.got_it")}
         icon={notification?.icon}
         variant={notification?.variant}
         showCancel={false}

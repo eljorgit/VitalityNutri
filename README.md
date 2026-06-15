@@ -2,167 +2,212 @@
   <img width="1200" height="400" alt="VitalityNutri Banner" src="https://images.unsplash.com/photo-1498837167922-ddd27525d352?q=80&w=1200&auto=format&fit=crop&q=80" style="border-radius: 12px; object-fit: cover;" />
   
   # 🥦 VitalityNutri 🥑
-  ### Planificación de Alimentación Inteligente, Consciente y Saludable
+  ### Smart, Mindful & Healthy Meal Planning
   
   [![Vite](https://img.shields.io/badge/Vite-6.x-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vite.dev/)
   [![React](https://img.shields.io/badge/React-19-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://react.dev/)
   [![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-v4.0-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
   [![Gemini AI](https://img.shields.io/badge/Gemini_AI-3.5_Flash-4285F4?style=for-the-badge&logo=google-gemini&logoColor=white)](https://ai.google.dev/)
+  [![i18next](https://img.shields.io/badge/i18n-react--i18next-26A69A?style=for-the-badge&logo=i18next&logoColor=white)](https://react.i18next.com/)
+  [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
   [![SQLite](https://img.shields.io/badge/SQLite-3-003B57?style=for-the-badge&logo=sqlite&logoColor=white)](https://sqlite.org/)
-  [![Docker](https://img.shields.io/badge/Docker-Supported-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
+  [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
+  
+  **🌐 English** · [Español](README.es.md)
 </div>
 
 ---
 
-## 📝 Descripción del Proyecto
+## 📝 Description
 
-**VitalityNutri** es una aplicación web full-stack de planificación nutricional que automatiza la conversión de guías de alimentación en formato PDF a menús estructurados semanales mediante Inteligencia Artificial.
-
-La aplicación utiliza el modelo **Gemini 3.5 Flash** de Google mediante el nuevo SDK `@google/genai` para extraer y mapear con alta fidelidad ingredientes, instrucciones y tablas calóricas. Toda la información y estados de la aplicación se guardan localmente en una base de datos **SQLite**, ofreciendo una interfaz fluida e intuitiva con un calendario interactivo y una lista de compras dinámica y parametrizable.
+VitalityNutri is a full-stack nutritional planning web application that automates the conversion of PDF meal guides into structured weekly menus using Artificial Intelligence. It uses Google's **Gemini 3.5 Flash** model to extract and map ingredients, instructions, and calorie tables with high fidelity. All data is stored locally in **SQLite**. Fully internationalized with English and Spanish support.
 
 ---
 
-## ✨ Características Principales
+## ✨ Features
 
-*   **⚡ Extracción Automática con IA**: Carga planes de alimentación en formato PDF (de nutricionistas, médicos o entrenadores) y la IA extraerá de forma inteligente la agenda de comidas de lunes a domingo.
-*   **📅 Calendario Semanal Interactivo**: Visualización clara del plan de alimentación dividido en 4 comidas diarias: **Desayuno, Almuerzo/Comida, Merienda y Cena**.
-*   **🍲 Recetario y Ficha Detallada**:
-    *   Ingredientes clasificados por platos (Primer Plato, Segundo Plato, Postre) o unificados en General.
-    *   Instrucciones de preparación paso a paso.
-    *   Estimaciones de calorías, tiempos de cocción y tips personalizados.
-    *   Imágenes dinámicas autogeneradas a través de la integración estética con Unsplash.
-    *   Edición manual de recetas directamente desde el calendario.
-*   **🛒 Lista de Compras Inteligente y Agrupada**:
-    *   Agrupación automática de ingredientes por categorías de supermercado (*verduras, carnes, pescados, lácteos, despensa*, etc.).
-    *   Normalización inteligente (ej: agrupa variaciones de aceites a *"aceite de oliva virgen extra"* o huevos a *"huevo"*, moviendo especificaciones a campos de preparación).
-    *   Generación selectiva: lista completa semanal, de un único día o rango de 3 días.
-    *   Multiplicadores de cantidad (escalado de recetas para varias personas).
-    *   Exclusión de comidas específicas para depurar la lista.
-    *   Persistencia local del estado de las casillas verificadas.
-*   **📜 Historial de Planes y Rollback**: Acceso rápido a todos los PDFs procesados previamente. Puedes alternar entre ellos, restaurar un plan anterior como el activo, eliminarlos o reprocesarlos en caso de cambios en el prompt.
-*   **💾 Almacenamiento Local Robusto**: Persistencia de datos inmediata usando SQLite con la librería de alto rendimiento `better-sqlite3`.
+* **🤖 AI-Powered Extraction** — Upload PDF meal plans and let Gemini AI extract structured weekly menus automatically
+* **📅 Interactive Weekly Calendar** — Clear view of 4 daily meals: Breakfast, Lunch, Snack, Dinner
+* **🍲 Recipe Book & Detail View** — Ingredients by course, step-by-step instructions, calorie estimates, Unsplash images
+* **🛒 Smart Grocery List** — Auto-grouped by supermarket categories, intelligent normalization, day/range selection, multipliers
+* **📜 Plan History & Rollback** — Browse past plans, switch between them, restore or reprocess
+* **🌐 Dual Language** — Full English/Spanish interface with react-i18next
+* **🥘 Batch Cooking Guide** — AI-generated optimized cooking plan based on your kitchen appliances
+* **📱 Share & Export** — Share recipes via WhatsApp, Telegram, email, or export to Keep Notes
 
 ---
 
-## 🏗️ Arquitectura y Estructura del Código
-
-La aplicación está diseñada bajo una arquitectura moderna monorepo que integra un cliente en React y un servidor en Express/TypeScript:
+## 🏗️ Architecture
 
 ```
 vitalitynutri/
-├── data/                 # Directorio de persistencia (SQLite DB y cargas de PDF)
-├── src/                  # Código fuente del Frontend (React + TS)
-│   ├── components/       # Componentes de la interfaz de usuario
-│   │   ├── CalendarGrid.tsx   # Cuadrícula semanal del menú
-│   │   ├── Dashboard.tsx      # Panel de control de subida de archivos e historial
-│   │   ├── GroceryList.tsx    # Interfaz interactiva de la lista de compras
-│   │   └── RecipeDetail.tsx   # Modal detallado con la preparación del plato
-│   ├── defaultData.ts    # Datos iniciales/demo de la aplicación
-│   ├── db.ts             # Lógica de conexión y queries SQL a SQLite
-│   ├── types.ts          # Definiciones de tipos e interfaces de TypeScript
-│   ├── main.tsx          # Punto de entrada de React
-│   └── index.css         # Estilos globales y tokens de Tailwind CSS v4
-├── server.ts             # Servidor Express, API REST y configuración de Gemini AI
-├── promt.md              # Prompt del sistema para el modelado de datos de Gemini
-├── vite.config.ts        # Configuración del empaquetado del frontend (Vite v6)
-├── tsconfig.json         # Configuración del compilador de TypeScript
-├── Dockerfile            # Configuración para despliegues contenerizados
-└── package.json          # Dependencias y scripts del proyecto
+├── data/                 # Persistence (SQLite DB + PDF uploads)
+├── prompts/              # AI system prompts (EN/ES)
+│   ├── recipe-ai/
+│   ├── batch-cooking/
+│   └── plan-analysis/
+├── src/                  # React Frontend (TypeScript)
+│   ├── components/       # UI components
+│   ├── i18n/             # Translation files (en.json, es.json) + config.ts
+│   ├── utils/            # Helpers (routes, siteVisibility, searchHelpers)
+│   ├── types.ts          # TypeScript type definitions
+│   ├── db.ts             # SQLite database logic
+│   ├── main.tsx          # React entry point
+│   └── index.css         # Global styles (Tailwind CSS v4)
+├── server.ts             # Express server, API, Gemini AI integration
+├── .github/              # CI/CD workflows & templates
+├── Dockerfile            # Multi-stage container build
+├── docker-compose.yml    # Container orchestration
+├── .nvmrc                # Node.js version pinning
+├── vite.config.ts
+├── tsconfig.json
+└── package.json
 ```
 
 ---
 
-## 🛠️ Tecnologías Utilizadas
+## 🛠️ Tech Stack
 
 ### Frontend:
-*   **React 19** & **TypeScript**
-*   **Tailwind CSS v4** (utilizando el compilador nativo `@tailwindcss/vite`)
-*   **Motion** (animaciones micro-interactivas fluidas)
-*   **Lucide React** & **Material Symbols** (iconografía premium)
+* **React 19** & **TypeScript**
+* **Tailwind CSS v4** (with `@tailwindcss/vite`)
+* **react-i18next** + **i18next** (internationalization)
+* **Motion** (animations)
+* **Lucide React** & **Material Symbols** (icons)
 
 ### Backend:
-*   **Node.js** & **Express**
-*   **Google GenAI SDK** (`@google/genai`) con llamadas optimizadas a `gemini-3.5-flash`
-*   **SQLite** a través de `better-sqlite3` (base de datos relacional ligera y rápida)
-*   **esbuild** (compilación optimizada para producción del servidor)
+* **Node.js** & **Express**
+* **Google GenAI SDK** (`@google/genai`) with `gemini-3.5-flash`
+* **SQLite** via `better-sqlite3`
+* **esbuild** (server bundling)
+
+### DevOps:
+* **Docker** multi-stage builds
+* **GitHub Actions** CI/CD (lint, build, deploy)
+* **rimraf** (cross-platform clean)
 
 ---
 
-## 🚀 Instalación y Configuración Local
+## 🚀 Local Setup
 
-### Requisitos Previos:
-*   [Node.js](https://nodejs.org/) (Versión 18 o superior recomendada)
-*   Una API Key de Google Gemini (puedes obtenerla gratis en [Google AI Studio](https://aistudio.google.com/))
+### Prerequisites:
+*   [Node.js](https://nodejs.org/) (Node 18 or later recommended)
+*   A Google Gemini API key (free at [Google AI Studio](https://aistudio.google.com/))
 
-### 1. Clonar el repositorio e instalar dependencias
+### 1. Clone and install dependencies
 ```bash
 cd vitalitynutri
 npm install
 ```
 
-### 2. Configurar las variables de entorno
-Crea un archivo `.env` en la raíz del proyecto y añade tu clave de API de Gemini:
+### 2. Configure environment variables
+
+Create a `.env` file in the project root:
+
 ```env
-GEMINI_API_KEY=tu_clave_de_api_de_gemini
+GEMINI_API_KEY=your_gemini_api_key
 ```
 
-### 3. Ejecutar en modo desarrollo
-Para levantar el servidor Express y el servidor de desarrollo de Vite de forma conjunta con Hot Module Replacement (HMR):
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `GEMINI_API_KEY` | ✅ Yes | — | Google Gemini AI API key |
+| `PORT` | ❌ No | `5027` | HTTP server port |
+| `NODE_ENV` | ❌ No | `development` | `development` or `production` |
+| `APP_URL` | ❌ No | auto-detected | Public URL (for OG meta tags, share links) |
+| `SITE_VISIBILITY` | ❌ No | auto-detected | `public` or `local` (shows share warning when local) |
+| `UNSPLASH_ACCESS_KEY` | ❌ No | — | Unsplash API key for recipe image search |
+
+### 3. Run in development mode
+
+Starts both the Express server and Vite dev server with Hot Module Replacement (HMR):
+
 ```bash
 npm run dev
 ```
-La aplicación estará disponible en: **http://localhost:5027**
+
+The app is available at: **http://localhost:5027**
 
 ---
 
-## 🐳 Despliegue con Docker
+## 🐳 Docker Deployment
 
-El proyecto incluye soporte listo para producción mediante Docker en dos etapas (multi-stage build) para mantener una imagen final ligera y segura.
+Multi-stage Docker build for a lightweight production image.
 
-### Construir la imagen de Docker:
+### Build:
 ```bash
-docker build -t vitality-nutri .
+docker build -t vitalitynutri .
 ```
 
-### Ejecutar el contenedor:
+### Run with docker-compose (recommended):
 ```bash
-docker run -d -p 5027:5027 --env GEMINI_API_KEY="tu_api_key_aqui" -v vitality_data:/app/data vitality-nutri
+docker compose up -d
 ```
+
+### Run manually:
+```bash
+docker run -d -p 5027:5027 --env GEMINI_API_KEY="your_api_key" -v vitality_data:/app/data vitalitynutri
+```
+
 > [!TIP]
-> Se recomienda usar un volumen (`-v vitality_data:/app/data`) para asegurar que la base de datos SQLite y los archivos PDF subidos persistan si el contenedor se reinicia o se actualiza.
+> Use a volume (`-v vitality_data:/app/data`) to persist the SQLite database and uploaded PDFs across container restarts and updates.
 
 ---
 
-## 📊 Diseño de la Base de Datos (Esquema SQLite)
+## 📊 Database Design (SQLite Schema)
 
-El archivo de base de datos se guarda en `data/database.sqlite` con la siguiente estructura:
+The database file is stored at `data/database.sqlite`.
 
-### Tabla `plans`
-Almacena los menús semanales extraídos de los PDFs y su estado:
-*   `id`: Clave primaria autoincremental.
-*   `file_name`: Nombre original del archivo PDF subido.
-*   `saved_file_name`: Nombre único guardado físicamente en el servidor para evitar colisiones.
-*   `plan_json`: JSON serializado con la estructura completa de días y comidas.
-*   `metadata_json`: Metadatos del procesamiento.
-*   `is_active`: Flag booleano (`1` o `0`) para identificar cuál es el plan actual en pantalla.
-*   `created_at`: Fecha y hora de procesamiento.
+### Table `plans`
+Stores extracted weekly menus and their status:
+*   `id`: Auto-increment primary key.
+*   `file_name`: Original uploaded PDF file name.
+*   `saved_file_name`: Unique server-side file name to avoid collisions.
+*   `plan_json`: Serialized JSON with full day/meal structure.
+*   `metadata_json`: Processing metadata.
+*   `is_active`: Boolean flag (`1` or `0`) identifying the currently displayed plan.
+*   `created_at`: Processing timestamp.
+*   `file_hash`: SHA-256 hash for duplicate detection.
+*   `batch_cooking_json` / `batch_cooking_params`: Cached batch cooking guide.
 
-### Tabla `grocery_list_state`
-Persiste las interacciones del usuario con la lista de compras:
-*   `id`: Clave primaria fija con restricción (`CHECK (id = 1)`) para asegurar una sola fila de estado global.
-*   `checked_items_json`: JSON con las casillas de verificación marcadas.
-*   `list_type`: Tipo de vista (semanal, un día, o tres días).
-*   `selected_single_day` / `selected_3days_start`: Parámetros de filtrado temporal.
-*   `excluded_meals_json`: Lista de comidas excluidas del cálculo de ingredientes.
-*   `multipliers_json`: Escala de porciones para cada día de la semana.
-*   `updated_at`: Última actualización.
+### Table `grocery_list_state`
+Persists user interactions with the grocery list:
+*   `id`: Fixed primary key (`CHECK (id = 1)`) enforcing a single global state row.
+*   `checked_items_json`: JSON with checked checkbox states.
+*   `list_type`: View type (weekly, single day, or three days).
+*   `selected_single_day` / `selected_3days_start`: Temporal filter parameters.
+*   `excluded_meals_json`: List of meals excluded from ingredient calculation.
+*   `multipliers_json`: Portion scale for each day of the week.
+*   `updated_at`: Last update timestamp.
+
+### Table `completed_recipes_state`
+Tracks which recipes in the active plan have been cooked:
+*   `plan_id`: Foreign key to `plans.id`.
+*   `completed_json`: JSON mapping recipe identifiers to boolean completion states.
+
+### Table `recipes`
+Recipe book database:
+*   Standard recipe fields (name, calories, time, tag, image, ingredients, steps, tips).
+*   `source`: Origin (`manual`, `plan`, `ocr`, `text`, `document`).
+*   `source_plan_id`: Reference to originating plan.
+*   `is_ai_generated`, `is_favorite`: Boolean flags.
+*   `season`: Season filter (`Todas`, `Primavera`, `Verano`, `Otoño`, `Invierno`).
+
+### Table `search_history`
+Stores recipe search click history (capped at 10 entries).
+
+### Table `ingredients`
+Dictionary of known ingredients with categories for smart grocery list grouping.
 
 ---
 
-## ⚙️ Scripts de npm Disponibles
+## ⚙️ npm Scripts
 
-*   `npm run dev`: Ejecuta el servidor y la interfaz React en modo desarrollo mediante `tsx` y Vite.
-*   `npm run build`: Compila la UI de producción y empaqueta el backend Express en un único archivo modular (`dist/server.cjs`) usando `esbuild`.
-*   `npm run start`: Inicia el servidor empaquetado de producción (`dist/server.cjs`).
-*   `npm run clean`: Limpia los directorios compilados (`dist`).
-*   `npm run lint`: Ejecuta el verificador de tipos de TypeScript sin emitir archivos.
+| Script | Description |
+|--------|-------------|
+| `npm run dev` | Start dev server with HMR |
+| `npm run build` | Build frontend + bundle backend |
+| `npm run start` | Run production server (`dist/server.cjs`) |
+| `npm run clean` | Remove `dist/` build artifacts |
+| `npm run lint` | TypeScript type-check (`tsc --noEmit`) |
+| `npm test` | Run Vitest test suite |
+| `npm run test:watch` | Run tests in watch mode |

@@ -1,7 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { DayType, MealType, Recipe, MealPlan, PlanMetadata } from "../types";
 import ConfirmationModal from "./ConfirmationModal";
 import ImagePlaceholder from "./ImagePlaceholder";
+import { getSiteVisibility } from "../utils/siteVisibility";
 
 const formatAmountAndUnit = (amount: number, unit: string) => {
   let normalizedUnit = unit.trim().toLowerCase();
@@ -71,13 +73,14 @@ export default function RecipeDetail({
   onEdit,
   onDelete,
 }: RecipeDetailProps) {
+  const { t, i18n } = useTranslation();
   const searchParams = new URLSearchParams(window.location.search);
   const isFromBatchCooking = searchParams.get("from") === "batch-cooking";
   const backLabel = mode === "recetario"
-    ? "Volver al Recetario"
+    ? t("recipedetail.back_to_recetario")
     : isFromBatchCooking
-      ? "Volver a Batch Cooking"
-      : "Volver al Calendario";
+      ? t("recipedetail.back_to_batch")
+      : t("recipedetail.back_to_calendar");
 
   // Ratio defaults to 1 ración (base)
   const [multiplier, setMultiplier] = useState<number>(1);
@@ -200,8 +203,8 @@ export default function RecipeDetail({
     const targetPlan = activePlan || plan;
     if (!targetPlan || !targetPlan.days) return [];
     const matches: { day: DayType; meal: MealType; label: string }[] = [];
-    const orderedDays: DayType[] = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"];
-    const orderedMeals: MealType[] = ["desayuno", "almuerzo", "merienda", "cena"];
+    const orderedDays: DayType[] = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+    const orderedMeals: MealType[] = ["breakfast", "lunch", "snack", "dinner"];
 
     orderedDays.forEach(d => {
       orderedMeals.forEach(m => {
@@ -231,12 +234,12 @@ export default function RecipeDetail({
       <div className="bg-white/40 dark:bg-zinc-900/40 p-5 rounded-2xl border border-zinc-200/50 dark:border-zinc-800/50 shadow-xs text-left space-y-3">
         <h2 className="text-xs font-black text-slate-800 dark:text-zinc-200 flex items-center gap-1.5 uppercase tracking-wider select-none">
           <span className="material-symbols-outlined text-indigo-600 dark:text-indigo-400 text-[18px]">calendar_today</span>
-          Coincidencias del Menú
+          {t("recipedetail.plan_matches_title")}
         </h2>
         {matches.length > 0 ? (
           <>
             <p className="text-[11px] text-slate-550 dark:text-zinc-400 leading-relaxed">
-              Esta receta está asignada en tu planificación de esta semana. Haz clic para ver el seguimiento:
+              {t("recipedetail.plan_matches_desc")}
             </p>
             <div className="flex flex-col gap-2 pt-1 select-none">
               {matches.map((match, idx) => {
@@ -272,12 +275,12 @@ export default function RecipeDetail({
                             ? "bg-emerald-600 text-white hover:bg-emerald-700"
                             : "bg-white hover:bg-slate-100 dark:bg-zinc-800 dark:hover:bg-zinc-700 border border-slate-200 dark:border-zinc-750 text-slate-650 dark:text-zinc-305"
                         }`}
-                        title={isCompleted ? "Marcar como pendiente" : "Completar para este día"}
+                        title={isCompleted ? t("recipedetail.mark_pending") : t("recipedetail.complete_for_day")}
                       >
                         <span className="material-symbols-outlined text-[14px]">
                           {isCompleted ? "task_alt" : "circle"}
                         </span>
-                        <span>{isCompleted ? "Realizada" : "Completar"}</span>
+                        <span>{isCompleted ? t("recipedetail.completed") : t("recipedetail.complete")}</span>
                       </button>
                     )}
                   </div>
@@ -287,21 +290,21 @@ export default function RecipeDetail({
           </>
         ) : (
           <p className="text-[11px] text-slate-400 dark:text-zinc-550 leading-relaxed italic">
-            Esta receta no está planificada en el menú semanal actual.
+            {t("recipedetail.not_planned")}
           </p>
         )}
       </div>
     );
   };
 
-  const daysKeys: DayType[] = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"];
-  const mealsKeys: MealType[] = ["desayuno", "almuerzo", "merienda", "cena"];
+  const daysKeys: DayType[] = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+  const mealsKeys: MealType[] = ["breakfast", "lunch", "snack", "dinner"];
 
   const mealLabels: Record<MealType, string> = {
-    desayuno: "Desayuno",
-    almuerzo: "Almuerzo",
-    merienda: "Merienda",
-    cena: "Cena",
+    breakfast: t("meals.breakfast_cap"),
+    lunch: t("meals.lunch_cap"),
+    snack: t("meals.snack_cap"),
+    dinner: t("meals.dinner_cap"),
   };
 
   const getCurrentWeekDates = () => {
@@ -312,21 +315,22 @@ export default function RecipeDetail({
     mondayVal.setDate(today.getDate() + distanceToMonday);
 
     const datesMap: Record<DayType, { short: string; long: string; num: number; isToday: boolean; dateString: string }> = {} as any;
-    const dayKeys: DayType[] = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"];
-    const labels = {
-      lunes: { short: "LUN", long: "Lunes" },
-      martes: { short: "MAR", long: "Martes" },
-      miercoles: { short: "MIÉ", long: "Miércoles" },
-      jueves: { short: "JUE", long: "Jueves" },
-      viernes: { short: "VIE", long: "Viernes" },
-      sabado: { short: "SÁB", long: "Sábado" },
-      domingo: { short: "DOM", long: "Domingo" }
-    };
+    const dayKeys: DayType[] = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+    const labels: Record<string, { short: string; long: string }> = {};
+    daysKeys.forEach((key) => {
+      const name = t("weekdays." + key);
+      labels[key] = {
+        short: name.slice(0, 3).toUpperCase(),
+        long: name
+      };
+    });
 
-    const monthNames = [
-      "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-      "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
-    ];
+    const monthFormatter = new Intl.DateTimeFormat(i18n.language, { month: "long" });
+    const monthNames = Array.from({ length: 12 }, (_, i) => {
+      const date = new Date(2024, i, 1);
+      return monthFormatter.format(date);
+    });
+    monthNames[0] = monthNames[0].charAt(0).toUpperCase() + monthNames[0].slice(1);
 
     dayKeys.forEach((key, idx) => {
       const current = new Date(mondayVal);
@@ -359,27 +363,27 @@ export default function RecipeDetail({
     const dayOfWeek = today.getDay();
     const hour = today.getHours();
 
-    const daysMap: DayType[] = ["domingo", "lunes", "martes", "miercoles", "jueves", "viernes", "sabado"];
+    const daysMap: DayType[] = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
     const currentDay = daysMap[dayOfWeek];
 
-    let meal: MealType = "desayuno";
+    let meal: MealType = "breakfast";
     let targetDay = currentDay;
 
     if (hour < 11) {
-      meal = "desayuno";
+      meal = "breakfast";
     } else if (hour < 15) {
-      meal = "almuerzo";
+      meal = "lunch";
     } else if (hour < 19) {
-      meal = "merienda";
+      meal = "snack";
     } else if (hour < 22) {
-      meal = "cena";
+      meal = "dinner";
     } else {
-      meal = "desayuno";
+      meal = "breakfast";
       const tomorrowIndex = (dayOfWeek + 1) % 7;
       targetDay = daysMap[tomorrowIndex];
     }
 
-    const safeDay = (targetDay === "domingo" ? "domingo" : targetDay) as DayType;
+    const safeDay = (targetDay === "sunday" ? "sunday" : targetDay) as DayType;
     return { day: safeDay, meal };
   };
 
@@ -468,6 +472,23 @@ export default function RecipeDetail({
   const [copied, setCopied] = useState<boolean>(false);
   const [copiedKeep, setCopiedKeep] = useState<boolean>(false);
   const [canShare, setCanShare] = useState<boolean>(false);
+  const [showShareWarning, setShowShareWarning] = useState(false);
+  const pendingShareRef = useRef<(() => void) | null>(null);
+
+  const warnBeforeShare = (shareFn: () => void) => {
+    if (getSiteVisibility() === "local") {
+      pendingShareRef.current = shareFn;
+      setShowShareWarning(true);
+    } else {
+      shareFn();
+    }
+  };
+
+  const handleDismissShareWarning = () => {
+    setShowShareWarning(false);
+    pendingShareRef.current?.();
+    pendingShareRef.current = null;
+  };
 
   React.useEffect(() => {
     if (typeof navigator !== "undefined" && navigator.share) {
@@ -497,23 +518,22 @@ export default function RecipeDetail({
 
     if (!shareFullRecipe) {
       if (mode === "recetario") {
-        return `🍳 *${recipe.recipeName}*\n\nDescubre esta deliciosa receta saludable en el Recetario de VitalityNutri:\n🔗 ${recipeUrl}\n\n¡Buen provecho! 🌱`;
+        return t("recipedetail.share_recipe_header_recetario", { name: recipe.recipeName, url: recipeUrl });
       }
-      return `🍳 *${recipe.recipeName}* (${capitalizedMeal} - ${capitalizedDay})\n\nDescubre esta deliciosa receta saludable planificada en VitalityNutri:\n🔗 ${recipeUrl}\n\n¡Buen provecho! 🌱`;
+      return t("recipedetail.share_recipe_header", { name: recipe.recipeName, meal: capitalizedMeal, day: capitalizedDay, url: recipeUrl });
     }
 
-    let text = `🍳 *RECETA: ${recipe.recipeName.toUpperCase()}*\n`;
+    let text = t("recipedetail.share_full_header", { name: recipe.recipeName.toUpperCase() }) + "\n";
     if (mode === "recetario") {
-      text += `📅 *Planificación:* Recetario\n`;
+      text += t("recipedetail.share_plan_recetario") + "\n";
     } else {
-      text += `📅 *Planificación:* ${capitalizedMeal} de ${capitalizedDay}\n`;
+      text += t("recipedetail.share_plan_detail", { meal: capitalizedMeal, day: capitalizedDay }) + "\n";
     }
-    text += `⏱️ *Tiempo:* ${recipe.time || "20 min"}\n`;
-    text += `🔥 *Calorías:* ${Math.round(recipe.calories * multiplier)} kcal (${multiplier} ración/es)\n`;
-    text += `🏷️ *Categoría:* ${recipe.tag || "Nutritivo"}\n\n`;
+    text += t("recipedetail.share_time", { time: recipe.time || "20 min" }) + "\n";
+    text += t("recipedetail.share_calories", { calories: Math.round(recipe.calories * multiplier), multiplier }) + "\n";
+    text += t("recipedetail.share_category", { tag: recipe.tag || t("recipedetail.category_general") }) + "\n\n";
 
-    // Add ingredients
-    text += `🛒 *INGREDIENTES:* \n`;
+    text += t("recipedetail.share_ingredients_header") + "\n";
     const flatIngs = Array.isArray(recipe.ingredients)
       ? (recipe.ingredients as any[])
       : (Object.values(recipe.ingredients || {}).flat().filter(Boolean) as any[]);
@@ -536,88 +556,97 @@ export default function RecipeDetail({
         text += `- ⬜ ${ing.name.charAt(0).toUpperCase() + ing.name.slice(1)} (${amountText})${ing.preparation ? ` - _${ing.preparation}_` : ""}\n`;
       });
     } else {
-      text += `(Sin ingredientes especificados)\n`;
+      text += t("recipedetail.share_no_ingredients") + "\n";
     }
     text += `\n`;
 
-    // Add steps
-    text += `👨‍🍳 *PREPARACIÓN:* \n`;
+    text += t("recipedetail.share_preparation_header") + "\n";
     const stepsList = normalizedSteps.length > 0 ? normalizedSteps : [];
     if (stepsList.length > 0) {
       stepsList.forEach((ns, index) => {
         text += `${index + 1}. ${ns.text}\n\n`;
       });
     } else {
-      text += `Sigue las instrucciones estándar para esta preparación.\n\n`;
+      text += t("recipedetail.share_no_steps") + "\n\n";
     }
 
     if (recipe.tips) {
-      text += `💡 *Consejo:* ${recipe.tips}\n\n`;
+      text += t("recipedetail.share_tip", { tips: recipe.tips }) + "\n\n";
     }
 
-    text += `🔗 *Ver en la web:* ${recipeUrl}\n\n`;
-    text += `Generado por VitalityNutri 🌱`;
+    text += t("recipedetail.share_web_link", { url: recipeUrl }) + "\n\n";
+    text += t("recipedetail.share_footer");
     
     return text;
   };
 
   const handleCopyToClipboard = async () => {
-    const text = shareFullRecipe ? generateRecipeShareText() : getRecipeUrl();
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error("Error al copiar al portapapeles: ", err);
-    }
+    warnBeforeShare(async () => {
+      const text = shareFullRecipe ? generateRecipeShareText() : getRecipeUrl();
+      try {
+        await navigator.clipboard.writeText(text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } catch (err) {
+        console.error(t("recipedetail.copy_error"), err);
+      }
+    });
   };
 
   const handleShareWhatsApp = () => {
-    const text = generateRecipeShareText();
-    const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
-    window.open(url, "_blank");
+    warnBeforeShare(() => {
+      const text = generateRecipeShareText();
+      const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+      window.open(url, "_blank");
+    });
   };
 
   const handleShareTelegram = () => {
-    const text = generateRecipeShareText();
-    const url = `https://t.me/share/url?url=${encodeURIComponent(getRecipeUrl())}&text=${encodeURIComponent(text)}`;
-    window.open(url, "_blank");
+    warnBeforeShare(() => {
+      const text = generateRecipeShareText();
+      const url = `https://t.me/share/url?url=${encodeURIComponent(getRecipeUrl())}&text=${encodeURIComponent(text)}`;
+      window.open(url, "_blank");
+    });
   };
 
   const handleShareInstagram = async () => {
-    const text = generateRecipeShareText();
-    try {
-      await navigator.clipboard.writeText(text);
-      window.open("https://www.instagram.com/", "_blank");
-    } catch (err) {
-      console.error("Error al copiar para Instagram: ", err);
-    }
+    warnBeforeShare(async () => {
+      const text = generateRecipeShareText();
+      try {
+        await navigator.clipboard.writeText(text);
+        window.open("https://www.instagram.com/", "_blank");
+      } catch (err) {
+        console.error(t("recipedetail.instagram_copy_error"), err);
+      }
+    });
   };
 
   const handleExportToKeep = async () => {
-    const text = generateRecipeShareText();
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopiedKeep(true);
-      setTimeout(() => setCopiedKeep(false), 3000);
-      window.open("https://keep.new", "_blank");
-    } catch (err) {
-      console.error("Error al copiar para Google Keep: ", err);
-    }
+    warnBeforeShare(async () => {
+      const text = generateRecipeShareText();
+      try {
+        await navigator.clipboard.writeText(text);
+        setCopiedKeep(true);
+        setTimeout(() => setCopiedKeep(false), 3000);
+        window.open("https://keep.new", "_blank");
+      } catch (err) {
+        console.error("Error copying for Google Keep: ", err);
+      }
+    });
   };
 
   const handleNativeShare = async () => {
-    const text = generateRecipeShareText();
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: `Receta: ${recipe.recipeName}`,
+    warnBeforeShare(() => {
+      const text = generateRecipeShareText();
+      if (navigator.share) {
+        navigator.share({
+          title: t("recipedetail.share_title_text", { name: recipe.recipeName }),
           text: text
+        }).catch((err) => {
+          console.error("Error using Web Share: ", err);
         });
-      } catch (err) {
-        console.error("Error al usar Web Share: ", err);
       }
-    }
+    });
   };
 
   const handleSetPreset = (factor: number) => {
@@ -658,25 +687,25 @@ export default function RecipeDetail({
   };
 
   const mealNames: Record<MealType, string> = {
-    desayuno: "Desayuno",
-    almuerzo: "Almuerzo",
-    merienda: "Merienda",
-    cena: "Cena"
+    breakfast: t("meals.breakfast_cap"),
+    lunch: t("meals.lunch_cap"),
+    snack: t("meals.snack_cap"),
+    dinner: t("meals.dinner_cap")
   };
 
   const dayNames: Record<DayType, string> = {
-    lunes: "Lunes",
-    martes: "Martes",
-    miercoles: "Miércoles",
-    jueves: "Jueves",
-    viernes: "Viernes",
-    sabado: "Sábado",
-    domingo: "Domingo"
+    monday: t("weekdays.monday"),
+    tuesday: t("weekdays.tuesday"),
+    wednesday: t("weekdays.wednesday"),
+    thursday: t("weekdays.thursday"),
+    friday: t("weekdays.friday"),
+    saturday: t("weekdays.saturday"),
+    sunday: t("weekdays.sunday")
   };
 
   // Compile sequential list of actual meals in the plan for arrow navigation
-  const orderedDays: DayType[] = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"];
-  const orderedMeals: MealType[] = ["desayuno", "almuerzo", "merienda", "cena"];
+  const orderedDays: DayType[] = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+  const orderedMeals: MealType[] = ["breakfast", "lunch", "snack", "dinner"];
 
   const activeRecipes: { day: DayType; meal: MealType; recipe: Recipe }[] = [];
   if (plan) {
@@ -711,30 +740,30 @@ export default function RecipeDetail({
   const nextIndex = currentIndex !== -1 && currentIndex < activeRecipes.length - 1 ? currentIndex + 1 : -1;
 
   const getSequenceValue = (d: DayType, m: MealType) => {
-    const dayOrder: DayType[] = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"];
-    const mealOrder: MealType[] = ["desayuno", "almuerzo", "merienda", "cena"];
+    const dayOrder: DayType[] = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+    const mealOrder: MealType[] = ["breakfast", "lunch", "snack", "dinner"];
     return dayOrder.indexOf(d) * 4 + mealOrder.indexOf(m);
   };
 
   const getNextMealRecipe = () => {
     if (activePlanRecipes.length === 0) return null;
 
-    const dayKeysInOrder: DayType[] = ["domingo", "lunes", "martes", "miercoles", "jueves", "viernes", "sabado"];
+    const dayKeysInOrder: DayType[] = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
     const localDayNum = new Date().getDay();
     const hour = new Date().getHours();
 
     let targetDay = dayKeysInOrder[localDayNum];
-    let targetMeal: MealType = "desayuno";
+    let targetMeal: MealType = "breakfast";
 
     if (hour >= 20) {
       targetDay = dayKeysInOrder[(localDayNum + 1) % 7];
-      targetMeal = "desayuno";
+      targetMeal = "breakfast";
     } else if (hour >= 18) {
-      targetMeal = "cena";
+      targetMeal = "dinner";
     } else if (hour >= 15) {
-      targetMeal = "merienda";
+      targetMeal = "snack";
     } else if (hour >= 10) {
-      targetMeal = "almuerzo";
+      targetMeal = "lunch";
     }
 
     const targetWeight = getSequenceValue(targetDay, targetMeal);
@@ -747,7 +776,7 @@ export default function RecipeDetail({
   };
 
   const nextMeal = mode === "recetario" ? null : getNextMealRecipe();
-  const dayKeysInOrder: DayType[] = ["domingo", "lunes", "martes", "miercoles", "jueves", "viernes", "sabado"];
+  const dayKeysInOrder: DayType[] = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
 
   // Sophisticated culinary step generator if legacy/default dataset doesn't have "steps"
   const getRecipeStepsFallback = (recipeName: string, ingredients: any[]): string[] => {
@@ -936,8 +965,8 @@ export default function RecipeDetail({
     if (!plan || !completedRecipes || mode === "recetario") return { completed: 0, total: 0, percentage: 0 };
     let completed = 0;
     let total = 0;
-    const daysKeys: DayType[] = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"];
-    const mealsKeys: MealType[] = ["desayuno", "almuerzo", "merienda", "cena"];
+    const daysKeys: DayType[] = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+    const mealsKeys: MealType[] = ["breakfast", "lunch", "snack", "dinner"];
     daysKeys.forEach((d) => {
       mealsKeys.forEach((m) => {
         if (plan.days[d]?.[m]) {
@@ -970,12 +999,12 @@ export default function RecipeDetail({
           <span className="material-symbols-outlined text-emerald-600 dark:text-emerald-400 text-[18px]">
             {isCompleted ? "check_circle" : "radio_button_unchecked"}
           </span>
-          {mode === "recetario" ? `Estado para ${dayNames[targetDay]} (${mealNames[targetMeal]})` : "Estado de la Receta"}
+          {mode === "recetario" ? t("recipedetail.recetario_status", { day: dayNames[targetDay], meal: mealNames[targetMeal] }) : t("recipedetail.recipe_status")}
         </h2>
         <p className="text-[11px] text-slate-500 dark:text-zinc-400 leading-relaxed">
           {mode === "recetario" 
-            ? `Marca esta receta como completada para el día ${dayNames[targetDay]} en tu planificación activa.`
-            : "Marca esta receta como realizada para registrar tu constancia dietética semanal."}
+            ? t("recipedetail.complete_desc_recetario", { day: dayNames[targetDay] })
+            : t("recipedetail.complete_desc")}
         </p>
 
         <button
@@ -992,18 +1021,18 @@ export default function RecipeDetail({
               {isCompleted ? "task_alt" : "circle"}
             </span>
           </span>
-          <span>{isCompleted ? "Completada" : "Marcar como completada"}</span>
+          <span>{isCompleted ? t("recipedetail.completed") : t("recipedetail.mark_completed")}</span>
         </button>
 
         {/* Weekly progress summary bar */}
         <div 
           onClick={() => setShowProgressModal(true)}
           className="pt-2 border-t border-zinc-200/40 dark:border-zinc-800/60 cursor-pointer hover:opacity-80 transition duration-200 group/weekly"
-          title="Haz clic para ver el progreso semanal de recetas y marcarlas"
+          title={t("recipedetail.click_for_progress")}
         >
           <div className="flex justify-between items-center text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1.5 select-none">
-            <span className="group-hover/weekly:text-emerald-700 dark:group-hover/weekly:text-emerald-400 transition-colors">Completadas esta Semana</span>
-            <span className="text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded-md">{weeklyStats.completed} de {weeklyStats.total} ({weeklyStats.percentage}%)</span>
+            <span className="group-hover/weekly:text-emerald-700 dark:group-hover/weekly:text-emerald-400 transition-colors">{t("recipedetail.completed_this_week")}</span>
+            <span className="text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded-md">{t("recipedetail.completed_count", { completed: weeklyStats.completed, total: weeklyStats.total, percentage: weeklyStats.percentage })}</span>
           </div>
           <div className="w-full bg-zinc-100 dark:bg-zinc-800 h-1.5 rounded-full overflow-hidden">
             <div
@@ -1022,9 +1051,9 @@ export default function RecipeDetail({
         <div className="flex items-start gap-3">
           <span className="material-symbols-outlined text-amber-500 dark:text-amber-400 text-[22px] shrink-0 mt-0.5">history</span>
           <div className="flex-1 min-w-0">
-            <h3 className="text-xs font-extrabold text-amber-800 dark:text-amber-300 uppercase tracking-wider mb-1">Plan Histórico</h3>
+            <h3 className="text-xs font-extrabold text-amber-800 dark:text-amber-300 uppercase tracking-wider mb-1">{t("recipedetail.historical_plan")}</h3>
             <p className="text-[11px] text-amber-700 dark:text-amber-400 leading-relaxed">
-              Esta receta pertenece a un plan anterior. Puedes consultar todos los detalles, ajustar raciones y compartirla, pero no podrás marcarla como completada.
+              {t("recipedetail.historical_plan_desc")}
             </p>
             {onRestorePlan && (
               <button
@@ -1033,7 +1062,7 @@ export default function RecipeDetail({
                 className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-bold text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/40 hover:bg-amber-200 dark:hover:bg-amber-800/50 border border-amber-300/60 dark:border-amber-700/40 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[14px]">restore</span>
-                Restaurar plan
+                {t("recipedetail.restore_plan")}
               </button>
             )}
           </div>
@@ -1070,10 +1099,10 @@ export default function RecipeDetail({
         >
           <h2 className="text-xs font-black text-slate-800 dark:text-zinc-200 mb-2 flex items-center gap-1.5 uppercase tracking-wider">
             <span className="material-symbols-outlined text-emerald-600 dark:text-emerald-400 text-[18px]">calculate</span>
-            Raciones Ajustables
+            {t("recipedetail.adjustable_servings")}
           </h2>
           <p className="text-[11px] text-slate-500 dark:text-zinc-400 leading-relaxed mb-4">
-            Ajusta las raciones para toda la familia. Las cantidades de los ingredientes se recalcularán al instante.
+            {t("recipedetail.adjustable_servings_desc")}
           </p>
 
           <div className="space-y-4">
@@ -1101,7 +1130,7 @@ export default function RecipeDetail({
             <div className="space-y-2 text-left">
               <div className="flex items-center justify-between select-none">
                 <label htmlFor="custom-factor" className="text-[10px] font-bold text-zinc-400 dark:text-zinc-600 uppercase tracking-widest">
-                  Personalizar
+                  {t("recipedetail.customize")}
                 </label>
                 {multiplier !== 1 && (
                   <button
@@ -1109,7 +1138,7 @@ export default function RecipeDetail({
                     onClick={handleReset}
                     className="text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 font-bold text-[10px] hover:underline cursor-pointer transition-all duration-150"
                   >
-                    Resetear
+                    {t("recipedetail.reset")}
                   </button>
                 )}
               </div>
@@ -1144,7 +1173,7 @@ export default function RecipeDetail({
                     }}
                   />
                   <span className="text-[10px] font-bold text-zinc-400 select-none">
-                    {multiplier === 1 ? "ración" : "raciones"}
+                    {multiplier === 1 ? t("recipedetail.serving") : t("recipedetail.servings")}
                   </span>
                 </div>
                 <button
@@ -1168,14 +1197,14 @@ export default function RecipeDetail({
           <div className="flex justify-between items-center text-left">
             <div>
               <p className="text-[9px] uppercase tracking-widest font-extrabold text-emerald-100/90 leading-none mb-1.5">
-                Valor Calórico Ajustado
+                {t("recipedetail.adjusted_calories")}
               </p>
               <h3 className="text-3xl font-extrabold leading-none">
                 {Math.round(recipe.calories * multiplier)} <span className="text-sm font-semibold">kcal</span>
               </h3>
               {multiplier !== 1 && (
                 <p className="text-[10px] text-emerald-100/80 mt-1.5">
-                  Base: {recipe.calories} kcal × {multiplier} ración(es).
+                  {t("recipedetail.base", { amount: recipe.calories, unit: "kcal", multiplier })}
                 </p>
               )}
             </div>
@@ -1191,10 +1220,10 @@ export default function RecipeDetail({
         <div className={`bg-white/40 dark:bg-zinc-900/40 p-5 rounded-2xl border border-zinc-200/50 dark:border-zinc-800/50 shadow-xs space-y-4 no-print text-left ${showShare ? "" : "hidden"}`}>
           <h2 className="text-xs font-black text-slate-800 dark:text-zinc-200 flex items-center gap-1.5 uppercase tracking-wider">
             <span className="material-symbols-outlined text-emerald-600 dark:text-emerald-400 text-[18px]">share</span>
-            Compartir Receta
+            {t("recipedetail.share_recipe")}
           </h2>
           <p className="text-[11px] text-slate-500 dark:text-zinc-400 leading-relaxed">
-            Comparte esta prescripción nutricional o envíala a tus aplicaciones de notas preferidas.
+            {t("recipedetail.share_recipe_desc")}
           </p>
 
           {/* Checkbox selector */}
@@ -1207,11 +1236,11 @@ export default function RecipeDetail({
                 className="w-4 h-4 rounded border-slate-300 dark:border-zinc-700 text-emerald-600 focus:ring-emerald-500 cursor-pointer dark:bg-zinc-900 shrink-0"
               />
               <span className="flex items-center gap-1 font-semibold">
-                Compartir receta completa
+                {t("recipedetail.share_full_recipe")}
                 <span className="material-symbols-outlined text-slate-400 dark:text-zinc-600 cursor-help" style={{ fontSize: "14px" }}>info</span>
               </span>
               <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-48 p-2 bg-slate-900 text-white text-[10px] rounded-lg opacity-0 pointer-events-none group-hover/tooltip:opacity-100 transition-opacity duration-150 shadow-md z-30 leading-normal font-medium text-center">
-                Al activarlo se copiarán todos los ingredientes y preparación detallados. Si está inactivo, solo se compartirá el enlace.
+                {t("recipedetail.share_full_tooltip")}
               </span>
             </label>
           </div>
@@ -1228,8 +1257,8 @@ export default function RecipeDetail({
               </span>
               <span>
                 {copied 
-                  ? (shareFullRecipe ? "Copiada" : "Copiado") 
-                  : (shareFullRecipe ? "Copiar receta" : "Copiar enlace")}
+                  ? t("recipedetail.copied_recipe")
+                  : (shareFullRecipe ? t("recipedetail.copy_recipe") : t("recipedetail.copy_link"))}
               </span>
             </button>
             <button
@@ -1275,7 +1304,7 @@ export default function RecipeDetail({
               className="flex items-center justify-center gap-1.5 py-2.5 bg-amber-500/10 hover:bg-amber-500/20 dark:bg-amber-500/15 dark:hover:bg-amber-500/25 text-amber-700 dark:text-amber-400 rounded-xl transition duration-200 font-bold text-xs border border-amber-500/20 shadow-sm cursor-pointer active:scale-[0.98]"
             >
               <span className="material-symbols-outlined text-[16px] text-amber-600 dark:text-amber-400">lightbulb</span>
-              <span>{copiedKeep ? "Keep..." : "Google Keep"}</span>
+              <span>{copiedKeep ? t("grocery.keep_ellipsis") : t("grocery.google_keep")}</span>
             </button>
 
             {canShare && (
@@ -1285,7 +1314,7 @@ export default function RecipeDetail({
                 className="flex items-center justify-center gap-1.5 py-2.5 bg-blue-500/10 hover:bg-blue-500/20 dark:bg-blue-500/15 dark:hover:bg-blue-500/25 text-blue-700 dark:text-blue-400 rounded-xl transition duration-200 font-bold text-xs border border-blue-500/20 shadow-sm cursor-pointer active:scale-[0.98]"
               >
                 <span className="material-symbols-outlined text-[16px]">share</span>
-                <span>Compartir</span>
+                <span>{t("grocery.share")}</span>
               </button>
             )}
           </div>
@@ -1316,7 +1345,7 @@ export default function RecipeDetail({
             onNavigate(activeRecipes[prevIdx].day, activeRecipes[prevIdx].meal, activeRecipes[prevIdx].recipe);
           }}
           className="p-2 rounded-xl hover:bg-white dark:hover:bg-zinc-800 text-slate-600 hover:text-emerald-700 dark:text-zinc-300 dark:hover:text-emerald-400 transition cursor-pointer flex items-center justify-center font-bold"
-          title="Receta anterior"
+          title={t("recipedetail.previous_recipe")}
         >
           <span className="material-symbols-outlined block text-[20px] font-black">chevron_left</span>
         </button>
@@ -1330,7 +1359,7 @@ export default function RecipeDetail({
               setShowAllRecipesDropdown(false);
             }}
             className="px-3 py-2 text-xs md:text-sm font-black text-slate-800 dark:text-zinc-100 uppercase tracking-tight hover:text-emerald-700 dark:hover:text-emerald-400 rounded-xl cursor-pointer transition flex items-center gap-1"
-            title="Ver otras comidas de este día"
+            title={t("recipedetail.other_day_meals")}
           >
             <span className="w-40 md:w-56 text-center truncate inline-block">
               {dayNames[day]} • <span className="text-emerald-600 dark:text-emerald-400 font-extrabold">{mealNames[meal]}</span>
@@ -1343,7 +1372,7 @@ export default function RecipeDetail({
               isMobileSticky ? "bottom-full mb-2" : "top-full mt-2"
             }`}>
               <div className="px-3.5 py-1 text-[10px] font-extrabold text-slate-400 dark:text-zinc-500 uppercase tracking-wider select-none">
-                Comidas del {dayNames[day]}
+                {t("recipedetail.meals_of", { day: dayNames[day] })}
               </div>
               {orderedMeals.map((m) => {
                 const r = plan?.days[day]?.[m];
@@ -1384,7 +1413,7 @@ export default function RecipeDetail({
                 ? "bg-slate-100 dark:bg-zinc-800 text-emerald-700 dark:text-emerald-400"
                 : "text-slate-500 hover:text-emerald-700 dark:text-zinc-400 dark:hover:text-emerald-400"
             }`}
-            title="Mostrar todas las recetas"
+            title={t("recipedetail.show_all_recipes")}
           >
             <span className="material-symbols-outlined block text-[18px]">calendar_today</span>
           </button>
@@ -1394,12 +1423,12 @@ export default function RecipeDetail({
               isMobileSticky ? "bottom-full mb-2" : "top-full mt-2"
             }`}>
               <h4 className="text-[10px] font-black text-slate-400 dark:text-zinc-500 uppercase mb-3.5 tracking-widest select-none text-center border-b border-slate-100 dark:border-zinc-800/60 pb-2">
-                Prescripción Semanal
+                {t("recipedetail.weekly_prescription")}
               </h4>
               <div className="grid grid-cols-2 gap-2">
                 {orderedDays.map((d) => {
                   const dayLabel = dayNames[d];
-                  const isLast = d === "domingo";
+                  const isLast = d === "sunday";
                   const isCurrentDay = d === day;
                   const isToday = d === dayKeysInOrder[new Date().getDay()];
                   return (
@@ -1421,14 +1450,14 @@ export default function RecipeDetail({
                         {dayLabel}
                         {isToday && (
                           <span className="text-[8px] font-black lowercase text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 dark:bg-emerald-400/20 px-1 py-0.5 rounded-sm select-none">
-                            hoy
+                            {t("recipedetail.next_meal_today")}
                           </span>
                         )}
                       </span>
                       <div className="flex gap-1 sm:gap-1.5 select-none justify-center">
                         {orderedMeals.map((m) => {
                           const r = plan?.days[d]?.[m];
-                          const initials = { desayuno: "D", almuerzo: "A", merienda: "M", cena: "C" };
+                          const initials: Record<string, string> = { breakfast: "B", lunch: "L", snack: "S", dinner: "D" };
                           const initial = initials[m];
                           const isCurrent = d === day && m === meal;
                           const hasRecipe = !!r;
@@ -1449,7 +1478,7 @@ export default function RecipeDetail({
                                   ? "bg-emerald-50 text-emerald-800 hover:bg-emerald-100 hover:scale-105 dark:bg-emerald-950/45 dark:text-emerald-300 dark:hover:bg-emerald-950"
                                   : "bg-slate-50 text-slate-300 dark:bg-zinc-950 dark:text-zinc-700 cursor-not-allowed"
                                 }`}
-                              title={r ? `${mealNames[m]}: ${r.recipeName}` : `${mealNames[m]}: Sin pautar`}
+                              title={r ? `${mealNames[m]}: ${r.recipeName}` : `${mealNames[m]}: ${t("recipedetail.not_planned_short")}`}
                             >
                               {initial}
                             </button>
@@ -1473,7 +1502,7 @@ export default function RecipeDetail({
             onNavigate(activeRecipes[nextIdx].day, activeRecipes[nextIdx].meal, activeRecipes[nextIdx].recipe);
           }}
           className="p-2 rounded-xl hover:bg-white dark:hover:bg-zinc-800 text-slate-600 hover:text-emerald-700 dark:text-zinc-300 dark:hover:text-emerald-400 transition cursor-pointer flex items-center justify-center font-bold"
-          title="Comida siguiente"
+          title={t("recipedetail.next_meal_nav")}
         >
           <span className="material-symbols-outlined block text-[20px] font-black">chevron_right</span>
         </button>
@@ -1518,12 +1547,12 @@ export default function RecipeDetail({
                   ? "bg-rose-600 border-rose-600 text-white cursor-pointer"
                   : "bg-slate-50 hover:bg-slate-100 dark:bg-zinc-800/40 hover:border-slate-350 dark:hover:border-zinc-700 text-slate-500 hover:text-slate-700 dark:text-zinc-400 border-slate-200 dark:border-zinc-800 cursor-pointer"
               }`}
-              title={resolvedFavId.current === null ? "Esta receta no está en el Recetario" : isFav ? "Quitar de favoritos" : "Añadir a favoritos"}
+              title={resolvedFavId.current === null ? t("recipedetail.not_in_recetario") : isFav ? t("recipedetail.remove_favorite") : t("recipedetail.add_favorite")}
             >
               <span className={`material-symbols-outlined text-[16px] ${resolvedFavId.current === null ? "text-slate-300 dark:text-zinc-650" : isFav ? "text-white fill-white font-variation-fill-1" : "text-slate-400"}`}>
                 favorite
               </span>
-              <span className="hidden sm:inline">{isFav ? "Favorito" : "Añadir a Favoritos"}</span>
+              <span className="hidden sm:inline">{isFav ? t("recipedetail.favorite") : t("recipedetail.add_favorite")}</span>
             </button>
 
             {/* Edit Button (Only recetario mode, muted icon-only style) */}
@@ -1532,7 +1561,7 @@ export default function RecipeDetail({
                 type="button"
                 onClick={() => onEdit(recipe)}
                 className="inline-flex items-center justify-center p-2 rounded-xl text-slate-400 hover:text-indigo-650 dark:text-zinc-500 dark:hover:text-indigo-400 bg-slate-50/50 hover:bg-slate-100 dark:bg-zinc-800/30 dark:hover:bg-zinc-805/80 border border-slate-200/50 dark:border-zinc-800/50 transition duration-200 cursor-pointer shadow-xs"
-                title="Editar receta"
+                title={t("recipedetail.edit_recipe")}
               >
                 <span className="material-symbols-outlined text-[16px]">edit</span>
               </button>
@@ -1549,7 +1578,7 @@ export default function RecipeDetail({
                     ? "bg-slate-100/30 text-slate-300 dark:bg-zinc-850/10 dark:text-zinc-750 border-slate-200/30 dark:border-zinc-850/30 cursor-not-allowed"
                     : "bg-slate-50 hover:bg-red-50 text-slate-400 hover:text-red-500 border-slate-200 dark:border-zinc-800 hover:border-red-200/50 dark:hover:border-red-900/35 cursor-pointer shadow-xs"
                 }`}
-                title={recipe.source === "plan" ? "No se puede borrar porque proviene de un plan semanal" : "Eliminar receta"}
+                title={recipe.source === "plan" ? t("recipedetail.cannot_delete_plan") : t("recipedetail.delete_recipe")}
               >
                 <span className="material-symbols-outlined text-[16px]">delete</span>
               </button>
@@ -1567,12 +1596,12 @@ export default function RecipeDetail({
                 }
               }}
               className="inline-flex items-center gap-1.5 text-[11px] md:text-xs font-extrabold text-emerald-800 hover:text-emerald-950 dark:text-emerald-300 dark:hover:text-emerald-100 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-950/60 px-3 py-2 md:px-3.5 md:py-2.5 rounded-xl transition duration-200 cursor-pointer border border-emerald-100/55 dark:border-emerald-900/40 shadow-sm"
-              title={`Ir a la próxima comida: ${mealNames[nextMeal.meal]}`}
+              title={t("recipedetail.next_meal", { meal: mealNames[nextMeal.meal], day: dayNames[nextMeal.day] })}
             >
               <span className="material-symbols-outlined text-[14px] md:text-[15px]">fastfood</span>
               <span>
-                Próxima comida: <span className="hidden sm:inline">{mealNames[nextMeal.meal]} ({nextMeal.day === dayKeysInOrder[new Date().getDay()] ? "hoy" : nextMeal.day === dayKeysInOrder[(new Date().getDay() + 1) % 7] ? "mañana" : dayNames[nextMeal.day]})</span>
-                <span className="sm:hidden">{mealNames[nextMeal.meal]}</span>
+                <span className="hidden sm:inline">{t("recipedetail.next_meal", { meal: mealNames[nextMeal.meal], day: nextMeal.day === dayKeysInOrder[new Date().getDay()] ? t("recipedetail.next_meal_today") : nextMeal.day === dayKeysInOrder[(new Date().getDay() + 1) % 7] ? t("recipedetail.next_meal_tomorrow") : dayNames[nextMeal.day] })}</span>
+                <span className="sm:hidden">{t("recipedetail.next_meal_mobile", { meal: mealNames[nextMeal.meal] })}</span>
               </span>
             </button>
           )}
@@ -1585,7 +1614,7 @@ export default function RecipeDetail({
 
         {isPlanActive && mode !== "recetario" && (
           <div className="text-xs text-slate-400 order-3 md:order-2 lg:order-3 md:justify-self-end md:w-[150px] text-right">
-            Pauta {currentIndex + 1} de {activeRecipes.length}
+            {t("recipedetail.plan_count", { current: currentIndex + 1, total: activeRecipes.length })}
           </div>
         )}
       </div>
@@ -1601,12 +1630,12 @@ export default function RecipeDetail({
               className="absolute inset-0 w-full h-full object-cover animate-fade-in"
             />
           ) : (
-            <ImagePlaceholder text="Sin Imagen" iconSizeClass="text-5xl" />
+            <ImagePlaceholder text={t("recipedetail.no_image")} iconSizeClass="text-5xl" />
           )}
         </div>
         <div className="w-full md:w-7/12 p-6 md:p-8 flex flex-col justify-center bg-white dark:bg-zinc-900">
           <span className="inline-flex items-center gap-1 text-[10px] font-bold tracking-widest bg-emerald-50 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-400 px-3 py-1 rounded-full w-max mb-3 uppercase">
-            {recipe.tag || "Saludable"}
+            {recipe.tag || t("recipedetail.healthy")}
           </span>
           <h1 className="text-2xl md:text-3.5xl font-extrabold text-slate-900 dark:text-white leading-tight mb-4 select-all">
             {recipe.recipeName}
@@ -1618,7 +1647,7 @@ export default function RecipeDetail({
             </div>
             <div className="flex items-center gap-1.5 text-sm text-slate-500 dark:text-zinc-400 font-bold">
               <span className="material-symbols-outlined text-emerald-600">fitness_center</span>
-              <span className="font-semibold text-emerald-700 dark:text-emerald-400">Alta densidad nutricional</span>
+              <span className="font-semibold text-emerald-700 dark:text-emerald-400">{t("recipedetail.high_nutritional_density")}</span>
             </div>
           </div>
 
@@ -1633,7 +1662,7 @@ export default function RecipeDetail({
               className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-950/60 px-3.5 py-2 rounded-xl transition duration-200 border border-emerald-100/50 dark:border-emerald-900/40 cursor-pointer shadow-sm active:scale-95"
             >
               <span className="material-symbols-outlined text-[15px]">calculate</span>
-              Raciones (x{multiplier}) • {Math.round(recipe.calories * multiplier)} kcal
+              {t("recipedetail.servings_summary", { mult: multiplier })} • {Math.round(recipe.calories * multiplier)} kcal
             </button>
             <button
               type="button"
@@ -1644,7 +1673,7 @@ export default function RecipeDetail({
               className="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-700 dark:text-zinc-300 bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 px-3.5 py-2 rounded-xl transition duration-200 border border-slate-200/65 dark:border-zinc-700/50 cursor-pointer shadow-sm active:scale-95"
             >
               <span className="material-symbols-outlined text-[15px]">share</span>
-              Compartir
+              {t("general.share")}
             </button>
           </div>
         </div>
@@ -1677,7 +1706,7 @@ export default function RecipeDetail({
                     {isRecipeCompleted ? "check_circle" : "circle"}
                   </span>
                 </span>
-                <span>Marcar como completado</span>
+                <span>{t("recipedetail.mark_completed_mobile")}</span>
               </button>
             ) : (
               renderHistoricalWarning()
@@ -1686,16 +1715,16 @@ export default function RecipeDetail({
 
           <div className="bg-white dark:bg-zinc-900 p-6 md:p-8 rounded-3xl border border-slate-200/50 dark:border-zinc-800 shadow-sm text-left">
             <div className="flex justify-between items-center mb-6 pb-4 border-b border-slate-100 dark:border-zinc-800 select-text flex-wrap gap-2">
-              <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">Ingredientes Pautados</h2>
+              <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">{t("recipedetail.planned_ingredients")}</h2>
               <button
                 type="button"
                 onClick={handleHighlightServings}
                 className="text-xs text-slate-500 hover:text-emerald-700 dark:text-zinc-400 dark:hover:text-emerald-400 bg-slate-50 hover:bg-emerald-50/50 dark:bg-zinc-800 dark:hover:bg-zinc-850 px-3 py-1.5 rounded-lg transition-all duration-200 cursor-pointer flex items-center gap-1 border border-slate-200/30 dark:border-zinc-700/30 hover:border-emerald-500/20 active:scale-95 select-none font-medium"
-                title="Ajustar cantidad de raciones"
+                title={t("recipedetail.customize")}
               >
-                <span>Mostrando</span>
+                <span>{t("recipedetail.showing")}</span>
                 <span className="font-extrabold text-slate-900 dark:text-white">{multiplier}</span>
-                <span>ración(es)</span>
+                <span>{t("recipedetail.servings_short")}</span>
                 <span className="material-symbols-outlined text-[15px] ml-0.5 text-slate-400 dark:text-zinc-500 group-hover:text-emerald-600">tune</span>
               </button>
             </div>
@@ -1711,7 +1740,7 @@ export default function RecipeDetail({
                     : "text-slate-600 hover:text-emerald-600 dark:text-zinc-400 dark:hover:text-emerald-400 hover:bg-white dark:hover:bg-zinc-900"
                     }`}
                 >
-                  Todo
+                  {t("general.all")}
                 </button>
                 {activeIngCategories.map((catKey) => (
                   <button
@@ -1814,7 +1843,7 @@ export default function RecipeDetail({
                       {hasChanged && (
                         <div className="absolute right-0 bottom-full mb-2 pointer-events-none opacity-0 group-hover/tooltip:opacity-100 transition-opacity duration-200 z-30 select-none">
                           <div className="bg-slate-900 text-white text-[10px] px-2.5 py-1.5 rounded-lg shadow-md whitespace-nowrap border dark:border-zinc-800">
-                            Base: <span className="font-bold">{baseAmt} {ing.unit}</span>
+                            {t("recipedetail.base_tooltip", { amount: baseAmt, unit: ing.unit })}
                           </div>
                           <div className="w-1.5 h-1.5 bg-slate-900 rotate-45 mx-auto -mt-1 block"></div>
                         </div>
@@ -1833,7 +1862,7 @@ export default function RecipeDetail({
                 </span>
                 <div className="text-left select-all">
                   <h4 className="text-xs font-bold text-emerald-800 dark:text-emerald-400 uppercase tracking-wider mb-0.5 animate-pulse">
-                    Consejo del Nutricionista
+                    {t("recipedetail.nutritionist_tip")}
                   </h4>
                   <p className="text-xs md:text-sm text-slate-600 dark:text-zinc-300 leading-relaxed">
                     {recipe.tips}
@@ -1847,7 +1876,7 @@ export default function RecipeDetail({
           <div className="bg-white dark:bg-zinc-900 p-6 md:p-8 rounded-3xl border border-slate-200/50 dark:border-zinc-800 shadow-sm text-left">
             <h3 className="text-lg font-black text-slate-900 dark:text-white mb-6 pb-4 border-b border-slate-100 dark:border-zinc-800 flex items-center gap-2 select-none">
               <span className="material-symbols-outlined text-emerald-600">restaurant_menu</span>
-              Preparación Meticulosa Paso a Paso
+              {t("recipedetail.meticulous_preparation")}
             </h3>
 
             {/* Selector de categorías de preparación (si hay más de una) */}
@@ -1861,7 +1890,7 @@ export default function RecipeDetail({
                     : "text-slate-600 hover:text-emerald-600 dark:text-zinc-400 dark:hover:text-emerald-400 hover:bg-white dark:hover:bg-zinc-900"
                     }`}
                 >
-                  Todo
+                  {t("general.all")}
                 </button>
                 {activeStepCategories.map((catKey) => (
                   <button
@@ -1952,7 +1981,7 @@ export default function RecipeDetail({
                 <div className="flex items-center gap-1 select-none">
                   <span className="material-symbols-outlined text-[13px] opacity-70">calendar_month</span>
                   <span>
-                    Creada: {new Date(recipe.createdAt).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    {t("recipedetail.created_label")} {new Date(recipe.createdAt).toLocaleDateString(i18n.language, { day: '2-digit', month: 'short', year: 'numeric' })}
                   </span>
                 </div>
               )}
@@ -1960,7 +1989,7 @@ export default function RecipeDetail({
                 <div className="flex items-center gap-1 select-none">
                   <span className="material-symbols-outlined text-[13px] opacity-70">edit_note</span>
                   <span>
-                    Modificada: {new Date(recipe.updatedAt).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    {t("recipedetail.modified_label")} {new Date(recipe.updatedAt).toLocaleDateString(i18n.language, { day: '2-digit', month: 'short', year: 'numeric' })}
                   </span>
                 </div>
               )}
@@ -1992,7 +2021,7 @@ export default function RecipeDetail({
                   {drawerContent === 'adjust' ? "tune" : "share"}
                 </span>
                 <span>
-                  {drawerContent === 'adjust' ? "Ajustes de Receta" : "Compartir Receta"}
+                  {drawerContent === 'adjust' ? t("recipedetail.recipe_settings") : t("recipedetail.share_recipe")}
                 </span>
               </h3>
               <button 
@@ -2039,12 +2068,12 @@ export default function RecipeDetail({
             {/* Modal Header */}
             <div className="flex items-center justify-between px-6 py-4.5 border-b border-slate-100 dark:border-zinc-800/80 bg-slate-50/50 dark:bg-zinc-950/20 shrink-0">
               <div>
-                <h3 className="text-base md:text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
-                  <span className="material-symbols-outlined text-[22px] text-emerald-600 dark:text-emerald-400">task_alt</span>
-                  Progreso Semanal de Recetas
-                </h3>
-                <p className="text-[9.5px] text-zinc-400 dark:text-zinc-500 uppercase tracking-widest font-extrabold mt-0.5">
-                  Haz clic sobre una receta para completarla o desmarcarla
+                  <h3 className="text-base md:text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[22px] text-emerald-600 dark:text-emerald-400">task_alt</span>
+                    {t("recipedetail.weekly_progress")}
+                  </h3>
+                  <p className="text-[9.5px] text-zinc-400 dark:text-zinc-500 uppercase tracking-widest font-extrabold mt-0.5">
+                    {t("recipedetail.weekly_progress_desc")}
                 </p>
               </div>
               <button
@@ -2077,7 +2106,7 @@ export default function RecipeDetail({
                         onClick={() => onToggleDayComplete(dKey, dayMeals, !allCompleted)}
                         className="text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors uppercase tracking-wider cursor-pointer bg-transparent border-0 outline-none"
                       >
-                        {allCompleted ? "Desmarcar todo" : "Marcar todo"}
+                        {allCompleted ? t("calendar.uncheck_all") : t("calendar.check_all")}
                       </button>
                     </h4>
                     
@@ -2122,7 +2151,7 @@ export default function RecipeDetail({
                                 </span>
                                 {isFocused && !isCompleted && (
                                   <span className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-extrabold text-[7px] px-1.5 py-0.5 rounded-full select-none animate-pulse shadow-sm leading-none">
-                                    PRÓXIMA
+                                    {t("calendar.next_label")}
                                   </span>
                                 )}
                               </div>
@@ -2144,14 +2173,14 @@ export default function RecipeDetail({
             {/* Modal Footer */}
             <div className="px-6 py-4.5 border-t border-slate-100 dark:border-zinc-800/80 bg-slate-50/50 dark:bg-zinc-950/20 shrink-0 flex items-center justify-between">
               <span className="text-[10px] font-bold text-zinc-450 dark:text-zinc-500 uppercase tracking-widest">
-                Completadas: {weeklyStats.completed} de {weeklyStats.total} ({weeklyStats.percentage}%)
+                {t("recipedetail.completed_count", { completed: weeklyStats.completed, total: weeklyStats.total, percentage: weeklyStats.percentage })}
               </span>
               <button
                 type="button"
                 onClick={() => setShowProgressModal(false)}
                 className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-sm transition active:scale-95 cursor-pointer"
               >
-                Listo
+                {t("general.done")}
               </button>
             </div>
           </div>
@@ -2159,10 +2188,25 @@ export default function RecipeDetail({
       )}
 
       <ConfirmationModal
+        isOpen={showShareWarning}
+        title={t("general.share_local_warning_title")}
+        description={t("general.share_local_warning")}
+        confirmLabel={t("general.understood")}
+        icon="info"
+        variant="info"
+        showCancel={false}
+        onCancel={() => {
+          setShowShareWarning(false);
+          pendingShareRef.current = null;
+        }}
+        onConfirm={handleDismissShareWarning}
+      />
+
+      <ConfirmationModal
         isOpen={showRestoreConfirmation}
-        title="Restaurar plan"
-        description="Este plan pasará a ser el plan activo actual y el plan anterior dejará de estar activo."
-        confirmLabel="Restaurar plan"
+        title={t("recipedetail.restore_plan_title")}
+        description={t("recipedetail.restore_plan_desc")}
+        confirmLabel={t("recipedetail.restore_plan")}
         icon="restore"
         variant="warning"
         onCancel={() => setShowRestoreConfirmation(false)}

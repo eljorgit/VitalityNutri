@@ -3,6 +3,7 @@ import path from "path";
 import Database from "better-sqlite3";
 import crypto from "crypto";
 import { MealPlan, PlanMetadata, Recipe } from "./types.js";
+import { logger } from "./utils/logger.js";
 
 // Determine the database storage directory
 const DB_DIR = path.join(process.cwd(), "data");
@@ -13,7 +14,7 @@ try {
     fs.mkdirSync(DB_DIR, { recursive: true });
   }
 } catch (error) {
-  console.error("Error creating data directory:", error);
+  logger.error("Error creating data directory:", error);
 }
 
 const DB_PATH = path.join(DB_DIR, "database.sqlite");
@@ -104,9 +105,9 @@ try {
     CREATE INDEX IF NOT EXISTS idx_search_history_plan ON search_history(plan_id);
     CREATE INDEX IF NOT EXISTS idx_search_history_clicked ON search_history(clicked_at DESC);
   `);
-  console.log("[Migration] Database indexes verified and created.");
+  logger.info("[Migration] Database indexes verified and created.");
 } catch (error) {
-  console.error("Error creating database indexes:", error);
+  logger.error("Error creating database indexes:", error);
 }
 
 /**
@@ -159,7 +160,7 @@ export function getOrCreateRecipeInBook(recipe: Recipe, planId?: number): number
 
     return result.lastInsertRowid as number;
   } catch (error) {
-    console.error("Error in getOrCreateRecipeInBook:", error);
+    logger.error("Error in getOrCreateRecipeInBook:", error);
     throw error;
   }
 }
@@ -176,8 +177,8 @@ export function ensurePlanIsEnriched(planId: number): MealPlan | null {
     
     let needsEnrichment = false;
     if (plan && plan.days) {
-      const daysKeys = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"] as const;
-      const mealsKeys = ["desayuno", "almuerzo", "merienda", "cena"] as const;
+      const daysKeys = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] as const;
+      const mealsKeys = ["breakfast", "lunch", "snack", "dinner"] as const;
       for (const day of daysKeys) {
         for (const meal of mealsKeys) {
           const r = plan.days[day]?.[meal];
@@ -192,8 +193,8 @@ export function ensurePlanIsEnriched(planId: number): MealPlan | null {
 
     if (needsEnrichment) {
       if (plan.days) {
-        const daysKeys = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"] as const;
-        const mealsKeys = ["desayuno", "almuerzo", "merienda", "cena"] as const;
+        const daysKeys = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] as const;
+        const mealsKeys = ["breakfast", "lunch", "snack", "dinner"] as const;
         for (const day of daysKeys) {
           for (const meal of mealsKeys) {
             const r = plan.days[day]?.[meal];
@@ -207,7 +208,7 @@ export function ensurePlanIsEnriched(planId: number): MealPlan | null {
     }
     return plan;
   } catch (error) {
-    console.error(`Error ensuring plan ID ${planId} is enriched with recipe IDs:`, error);
+    logger.error(`Error ensuring plan ID ${planId} is enriched with recipe IDs:`, error);
     return null;
   }
 }
@@ -226,7 +227,7 @@ export function getPlan(): { plan: MealPlan | null; metadata: PlanMetadata | nul
       };
     }
   } catch (error) {
-    console.error("Error reading meal plan from SQLite database:", error);
+    logger.error("Error reading meal plan from SQLite database:", error);
   }
   return { plan: null, metadata: null };
 }
@@ -260,8 +261,8 @@ export function savePlan(plan: MealPlan, metadata: PlanMetadata, savedFileName?:
 
       // Enrich in-memory plan object with recipe IDs from the recipe book before saving
       if (plan.days) {
-        const daysKeys = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"] as const;
-        const mealsKeys = ["desayuno", "almuerzo", "merienda", "cena"] as const;
+        const daysKeys = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] as const;
+        const mealsKeys = ["breakfast", "lunch", "snack", "dinner"] as const;
         for (const day of daysKeys) {
           for (const meal of mealsKeys) {
             const r = plan.days[day]?.[meal];
@@ -304,8 +305,8 @@ export function savePlan(plan: MealPlan, metadata: PlanMetadata, savedFileName?:
       
       // Enrich in-memory plan object with recipe IDs from the recipe book
       if (plan.days) {
-        const daysKeys = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"] as const;
-        const mealsKeys = ["desayuno", "almuerzo", "merienda", "cena"] as const;
+        const daysKeys = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] as const;
+        const mealsKeys = ["breakfast", "lunch", "snack", "dinner"] as const;
         for (const day of daysKeys) {
           for (const meal of mealsKeys) {
             const r = plan.days[day]?.[meal];
@@ -324,7 +325,7 @@ export function savePlan(plan: MealPlan, metadata: PlanMetadata, savedFileName?:
       );
     }
   } catch (error) {
-    console.error("Error saving meal plan to SQLite database:", error);
+    logger.error("Error saving meal plan to SQLite database:", error);
   }
 }
 
@@ -342,7 +343,7 @@ export function findPlanByHash(hash: string): { id: number; file_name: string; i
       };
     }
   } catch (error) {
-    console.error("Error finding plan by hash in SQLite database:", error);
+    logger.error("Error finding plan by hash in SQLite database:", error);
   }
   return null;
 }
@@ -354,7 +355,7 @@ export function resetPlan(): void {
   try {
     db.prepare("UPDATE plans SET is_active = 0").run();
   } catch (error) {
-    console.error("Error resetting meal plan in SQLite database:", error);
+    logger.error("Error resetting meal plan in SQLite database:", error);
   }
 }
 
@@ -367,12 +368,12 @@ export function updateRecipe(day: string, meal: string, recipe: Recipe | null): 
     if (active.plan && active.plan.days) {
       const dayData = active.plan.days[day as keyof typeof active.plan.days];
       if (dayData) {
-        dayData[meal as "desayuno" | "almuerzo" | "merienda" | "cena"] = recipe;
+        dayData[meal as "breakfast" | "lunch" | "snack" | "dinner"] = recipe;
         savePlan(active.plan, active.metadata || { fileName: "Manual Edit", processedAt: new Date().toISOString() });
       }
     }
   } catch (error) {
-    console.error("Error updating recipe in SQLite database:", error);
+    logger.error("Error updating recipe in SQLite database:", error);
   }
 }
 
@@ -383,7 +384,7 @@ export function updatePlanJson(id: number, plan: MealPlan): void {
   try {
     db.prepare("UPDATE plans SET plan_json = ? WHERE id = ?").run(JSON.stringify(plan), id);
   } catch (error) {
-    console.error(`Error updating plan JSON for ID ${id} in SQLite database:`, error);
+    logger.error(`Error updating plan JSON for ID ${id} in SQLite database:`, error);
     throw error;
   }
 }
@@ -396,7 +397,7 @@ export function getHistory(): any[] {
   try {
     return db.prepare("SELECT id, file_name, saved_file_name, plan_json, metadata_json, is_active, created_at FROM plans ORDER BY created_at DESC").all();
   } catch (error) {
-    console.error("Error fetching history from database:", error);
+    logger.error("Error fetching history from database:", error);
     return [];
   }
 }
@@ -419,7 +420,7 @@ export function restorePlanFromHistory(id: number): { plan: MealPlan; metadata: 
       return { plan: plan!, metadata };
     }
   } catch (error) {
-    console.error("Error restoring plan from history:", error);
+    logger.error("Error restoring plan from history:", error);
   }
   return null;
 }
@@ -433,7 +434,7 @@ export function deleteHistoryItem(id: number): string | null {
     db.prepare("DELETE FROM plans WHERE id = ?").run(id);
     return row ? row.saved_file_name : null;
   } catch (error) {
-    console.error("Error deleting plan from database:", error);
+    logger.error("Error deleting plan from database:", error);
     return null;
   }
 }
@@ -455,7 +456,7 @@ export function getGroceryListState(): any {
       };
     }
   } catch (error) {
-    console.error("Error reading grocery list state from database:", error);
+    logger.error("Error reading grocery list state from database:", error);
   }
   return null;
 }
@@ -494,7 +495,7 @@ export function saveGroceryListState(state: {
       new Date().toISOString()
     );
   } catch (error) {
-    console.error("Error saving grocery list state to database:", error);
+    logger.error("Error saving grocery list state to database:", error);
   }
 }
 
@@ -508,7 +509,7 @@ export function getCompletedRecipes(planId: number): Record<string, boolean> {
       return JSON.parse(row.completed_json);
     }
   } catch (error) {
-    console.error("Error reading completed recipes state from database:", error);
+    logger.error("Error reading completed recipes state from database:", error);
   }
   return {};
 }
@@ -527,7 +528,7 @@ export function saveCompletedRecipes(planId: number, completedRecipes: Record<st
     `);
     stmt.run(planId, JSON.stringify(completedRecipes), new Date().toISOString());
   } catch (error) {
-    console.error("Error saving completed recipes state to database:", error);
+    logger.error("Error saving completed recipes state to database:", error);
   }
 }
 
@@ -563,7 +564,7 @@ export function getSearchHistory(): SearchHistoryItem[] {
       clickedAt: r.clicked_at
     }));
   } catch (error) {
-    console.error("Error reading search history from database:", error);
+    logger.error("Error reading search history from database:", error);
     return [];
   }
 }
@@ -594,7 +595,7 @@ export function addSearchHistoryItem(item: Omit<SearchHistoryItem, 'id' | 'click
       )
     `).run();
   } catch (error) {
-    console.error("Error adding search history item to database:", error);
+    logger.error("Error adding search history item to database:", error);
   }
 }
 
@@ -605,7 +606,7 @@ export function deleteSearchHistoryItem(id: number): void {
   try {
     db.prepare("DELETE FROM search_history WHERE id = ?").run(id);
   } catch (error) {
-    console.error("Error deleting search history item from database:", error);
+    logger.error("Error deleting search history item from database:", error);
   }
 }
 
@@ -616,7 +617,7 @@ export function clearSearchHistory(): void {
   try {
     db.prepare("DELETE FROM search_history").run();
   } catch (error) {
-    console.error("Error clearing search history from database:", error);
+    logger.error("Error clearing search history from database:", error);
   }
 }
 
@@ -633,7 +634,7 @@ export function getBatchCooking(): { guide: string | null; params: string | null
       };
     }
   } catch (error) {
-    console.error("Error reading batch cooking from SQLite database:", error);
+    logger.error("Error reading batch cooking from SQLite database:", error);
   }
   return { guide: null, params: null };
 }
@@ -645,7 +646,7 @@ export function saveBatchCooking(guide: string, params: string): void {
   try {
     db.prepare("UPDATE plans SET batch_cooking_json = ?, batch_cooking_params = ? WHERE is_active = 1").run(guide, params);
   } catch (error) {
-    console.error("Error saving batch cooking to SQLite database:", error);
+    logger.error("Error saving batch cooking to SQLite database:", error);
   }
 }
 
@@ -656,7 +657,7 @@ export function resetBatchCooking(): void {
   try {
     db.prepare("UPDATE plans SET batch_cooking_json = NULL, batch_cooking_params = NULL WHERE is_active = 1").run();
   } catch (error) {
-    console.error("Error resetting batch cooking in SQLite database:", error);
+    logger.error("Error resetting batch cooking in SQLite database:", error);
   }
 }
 
@@ -678,7 +679,7 @@ export function exportBackupData(): any {
       searchHistory
     };
   } catch (error) {
-    console.error("Error exporting backup data:", error);
+    logger.error("Error exporting backup data:", error);
     throw error;
   }
 }
@@ -771,9 +772,9 @@ export function importBackupData(data: any): void {
 
   try {
     transaction();
-    console.log("Database successfully restored from backup.");
+    logger.info("Database successfully restored from backup.");
   } catch (error) {
-    console.error("Error importing backup data:", error);
+    logger.error("Error importing backup data:", error);
     throw error;
   }
 }
@@ -803,7 +804,7 @@ export function saveRecipeIngredients(ingredientsList: any[]): void {
   try {
     transaction(ingredientsList);
   } catch (error) {
-    console.error("Error saving recipe ingredients:", error);
+    logger.error("Error saving recipe ingredients:", error);
   }
 }
 
@@ -831,8 +832,8 @@ function getFlatIngredients(ingredients: any): any[] {
 export function saveUniqueRecipesFromPlan(plan: MealPlan, planId?: number): void {
   if (!plan || !plan.days) return;
 
-  const daysKeys = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"] as const;
-  const mealsKeys = ["desayuno", "almuerzo", "merienda", "cena"] as const;
+  const daysKeys = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] as const;
+  const mealsKeys = ["breakfast", "lunch", "snack", "dinner"] as const;
 
   const now = new Date().toISOString();
 
@@ -889,7 +890,7 @@ export function saveUniqueRecipesFromPlan(plan: MealPlan, planId?: number): void
       const flatIngredients = getFlatIngredients(ingredients);
       saveRecipeIngredients(flatIngredients);
     } catch (err) {
-      console.error(`Error saving recipe ${recipe.recipeName} from plan:`, err);
+      logger.error(`Error saving recipe ${recipe.recipeName} from plan:`, err);
     }
   }
 }
@@ -905,8 +906,8 @@ export function enrichPlanJsonWithRecipeIds(planId: number): boolean {
     const plan = JSON.parse(row.plan_json) as MealPlan;
     if (!plan || !plan.days) return false;
 
-    const daysKeys = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"] as const;
-    const mealsKeys = ["desayuno", "almuerzo", "merienda", "cena"] as const;
+    const daysKeys = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] as const;
+    const mealsKeys = ["breakfast", "lunch", "snack", "dinner"] as const;
 
     const recipeNamesWithoutId: string[] = [];
     for (const day of daysKeys) {
@@ -942,7 +943,7 @@ export function enrichPlanJsonWithRecipeIds(planId: number): boolean {
       return true;
     }
   } catch (error) {
-    console.error(`Error enriching plan JSON for ID ${planId} with recipe IDs:`, error);
+    logger.error(`Error enriching plan JSON for ID ${planId} with recipe IDs:`, error);
   }
   return false;
 }
@@ -975,7 +976,7 @@ export function getRecipes(): Recipe[] {
       updatedAt: r.updated_at
     }));
   } catch (error) {
-    console.error("Error reading recipes from database:", error);
+    logger.error("Error reading recipes from database:", error);
     return [];
   }
 }
@@ -1006,7 +1007,7 @@ export function getRecipeById(id: number): Recipe | null {
       };
     }
   } catch (error) {
-    console.error(`Error reading recipe ID ${id} from database:`, error);
+    logger.error(`Error reading recipe ID ${id} from database:`, error);
   }
   return null;
 }
@@ -1053,7 +1054,7 @@ export function insertRecipe(recipe: Omit<Recipe, "id">): number {
 
     return result.lastInsertRowid as number;
   } catch (error) {
-    console.error("Error inserting recipe into database:", error);
+    logger.error("Error inserting recipe into database:", error);
     throw error;
   }
 }
@@ -1098,7 +1099,7 @@ export function updateRecipeInBook(id: number, recipe: Recipe): void {
     const flatIngredients = getFlatIngredients(recipe.ingredients);
     saveRecipeIngredients(flatIngredients);
   } catch (error) {
-    console.error(`Error updating recipe ID ${id} in database:`, error);
+    logger.error(`Error updating recipe ID ${id} in database:`, error);
     throw error;
   }
 }
@@ -1107,7 +1108,7 @@ export function deleteRecipeInBook(id: number): void {
   try {
     db.prepare("DELETE FROM recipes WHERE id = ?").run(id);
   } catch (error) {
-    console.error(`Error deleting recipe ID ${id} from database:`, error);
+    logger.error(`Error deleting recipe ID ${id} from database:`, error);
     throw error;
   }
 }
@@ -1117,7 +1118,7 @@ export function getRecipeIdByName(recipeName: string): number | null {
     const row = db.prepare("SELECT id FROM recipes WHERE LOWER(recipe_name) = ?").get(recipeName.trim().toLowerCase()) as any;
     return row ? row.id : null;
   } catch (error) {
-    console.error("Error finding recipe ID by name:", error);
+    logger.error("Error finding recipe ID by name:", error);
     return null;
   }
 }
@@ -1139,7 +1140,7 @@ export function getRecipeBookIdsByNames(names: string[]): Map<string, number> {
       result.set(row.lower_name, row.id);
     }
   } catch (error) {
-    console.error("Error bulk-resolving recipe IDs by name:", error);
+    logger.error("Error bulk-resolving recipe IDs by name:", error);
   }
   return result;
 }
@@ -1149,7 +1150,7 @@ export function getIngredients(): any[] {
   try {
     return db.prepare("SELECT * FROM ingredients ORDER BY name ASC").all();
   } catch (error) {
-    console.error("Error reading ingredients from database:", error);
+    logger.error("Error reading ingredients from database:", error);
     return [];
   }
 }
@@ -1165,7 +1166,7 @@ export function updateRecipeImageInBook(recipeId: number, newImageUrl: string): 
       updateRecipeInBook(recipeId, recipe);
     }
   } catch (error) {
-    console.error("Error updating recipe image in book:", error);
+    logger.error("Error updating recipe image in book:", error);
   }
 }
 
@@ -1198,7 +1199,7 @@ export function updateRecipeImageInPlan(planId: number | undefined, day: string 
       // 1. If day and meal are specified, update that specific position
       if (day && meal) {
         const d = day as keyof typeof plan.days;
-        const m = meal as "desayuno" | "almuerzo" | "merienda" | "cena";
+        const m = meal as "breakfast" | "lunch" | "snack" | "dinner";
         if (plan.days[d] && plan.days[d][m]) {
           plan.days[d][m]!.image = newImageUrl;
           modified = true;
@@ -1207,8 +1208,8 @@ export function updateRecipeImageInPlan(planId: number | undefined, day: string 
 
       // 2. Also search by recipeId to update all occurrences of the same recipe in the plan
       if (recipeId) {
-        const daysKeys = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"] as const;
-        const mealsKeys = ["desayuno", "almuerzo", "merienda", "cena"] as const;
+        const daysKeys = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] as const;
+        const mealsKeys = ["breakfast", "lunch", "snack", "dinner"] as const;
         for (const d of daysKeys) {
           for (const m of mealsKeys) {
             const r = plan.days[d]?.[m];
@@ -1226,8 +1227,16 @@ export function updateRecipeImageInPlan(planId: number | undefined, day: string 
     }
     return { plan, metadata };
   } catch (error) {
-    console.error("Error updating recipe image in plan:", error);
+    logger.error("Error updating recipe image in plan:", error);
     return { plan: null, metadata: null };
+  }
+}
+
+export function closeDb(): void {
+  try {
+    db.close();
+  } catch (error) {
+    logger.error("Error closing database:", error);
   }
 }
 

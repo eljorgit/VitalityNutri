@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Recipe, MealPlan, MealType } from "../types";
 import ConfirmationModal from "./ConfirmationModal";
 import ImagePlaceholder from "./ImagePlaceholder";
@@ -22,7 +22,26 @@ export default function Recetario({
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
   const [failedImages, setFailedImages] = useState<Record<number | string, boolean>>({});
-  const [showAddMenu, setShowAddMenu] = useState<boolean>(false);
+  const [showFab, setShowFab] = useState<boolean>(false);
+
+  // Ref for the main "Nueva Receta" button to track visibility
+  const addButtonRef = useRef<HTMLButtonElement>(null);
+
+  // IntersectionObserver to show/hide FAB when the main button scrolls out of view
+  useEffect(() => {
+    const node = addButtonRef.current;
+    if (!node) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setShowFab(!entry.isIntersecting);
+      },
+      { threshold: 0 }
+    );
+
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
 
   const handleImageError = async (r: Recipe) => {
     const key = r.id || r.recipeName;
@@ -90,6 +109,7 @@ export default function Recetario({
   // Deletion State
   const [recipeToDelete, setRecipeToDelete] = useState<Recipe | null>(null);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
+  const [deleteError, setDeleteError] = useState<string>("");
 
   // Fetch all recipes from Recetario database
   const fetchRecipes = async () => {
@@ -168,11 +188,13 @@ export default function Recetario({
         setRecipes((prev) => prev.filter((r) => r.id !== recipeToDelete.id));
         setRecipeToDelete(null);
       } else {
-        alert("No se pudo eliminar la receta del recetario.");
+        setDeleteError("No se pudo eliminar la receta del recetario.");
+        setTimeout(() => setDeleteError(""), 3000);
       }
     } catch (err: any) {
       console.error(err);
-      alert("Error de red al intentar eliminar la receta.");
+      setDeleteError("Error de red al intentar eliminar la receta.");
+      setTimeout(() => setDeleteError(""), 3000);
     } finally {
       setIsDeleting(false);
     }
@@ -239,7 +261,7 @@ export default function Recetario({
       
       // Check if assigned in active plan
       if (plan && plan.days) {
-        const daysKeys = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"] as const;
+        const daysKeys = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] as const;
         const targetMeal = selectedMealType.toLowerCase() as MealType;
         for (const day of daysKeys) {
           const mealRecipe = plan.days[day]?.[targetMeal];
@@ -307,60 +329,16 @@ export default function Recetario({
           </p>
         </div>
 
-        {/* Split Button / Menu */}
-        <div className="relative inline-flex items-stretch rounded-xl shadow-sm z-30 self-start sm:self-auto bg-emerald-600">
-          <button
-            type="button"
-            onClick={onAddNewRecipe}
-            className="inline-flex items-center justify-center px-4 py-2.5 rounded-l-xl hover:bg-emerald-700 text-white transition font-black text-xs cursor-pointer active:scale-95 bg-transparent"
-          >
-            <span className="material-symbols-outlined text-[16px] mr-1.5 font-bold">add</span>
-            Nueva Receta
-          </button>
-          
-          <div className="relative flex items-stretch">
-            <button
-              type="button"
-              onClick={() => setShowAddMenu(!showAddMenu)}
-              className="inline-flex items-center justify-center px-2 py-2.5 rounded-r-xl hover:bg-emerald-700 text-white transition font-black text-xs border-l border-emerald-500/30 cursor-pointer bg-transparent"
-            >
-              <span className="material-symbols-outlined text-[16px] font-bold">keyboard_arrow_down</span>
-            </button>
-            
-            {showAddMenu && (
-              <>
-                <div 
-                  className="fixed inset-0 z-40" 
-                  onClick={() => setShowAddMenu(false)}
-                />
-                <div className="absolute right-0 mt-2 w-48 rounded-xl bg-white dark:bg-zinc-900 border border-slate-200/60 dark:border-zinc-800 shadow-xl z-50 py-1.5 overflow-hidden animate-scale-up">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowAddMenu(false);
-                      onAddNewRecipe();
-                    }}
-                    className="w-full px-4 py-2.5 text-left text-xs font-bold text-slate-700 dark:text-zinc-250 hover:bg-slate-50 dark:hover:bg-zinc-800 flex items-center gap-2 cursor-pointer"
-                  >
-                    <span className="material-symbols-outlined text-[16px] text-slate-400">edit_note</span>
-                    Crear Manualmente
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowAddMenu(false);
-                      onAddNewRecipe(); // Opens form, AI column is available right there
-                    }}
-                    className="w-full px-4 py-2.5 text-left text-xs font-bold text-slate-700 dark:text-zinc-250 hover:bg-slate-50 dark:hover:bg-zinc-800 flex items-center gap-2 cursor-pointer border-t border-slate-100 dark:border-zinc-800/40"
-                  >
-                    <span className="material-symbols-outlined text-[16px] text-emerald-600">auto_awesome</span>
-                    Importar con IA
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
+        {/* Add New Recipe Button */}
+        <button
+          ref={addButtonRef}
+          type="button"
+          onClick={onAddNewRecipe}
+          className="inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm hover:shadow-md transition-all font-black text-xs cursor-pointer active:scale-95 self-start sm:self-auto"
+        >
+          <span className="material-symbols-outlined text-[16px] mr-1.5 font-bold">add</span>
+          Nueva Receta
+        </button>
       </div>
 
       {/* Category Tabs */}
@@ -626,21 +604,21 @@ export default function Recetario({
                     favorite
                   </span>
                 </button>
+
+                {/* Recipe Tag Overlay (bottom-right of image) */}
+                {r.tag && (
+                  <span className="absolute bottom-2.5 right-2.5 text-[9px] font-extrabold text-emerald-700 dark:text-emerald-400 bg-white/95 dark:bg-zinc-900/95 border border-slate-100 dark:border-zinc-800/80 px-2 py-0.5 rounded-md uppercase tracking-wide shadow-xs backdrop-blur-xs">
+                    {r.tag.split(",")[0].trim()}
+                  </span>
+                )}
               </div>
 
               {/* Recipe Info details */}
               <div className="p-5 flex-1 flex flex-col text-left justify-between space-y-4">
                 <div className="space-y-1.5">
-                  <div className="flex items-center justify-between gap-2">
-                    <h2 className="font-extrabold text-sm text-slate-800 dark:text-zinc-200 line-clamp-1 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
-                      {r.recipeName}
-                    </h2>
-                    {r.tag && (
-                      <span className="text-[9px] font-extrabold text-emerald-600 dark:text-emerald-450 bg-emerald-50/50 dark:bg-emerald-950/20 px-2 py-0.5 rounded-md shrink-0 uppercase tracking-wide">
-                        {r.tag.split(",")[0].trim()}
-                      </span>
-                    )}
-                  </div>
+                  <h2 className="font-extrabold text-sm text-slate-800 dark:text-zinc-200 line-clamp-2 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                    {r.recipeName}
+                  </h2>
 
                   <div className="flex gap-3 text-[10px] text-slate-500 dark:text-zinc-400 font-bold select-none">
                     <span className="flex items-center gap-1">
@@ -710,6 +688,25 @@ export default function Recetario({
         icon="delete_forever"
         variant="danger"
       />
+
+      {/* Delete error toast */}
+      {deleteError && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-red-600 text-white px-5 py-3 rounded-xl shadow-lg text-xs font-bold animate-fade-in">
+          {deleteError}
+        </div>
+      )}
+
+      {/* Floating Action Button — visible when the main button scrolls out of view */}
+      <button
+        type="button"
+        onClick={onAddNewRecipe}
+        aria-label="Nueva Receta"
+        className={`fixed right-20 bottom-20 md:right-24 md:bottom-8 z-40 w-14 h-14 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg hover:shadow-xl flex items-center justify-center cursor-pointer active:scale-90 transition-all duration-300 fab-button ${
+          showFab ? "fab-visible" : "fab-hidden"
+        }`}
+      >
+        <span className="material-symbols-outlined text-[28px] font-bold">add</span>
+      </button>
 
     </div>
   );
