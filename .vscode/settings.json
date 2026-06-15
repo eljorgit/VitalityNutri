@@ -1,5 +1,9 @@
 {
   "snyk.advanced.organization": "0b77f6de-1231-4341-89c9-1684781b2785",
   "snyk.advanced.autoSelectOrganization": true,
-  "i18n-ally.localesPaths": ["src/i18n"]
+  "i18n-ally.localesPaths": ["src/i18n"],
+  "sonarlint.connectedMode.project": {
+    "connectionId": "LocalSonarQube",
+    "projectKey": "eljorgit_VitalityNutri_18bd827f-f0f0-4969-a21d-9e6aca366aac"
+  }
 }
