@@ -9,7 +9,7 @@ import RecipeForm from "./components/RecipeForm";
 import ConfirmationModal, { ConfirmationVariant } from "./components/ConfirmationModal";
 import { useTranslation } from "react-i18next";
 import { getCanonicalPath, navigateTo } from "./utils/routes";
-import { SUPPORTED_LANGS, storeLang, type SupportedLang } from "./i18n/config";
+import type { SupportedLang } from "./i18n/config";
 import { MealPlan, PlanMetadata, DayType, MealType, Recipe } from "./types";
 import {
   normalizeSearchText,
@@ -18,6 +18,7 @@ import {
   getRecipeNameSearchScore,
   highlightText,
 } from "./utils/searchHelpers";
+import { translateTag } from "./utils/tags";
 
 // --- Search Types ---
 interface SearchRecipeItem {
@@ -603,7 +604,7 @@ export default function App() {
     for (const item of searchPool) {
       let score = getRecipeNameSearchScore(item.recipeName, q, compactQuery);
       let matchedIngredient: string | undefined;
-      if (matchesSearchText(item.tag || "", q, compactQuery)) score += 10;
+      if (matchesSearchText(translateTag(item.tag, t), q, compactQuery)) score += 10;
       for (const ing of item.ingredientNames) {
         if (matchesSearchText(ing, q, compactQuery)) {
           score += 2;
@@ -714,7 +715,7 @@ export default function App() {
                     {item.calories && <span className="text-[10px] text-slate-400 dark:text-zinc-500 font-medium">{item.calories} kcal</span>}
                     {item.tag && (
                       <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400">
-                        {highlightText(item.tag, searchQuery)}
+                        {highlightText(translateTag(item.tag, t), searchQuery)}
                       </span>
                     )}
                   </div>
@@ -934,7 +935,7 @@ export default function App() {
               }}
               className="flex items-center gap-2 text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 tracking-tight hover:opacity-90 select-none text-left cursor-pointer transition-opacity shrink-0 group"
             >
-              <span className="hidden md:inline text-3xl filter drop-shadow-sm transform group-hover:scale-110 group-hover:rotate-12 transition-all duration-300 ease-out select-none" role="img" aria-label="VitalityNutri Logo">🥑</span>
+              <span className="hidden md:inline text-3xl filter drop-shadow-sm transform group-hover:scale-110 group-hover:rotate-12 transition-all duration-300 ease-out select-none" role="img" aria-label={t("general.brand_logo_aria")}>🥑</span>
               <span>VitalityNutri</span>
             </button>
 
@@ -1062,31 +1063,7 @@ export default function App() {
               <span className="material-symbols-outlined text-xl font-bold">search</span>
             </button>
 
-            {/* Language Switcher */}
-            <div className="relative flex items-center">
-              <select
-                value={i18n.language}
-                onChange={(e) => {
-                  const newLang = e.target.value as SupportedLang;
-                  i18n.changeLanguage(newLang);
-                  storeLang(newLang);
-                  const currentPath = window.location.pathname + window.location.search;
-                  if (!currentPath.startsWith("/api")) {
-                    const canonicalPath = getCanonicalPath(currentPath, newLang);
-                    navigate(canonicalPath);
-                  }
-                }}
-                className="appearance-none bg-transparent text-xs font-black text-slate-500 hover:text-emerald-700 dark:text-zinc-400 dark:hover:text-emerald-300 py-2 px-2 pr-5 rounded-xl cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-zinc-700 transition-colors outline-none"
-                title={t("theme.toggle")}
-              >
-                {SUPPORTED_LANGS.map((l) => (
-                  <option key={l} value={l} className="text-slate-800 dark:text-zinc-200">
-                    {l === "es" ? "ES" : "EN"}
-                  </option>
-                ))}
-              </select>
-              <span className="material-symbols-outlined text-[14px] text-slate-400 dark:text-zinc-500 pointer-events-none absolute right-0">language</span>
-            </div>
+
 
             {/* Dark/Night mode toggle */}
             <button 

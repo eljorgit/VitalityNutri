@@ -4,6 +4,7 @@ import { DayType, MealType, Recipe, MealPlan, PlanMetadata } from "../types";
 import ConfirmationModal from "./ConfirmationModal";
 import ImagePlaceholder from "./ImagePlaceholder";
 import { getSiteVisibility } from "../utils/siteVisibility";
+import { translateTag } from "../utils/tags";
 
 const formatAmountAndUnit = (amount: number, unit: string) => {
   let normalizedUnit = unit.trim().toLowerCase();
@@ -348,7 +349,7 @@ export default function RecipeDetail({
         short: labels[key].short,
         long: labels[key].long,
         num: num,
-        dateString: `${num} de ${month}`,
+        dateString: `${num} ${month}`,
         isToday
       };
     });
@@ -531,7 +532,7 @@ export default function RecipeDetail({
     }
     text += t("recipedetail.share_time", { time: recipe.time || "20 min" }) + "\n";
     text += t("recipedetail.share_calories", { calories: Math.round(recipe.calories * multiplier), multiplier }) + "\n";
-    text += t("recipedetail.share_category", { tag: recipe.tag || t("recipedetail.category_general") }) + "\n\n";
+    text += t("recipedetail.share_category", { tag: translateTag(recipe.tag, t) }) + "\n\n";
 
     text += t("recipedetail.share_ingredients_header") + "\n";
     const flatIngs = Array.isArray(recipe.ingredients)
@@ -781,10 +782,10 @@ export default function RecipeDetail({
   // Sophisticated culinary step generator if legacy/default dataset doesn't have "steps"
   const getRecipeStepsFallback = (recipeName: string, ingredients: any[]): string[] => {
     return [
-      `Preparación y Mise en Place: Comienza por limpiar meticulosamente tu área de cocina. Lava muy bien todos los ingredientes, especialmente si usas hierbas o vegetales frescos con piel. Reúne las sartenes u ollas necesarias y precalienta el fuego a temperatura media para conseguir una transmisión de calor uniforme.`,
-      `Técnicas de Corte y Cocción Inicial: Corta finamente los ingredientes que lo requieran (como cebollas, ajos o proteínas de acompañamiento) usando un cuchillo afilado de chef para cortes limpios y uniformes que faciliten el cocinado. Añade una cucharadita de aceite de oliva en la sartén precalentada y dora la base aromática a fuego medio durante 3 a 5 minutos, vigilando la temperatura para potenciar sus aceites naturales aromáticos.`,
-      `Incorporación y Control Térmico: Añade los ingredientes principales de forma lógica según su densidad de masa y resistencia al calor (primero verduras densas como la zanahoria y proteínas duras, dejando las hojas verdes o guarniciones blandas para el final). Mantén una cocción jugosa y uniforme regulando el fuego a intensidad media de forma constante por 8-12 minutos, agitando con suavidad con una espátula de madera.`,
-      `Emplatado y Presentación Gourmet: Retira del fuego y deja reposar la preparación por 1 minuto para asentar los jugos aromáticos. Para una presentación visualmente irresistible, sirve en un plato hondo o bowl moderno de cerámica, distribuyendo los alimentos con volumen y altura en el centro. Corona el plato decorando de manera apetitosa con tus condimentos frescos o semillas pautadas para dar contraste crujiente.`
+      t("recipedetail.step_fallback_1"),
+      t("recipedetail.step_fallback_2"),
+      t("recipedetail.step_fallback_3"),
+      t("recipedetail.step_fallback_4")
     ];
   };
 
@@ -807,35 +808,26 @@ export default function RecipeDetail({
   }, [recipe, day, meal]);
 
   const categoryNames: Record<string, string> = {
-    primerPlato: "Primer Plato",
-    segundoPlato: "Segundo Plato",
-    postre: "Postre",
-    general: "General"
+    primerPlato: t("recipedetail.category_primerPlato"),
+    segundoPlato: t("recipedetail.category_segundoPlato"),
+    postre: t("recipedetail.category_postre"),
+    general: t("recipedetail.category_general")
   };
 
   const getFriendlyIngredientCategory = (category?: string): string => {
     if (!category) return "";
     const catLow = category.toLowerCase();
-    switch (catLow) {
-      case "verduras y hortalizas":
-        return "Verduras";
-      case "frutas":
-        return "Frutas";
-      case "carnes, huevos y tofu":
-        return "Proteínas";
-      case "pescados y mariscos":
-        return "Pescados";
-      case "lácteos y bebidas":
-        return "Lácteos/Bebidas";
-      case "granos, harinas y semillas":
-        return "Granos/Semillas";
-      case "despensa y condimentos":
-        return "Despensa";
-      case "otros":
-        return "Otros";
-      default:
-        return category;
-    }
+    const catMap: Record<string, string> = {
+      "verduras y hortalizas": t("recipedetail.ingredient_category_verduras"),
+      "frutas": t("recipedetail.ingredient_category_frutas"),
+      "carnes, huevos y tofu": t("recipedetail.ingredient_category_proteinas"),
+      "pescados y mariscos": t("recipedetail.ingredient_category_pescados"),
+      "lácteos y bebidas": t("recipedetail.ingredient_category_lacteos"),
+      "granos, harinas y semillas": t("recipedetail.ingredient_category_granos"),
+      "despensa y condimentos": t("recipedetail.ingredient_category_despensa"),
+      "otros": t("recipedetail.ingredient_category_otros"),
+    };
+    return catMap[catLow] || category;
   };
 
   const getIngredientCategoryIcon = (category?: string): string => {
@@ -1200,7 +1192,7 @@ export default function RecipeDetail({
                 {t("recipedetail.adjusted_calories")}
               </p>
               <h3 className="text-3xl font-extrabold leading-none">
-                {Math.round(recipe.calories * multiplier)} <span className="text-sm font-semibold">kcal</span>
+                {Math.round(recipe.calories * multiplier)} <span className="text-sm font-semibold">{t("recipedetail.kcal")}</span>
               </h3>
               {multiplier !== 1 && (
                 <p className="text-[10px] text-emerald-100/80 mt-1.5">
@@ -1269,7 +1261,7 @@ export default function RecipeDetail({
               <svg className="w-[15px] h-[15px] fill-current" viewBox="0 0 24 24">
                 <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.513 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.457L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.625 1.451 5.437.002 9.861-4.416 9.863-9.864.001-2.639-1.02-5.12-2.874-6.978-1.855-1.857-4.327-2.88-6.967-2.881-5.439 0-9.865 4.42-9.867 9.867-.001 1.867.501 3.585 1.45 5.161l-.952 3.479 3.565-.936zm11.597-5.495c-.32-.16-1.89-.93-2.185-1.04-.294-.11-.51-.16-.723.16-.214.32-.827 1.04-1.013 1.252-.186.213-.372.24-.692.08-.32-.16-1.353-.5-2.577-1.6-.952-.85-1.594-1.9-1.782-2.22-.186-.32-.02-.492.14-.65.143-.142.32-.37.48-.557.16-.188.21-.32.32-.53.11-.21.05-.4-.03-.56-.08-.16-.723-1.74-.99-2.39-.26-.63-.526-.54-.723-.55-.187-.01-.4-.01-.613-.01-.213 0-.56.08-.853.4-.293.32-1.118 1.1-1.118 2.68 0 1.58 1.15 3.11 1.31 3.32.16.21 2.263 3.456 5.482 4.848.765.33 1.362.528 1.826.674.77.244 1.47.21 2.02.128.618-.092 1.89-.77 2.157-1.48.266-.71.266-1.32.186-1.45-.08-.13-.294-.21-.614-.37z" />
               </svg>
-              <span>WhatsApp</span>
+              <span>{t("recipedetail.share_whatsapp")}</span>
             </button>
           </div>
 
@@ -1282,7 +1274,7 @@ export default function RecipeDetail({
               <svg className="w-[15px] h-[15px] fill-current" viewBox="0 0 24 24">
                 <path d="M11.994 0C5.369 0 0 5.369 0 11.994S5.369 24 11.994 24 24 18.631 24 12.006C24 5.369 18.631 0 11.994 0zm5.935 8.17l-2.006 9.457c-.145.658-.537.818-1.086.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.06 14.549l-2.95-.924c-.641-.203-.654-.641.136-.95l11.533-4.448c.536-.194 1.004.131.16 4.194-.84 3.944z"/>
               </svg>
-              <span>Telegram</span>
+              <span>{t("recipedetail.share_telegram")}</span>
             </button>
 
             <button
@@ -1293,7 +1285,7 @@ export default function RecipeDetail({
               <svg className="w-[15px] h-[15px] fill-current" viewBox="0 0 24 24">
                 <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
               </svg>
-              <span>Instagram</span>
+              <span>{t("recipedetail.share_instagram")}</span>
             </button>
           </div>
 
@@ -1457,7 +1449,7 @@ export default function RecipeDetail({
                       <div className="flex gap-1 sm:gap-1.5 select-none justify-center">
                         {orderedMeals.map((m) => {
                           const r = plan?.days[d]?.[m];
-                          const initials: Record<string, string> = { breakfast: "B", lunch: "L", snack: "S", dinner: "D" };
+                          const initials: Record<string, string> = { breakfast: t("recipedetail.meal_initial_breakfast"), lunch: t("recipedetail.meal_initial_lunch"), snack: t("recipedetail.meal_initial_snack"), dinner: t("recipedetail.meal_initial_dinner") };
                           const initial = initials[m];
                           const isCurrent = d === day && m === meal;
                           const hasRecipe = !!r;
@@ -1635,7 +1627,7 @@ export default function RecipeDetail({
         </div>
         <div className="w-full md:w-7/12 p-6 md:p-8 flex flex-col justify-center bg-white dark:bg-zinc-900">
           <span className="inline-flex items-center gap-1 text-[10px] font-bold tracking-widest bg-emerald-50 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-400 px-3 py-1 rounded-full w-max mb-3 uppercase">
-            {recipe.tag || t("recipedetail.healthy")}
+            {translateTag(recipe.tag, t)}
           </span>
           <h1 className="text-2xl md:text-3.5xl font-extrabold text-slate-900 dark:text-white leading-tight mb-4 select-all">
             {recipe.recipeName}
@@ -1643,7 +1635,7 @@ export default function RecipeDetail({
           <div className="flex flex-wrap gap-4 select-none">
             <div className="flex items-center gap-1.5 text-sm text-slate-500 dark:text-zinc-400">
               <span className="material-symbols-outlined text-emerald-600">schedule</span>
-              <span className="font-semibold">{recipe.time || "25 min"}</span>
+              <span className="font-semibold">{recipe.time || t("recipedetail.default_time")}</span>
             </div>
             <div className="flex items-center gap-1.5 text-sm text-slate-500 dark:text-zinc-400 font-bold">
               <span className="material-symbols-outlined text-emerald-600">fitness_center</span>
@@ -1662,7 +1654,7 @@ export default function RecipeDetail({
               className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-950/60 px-3.5 py-2 rounded-xl transition duration-200 border border-emerald-100/50 dark:border-emerald-900/40 cursor-pointer shadow-sm active:scale-95"
             >
               <span className="material-symbols-outlined text-[15px]">calculate</span>
-              {t("recipedetail.servings_summary", { mult: multiplier })} • {Math.round(recipe.calories * multiplier)} kcal
+              {t("recipedetail.servings_summary", { mult: multiplier })} • {Math.round(recipe.calories * multiplier)} {t("recipedetail.kcal")}
             </button>
             <button
               type="button"

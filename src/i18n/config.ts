@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 import es from "./es.json";
@@ -13,19 +14,9 @@ export function isValidLang(lang: string | null): lang is SupportedLang {
 }
 
 export function getStoredLang(): SupportedLang {
-  try {
-    const stored = localStorage.getItem("i18nextLng");
-    if (stored && isValidLang(stored)) return stored;
-  } catch {}
-  const browserLang = navigator.language?.slice(0, 2);
-  if (browserLang && isValidLang(browserLang)) return browserLang;
+  const envLang = import.meta.env.VITE_LANGUAGE;
+  if (envLang && isValidLang(envLang)) return envLang;
   return DEFAULT_LANG;
-}
-
-export function storeLang(lang: SupportedLang) {
-  try {
-    localStorage.setItem("i18nextLng", lang);
-  } catch {}
 }
 
 i18n.use(initReactI18next).init({

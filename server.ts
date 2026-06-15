@@ -473,7 +473,7 @@ async function fillStaticRecipeImages(mealPlan: MealPlan): Promise<void> {
 
         if (!recipe.calories) recipe.calories = 380;
         if (!recipe.time) recipe.time = "20 min";
-        if (!recipe.tag) recipe.tag = "Nutritivo";
+        if (!recipe.tag) recipe.tag = "meal";
         if (!recipe.tips) recipe.tips = "Sigue este plan nutricional diario pautado con esmero.";
       }
     }

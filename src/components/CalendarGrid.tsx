@@ -98,13 +98,13 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, compl
     const datesMap: Record<DayType, { short: string; long: string; num: number; isToday: boolean; dateString: string }> = {} as any;
     const dayKeys: DayType[] = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
     const labels = {
-      monday: { short: "LUN", long: t("weekdays.monday") },
-      tuesday: { short: "MAR", long: t("weekdays.tuesday") },
-      wednesday: { short: "MIÉ", long: t("weekdays.wednesday") },
-      thursday: { short: "JUE", long: t("weekdays.thursday") },
-      friday: { short: "VIE", long: t("weekdays.friday") },
-      saturday: { short: "SÁB", long: t("weekdays.saturday") },
-      sunday: { short: "DOM", long: t("weekdays.sunday") }
+      monday: { short: t("weekdays.monday_short"), long: t("weekdays.monday") },
+      tuesday: { short: t("weekdays.tuesday_short"), long: t("weekdays.tuesday") },
+      wednesday: { short: t("weekdays.wednesday_short"), long: t("weekdays.wednesday") },
+      thursday: { short: t("weekdays.thursday_short"), long: t("weekdays.thursday") },
+      friday: { short: t("weekdays.friday_short"), long: t("weekdays.friday") },
+      saturday: { short: t("weekdays.saturday_short"), long: t("weekdays.saturday") },
+      sunday: { short: t("weekdays.sunday_short"), long: t("weekdays.sunday") }
     };
 
     let startDayNum = 0;

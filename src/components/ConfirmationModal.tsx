@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 
 export type ConfirmationVariant = "danger" | "warning" | "success" | "info";
 
@@ -41,11 +42,13 @@ export default function ConfirmationModal({
   confirmLabel,
   onConfirm,
   onCancel,
-  cancelLabel = "Cancelar",
+  cancelLabel,
   icon = "warning",
   showCancel = true,
   variant = "danger"
 }: ConfirmationModalProps) {
+  const { t } = useTranslation();
+  const resolvedCancelLabel = cancelLabel ?? t("general.cancel");
   const modalRef = useRef<HTMLDivElement>(null);
   const prevFocusRef = useRef<HTMLElement | null>(null);
 
@@ -131,7 +134,7 @@ export default function ConfirmationModal({
               onClick={onCancel}
               className="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-bold text-gray-700 transition-colors hover:bg-gray-50 focus:outline-none focus:ring-4 focus:ring-gray-500/10 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 cursor-pointer"
             >
-              {cancelLabel}
+              {resolvedCancelLabel}
             </button>
           )}
           <button

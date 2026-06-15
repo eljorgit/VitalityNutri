@@ -11,7 +11,7 @@ export const DEFAULT_PLAN_METADATA: PlanMetadata = {
         recipeName: "Avena con bayas y chía",
         calories: 350,
         time: "10 min",
-        tag: "Alto en Fibra",
+        tag: "breakfast|high_fiber",
         image: "https://images.unsplash.com/photo-1517881917430-e70dfb3610aa?q=80&w=1000&auto=format&fit=crop",
         ingredients: [
           { name: "Copos de avena integral", originalAmount: 50, unit: "g", category: "granos, harinas y semillas" },
@@ -25,7 +25,7 @@ export const DEFAULT_PLAN_METADATA: PlanMetadata = {
         recipeName: "Pollo a la plancha con quinoa",
         calories: 450,
         time: "25 min",
-        tag: "Alto en Proteína",
+        tag: "meal|high_protein",
         image: "https://lh3.googleusercontent.com/aida-public/AB6AXuDZT3uW0tHLKVAQnze_i4KWKZ_o-Is2YmsOc9lMxT2ec1HpdSYHh1MaF5XJf982QgOQO0v3tUVCxC9Fbcgb6xaur_NF5go170RkcSYeD3bZVqrVHQx5I7zdtgUxSJdSsXb7hL3kxvyAlz7E0ezDfCLmmOZl14ChwYKbsIO2725O1AdOt82m6T-myY4xDZVBNbPWMDeGgGUQTP1va2ER0SMX-s6WCeMQAOQw8SKP-eXoFtv5uoo5DA4qftu34Igh7eEiMKkf4X7l1Lc",
         ingredients: {
           primerPlato: [
@@ -55,7 +55,7 @@ export const DEFAULT_PLAN_METADATA: PlanMetadata = {
         recipeName: "Salmón al horno con espárragos",
         calories: 410,
         time: "20 min",
-        tag: "Rico en Omega 3",
+        tag: "meal|omega3",
         image: "https://images.unsplash.com/photo-1467003909585-2f8a72700288?q=80&w=1000&auto=format&fit=crop",
         ingredients: [
           { name: "Filete de Salmón fresco", originalAmount: 180, unit: "g", category: "pescados y mariscos", preparation: "crudo" },
@@ -71,7 +71,7 @@ export const DEFAULT_PLAN_METADATA: PlanMetadata = {
         recipeName: "Tostada de aguacate",
         calories: 380,
         time: "10 min",
-        tag: "Grasas Saludables",
+        tag: "breakfast|healthy_fats",
         image: "https://images.unsplash.com/photo-1541532713592-79a0317b6b77?q=80&w=1000&auto=format&fit=crop",
         ingredients: [
           { name: "Pan integral de masa madre", originalAmount: 2, unit: "rebanada(s)", category: "granos, harinas y semillas" },
@@ -85,7 +85,7 @@ export const DEFAULT_PLAN_METADATA: PlanMetadata = {
         recipeName: "Ensalada César con Garbanzos",
         calories: 390,
         time: "15 min",
-        tag: "Fibra Vegetal",
+        tag: "meal|high_fiber",
         image: "https://images.unsplash.com/photo-1550304943-4f24f54ddde9?q=80&w=1000&auto=format&fit=crop",
         ingredients: [
           { name: "Lechuga romana fresca", originalAmount: 150, unit: "g", category: "verduras y hortalizas" },
@@ -99,7 +99,7 @@ export const DEFAULT_PLAN_METADATA: PlanMetadata = {
         recipeName: "Yogur griego con nueces",
         calories: 290,
         time: "5 min",
-        tag: "Snack Completo",
+        tag: "snack|filling",
         image: "https://images.unsplash.com/photo-1488477181946-6428a0291777?q=80&w=1000&auto=format&fit=crop",
         ingredients: [
           { name: "Yogur griego natural sin azúcar", originalAmount: 200, unit: "g", category: "lácteos y bebidas" },
@@ -112,7 +112,7 @@ export const DEFAULT_PLAN_METADATA: PlanMetadata = {
         recipeName: "Tacos de pavo en hoja de lechuga",
         calories: 320,
         time: "15 min",
-        tag: "Keto Friendly",
+        tag: "meal|keto",
         image: "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?q=80&w=1000&auto=format&fit=crop",
         ingredients: [
           { name: "Carne picada pechuga pavo magro", originalAmount: 150, unit: "g", category: "carnes, huevos y tofu", preparation: "cruda picada" },
@@ -128,7 +128,7 @@ export const DEFAULT_PLAN_METADATA: PlanMetadata = {
         recipeName: "Batido Verde Proteico",
         calories: 310,
         time: "5 min",
-        tag: "Post-Entrenamiento",
+        tag: "breakfast|post_workout",
         image: "https://images.unsplash.com/photo-1610970881699-44a5587caaec?q=80&w=1000&auto=format&fit=crop",
         ingredients: [
           { name: "Espinacas baby frescas", originalAmount: 50, unit: "g", category: "verduras y hortalizas" },
@@ -142,7 +142,7 @@ export const DEFAULT_PLAN_METADATA: PlanMetadata = {
         recipeName: "Bowl de Lentejas",
         calories: 360,
         time: "30 min",
-        tag: "Fácil de Hacer",
+        tag: "meal|quick",
         image: "https://images.unsplash.com/photo-1547592180-85f173990554?q=80&w=1000&auto=format&fit=crop",
         ingredients: [
           { name: "Lentejas verdinas cocidas", originalAmount: 150, unit: "g", category: "granos, harinas y semillas", preparation: "cocidas" },
@@ -157,7 +157,7 @@ export const DEFAULT_PLAN_METADATA: PlanMetadata = {
         recipeName: "Pescado blanco al vapor",
         calories: 280,
         time: "15 min",
-        tag: "Fácil Digestión",
+        tag: "meal|light",
         image: "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?q=80&w=1000&auto=format&fit=crop",
         ingredients: [
           { name: "Filete de Merluza austral", originalAmount: 150, unit: "g", category: "pescados y mariscos" },
@@ -173,7 +173,7 @@ export const DEFAULT_PLAN_METADATA: PlanMetadata = {
         recipeName: "Huevos revueltos con espinaca",
         calories: 310,
         time: "8 min",
-        tag: "Proteína Limpia",
+        tag: "breakfast|high_protein",
         image: "https://images.unsplash.com/photo-1525351484163-7529414344d8?q=80&w=1000&auto=format&fit=crop",
         ingredients: [
           { name: "Huevo", originalAmount: 2, unit: "unidad(es)", category: "carnes, huevos y tofu", preparation: "camperos orgánicos revueltos" },
@@ -187,7 +187,7 @@ export const DEFAULT_PLAN_METADATA: PlanMetadata = {
         recipeName: "Pasta integral boloñesa ligera",
         calories: 480,
         time: "20 min",
-        tag: "Alto en Carbohidratos",
+        tag: "meal|filling",
         image: "https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?q=80&w=1000&auto=format&fit=crop",
         ingredients: [
           { name: "Espaguetis de trigo integral", originalAmount: 80, unit: "g", category: "granos, harinas y semillas" },
@@ -201,7 +201,7 @@ export const DEFAULT_PLAN_METADATA: PlanMetadata = {
         recipeName: "Manzana con crema de cacahuete",
         calories: 220,
         time: "3 min",
-        tag: "Saciante Rápido",
+        tag: "snack|filling",
         image: "https://images.unsplash.com/photo-1619546813926-a78fa6372cd2?q=80&w=1000&auto=format&fit=crop",
         ingredients: [
           { name: "Manzana nacional (Fuji o Royal)", originalAmount: 1, unit: "unidad(es)", category: "frutas" },
@@ -213,7 +213,7 @@ export const DEFAULT_PLAN_METADATA: PlanMetadata = {
         recipeName: "Sopa de verduras depurativa",
         calories: 210,
         time: "25 min",
-        tag: "Cena Ligera",
+        tag: "meal|light",
         image: "https://images.unsplash.com/photo-1547592165-e1d17fed6005?q=80&w=1000&auto=format&fit=crop",
         ingredients: [
           { name: "Puerro y apio picado", originalAmount: 50, unit: "g", category: "verduras y hortalizas", preparation: "picado" },
@@ -229,7 +229,7 @@ export const DEFAULT_PLAN_METADATA: PlanMetadata = {
         recipeName: "Tortitas fitness de avena",
         calories: 280,
         time: "12 min",
-        tag: "Comida Sana",
+        tag: "breakfast|healthy",
         image: "https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?q=80&w=1000&auto=format&fit=crop",
         ingredients: [
           { name: "Harina de avena integral fina", originalAmount: 40, unit: "g", category: "granos, harinas y semillas" },
@@ -243,7 +243,7 @@ export const DEFAULT_PLAN_METADATA: PlanMetadata = {
         recipeName: "Wrap integral de Atún",
         calories: 340,
         time: "10 min",
-        tag: "Estudio Rapidez",
+        tag: "meal|quick",
         image: "https://images.unsplash.com/photo-1626700051175-6518c4793f73?q=80&w=1000&auto=format&fit=crop",
         ingredients: [
           { name: "Tortilla de trigo integral wrap", originalAmount: 1, unit: "unidad(es)", category: "granos, harinas y semillas" },
@@ -257,7 +257,7 @@ export const DEFAULT_PLAN_METADATA: PlanMetadata = {
         recipeName: "Hummus con bastones de zanahorias",
         calories: 190,
         time: "5 min",
-        tag: "Rico en Nutrientes",
+        tag: "snack|healthy",
         image: "https://images.unsplash.com/photo-1541518763669-27fef04b14ea?q=80&w=1000&auto=format&fit=crop",
         ingredients: [
           { name: "Hummus de garbanzos tradicional", originalAmount: 80, unit: "g", category: "despensa y condimentos" },
@@ -269,7 +269,7 @@ export const DEFAULT_PLAN_METADATA: PlanMetadata = {
         recipeName: "Pizza fit con base de coliflor",
         calories: 390,
         time: "25 min",
-        tag: "Guilt-Free Cheat",
+        tag: "meal|healthy",
         image: "https://images.unsplash.com/photo-1513104890138-7c749659a591?q=80&w=1000&auto=format&fit=crop",
         ingredients: [
           { name: "Base precocinada de coliflor", originalAmount: 1, unit: "unidad(es)", category: "verduras y hortalizas" },
@@ -285,7 +285,7 @@ export const DEFAULT_PLAN_METADATA: PlanMetadata = {
         recipeName: "Completo Desayuno Continental",
         calories: 330,
         time: "10 min",
-        tag: "Gran Variedad",
+        tag: "breakfast",
         image: "https://images.unsplash.com/photo-1496042399014-dc73c4f2bde1?q=80&w=1000&auto=format&fit=crop",
         ingredients: [
           { name: "Huevo", originalAmount: 1, unit: "unidad(es)", category: "carnes, huevos y tofu", preparation: "campero cocido duro" },
@@ -299,7 +299,7 @@ export const DEFAULT_PLAN_METADATA: PlanMetadata = {
         recipeName: "Risotto gourmet de champiñones",
         calories: 420,
         time: "30 min",
-        tag: "Disfruta Cocinar",
+        tag: "meal|traditional",
         image: "https://images.unsplash.com/photo-1476124369491-e7addf5db371?q=80&w=1000&auto=format&fit=crop",
         ingredients: [
           { name: "Arroz arborio para risotto", originalAmount: 70, unit: "g", category: "granos, harinas y semillas" },
@@ -313,7 +313,7 @@ export const DEFAULT_PLAN_METADATA: PlanMetadata = {
         recipeName: "Batido cremoso de fresas",
         calories: 160,
         time: "5 min",
-        tag: "Refrescante",
+        tag: "snack|refreshing",
         image: "https://images.unsplash.com/photo-1553530666-ba11a7da3888?q=80&w=1000&auto=format&fit=crop",
         ingredients: [
           { name: "Fresones de Huelva limpios", originalAmount: 150, unit: "g", category: "frutas", preparation: "limpios" },
@@ -326,7 +326,7 @@ export const DEFAULT_PLAN_METADATA: PlanMetadata = {
         recipeName: "Cena Libre Saludable",
         calories: 600,
         time: "5 min",
-        tag: "Cena Placer",
+        tag: "meal|traditional",
         image: "https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=1000&auto=format&fit=crop",
         ingredients: [
           { name: "Porción de tu plato libre preferido", originalAmount: 1, unit: "ración(es)", category: "otros" }
@@ -339,7 +339,7 @@ export const DEFAULT_PLAN_METADATA: PlanMetadata = {
         recipeName: "Brunch Dominical Familiar",
         calories: 350,
         time: "15 min",
-        tag: "Placer Fin de Semana",
+        tag: "breakfast",
         image: "https://images.unsplash.com/photo-1533089860891-a7c6f061fd91?q=80&w=1000&auto=format&fit=crop",
         ingredients: [
           { name: "Tortitas ligeras de maíz inflado", originalAmount: 3, unit: "unidad(es)", category: "granos, harinas y semillas" },
@@ -353,7 +353,7 @@ export const DEFAULT_PLAN_METADATA: PlanMetadata = {
         recipeName: "Paella valenciana de verduras",
         calories: 390,
         time: "35 min",
-        tag: "Sabor Tradicional",
+        tag: "meal|traditional",
         image: "https://images.unsplash.com/photo-1534080564583-6be75777b70a?q=80&w=1000&auto=format&fit=crop",
         ingredients: [
           { name: "Arroz bomba de la Albufera", originalAmount: 80, unit: "g", category: "granos, harinas y semillas" },
@@ -367,7 +367,7 @@ export const DEFAULT_PLAN_METADATA: PlanMetadata = {
         recipeName: "Mix de frutos secos naturales",
         calories: 210,
         time: "2 min",
-        tag: "Energía Completa",
+        tag: "snack|filling",
         image: "https://images.unsplash.com/photo-1596701062351-df5f8a42f3c5?q=80&w=1000&auto=format&fit=crop",
         ingredients: [
           { name: "Almendras crudas con piel", originalAmount: 15, unit: "g", category: "granos, harinas y semillas" },
@@ -380,7 +380,7 @@ export const DEFAULT_PLAN_METADATA: PlanMetadata = {
         recipeName: "Tortilla de patatas fit ligera",
         calories: 360,
         time: "20 min",
-        tag: "Tradición Ligera",
+        tag: "meal|traditional",
         image: "https://images.unsplash.com/photo-1518047601542-79f18c655718?q=80&w=1000&auto=format&fit=crop",
         ingredients: [
           { name: "Patatas cocidas al microondas", originalAmount: 150, unit: "g", category: "verduras y hortalizas", preparation: "cocidas al microondas" },

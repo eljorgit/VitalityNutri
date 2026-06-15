@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { Recipe, MealPlan, MealType } from "../types";
 import ConfirmationModal from "./ConfirmationModal";
 import ImagePlaceholder from "./ImagePlaceholder";
+import { MEAL_TAGS, MEAL_TAG_ICONS, getMealTag, translateTag } from "../utils/tags";
 
 interface RecetarioProps {
   onSelectRecipe: (recipe: Recipe) => void;
@@ -18,6 +20,7 @@ export default function Recetario({
   plan,
   searchQuery = ""
 }: RecetarioProps) {
+  const { t } = useTranslation();
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
@@ -85,7 +88,7 @@ export default function Recetario({
   };
 
   // Filters State
-  const [selectedMealType, setSelectedMealType] = useState<string>("Todos"); // Todos, Desayuno, Almuerzo, Merienda, Cena
+  const [selectedMealType, setSelectedMealType] = useState<string>("all");
   const [selectedSource, setSelectedSource] = useState<string>("Todos"); // Todos, manual, plan, ai
   const [selectedTimeRange, setSelectedTimeRange] = useState<string>("Todos"); // Todos, rapido (<20m), medio (20-45m), elaborado (>45m)
   const [selectedCaloriesRange, setSelectedCaloriesRange] = useState<string>("Todos"); // Todos, ligero (<350), equilibrado (350-600), calorico (>600)
@@ -120,11 +123,11 @@ export default function Recetario({
         const data = await res.json();
         setRecipes(Array.isArray(data) ? data : []);
       } else {
-        throw new Error("No se pudo obtener el listado de recetas.");
+        throw new Error(t("recetario.error_fetch"));
       }
     } catch (err: any) {
       console.error(err);
-      setError(err.message || "Error al conectar con el servidor.");
+      setError(err.message || t("recetario.error_connect"));
     } finally {
       setLoading(false);
     }
@@ -188,12 +191,12 @@ export default function Recetario({
         setRecipes((prev) => prev.filter((r) => r.id !== recipeToDelete.id));
         setRecipeToDelete(null);
       } else {
-        setDeleteError("No se pudo eliminar la receta del recetario.");
+        setDeleteError(t("recetario.error_delete"));
         setTimeout(() => setDeleteError(""), 3000);
       }
     } catch (err: any) {
       console.error(err);
-      setDeleteError("Error de red al intentar eliminar la receta.");
+      setDeleteError(t("recetario.error_delete_network"));
       setTimeout(() => setDeleteError(""), 3000);
     } finally {
       setIsDeleting(false);
@@ -202,27 +205,33 @@ export default function Recetario({
 
   // Render matching source badges
   const renderCardSourceBadge = (recipe: Recipe) => {
-    let label = "Manual";
-    let bgClass = "bg-slate-100 text-slate-700 dark:bg-zinc-800 dark:text-zinc-350";
+    const getBadgeLabel = (source: string) => {
+      switch (source) {
+        case "plan": return t("recetario.source_badge_plan");
+        case "ocr": return t("recetario.source_badge_ocr");
+        case "document": return t("recetario.source_badge_document");
+        case "text": return t("recetario.source_badge_text");
+        default: return t("recetario.source_badge_manual");
+      }
+    };
 
-    if (recipe.source === "plan") {
-      label = "Plan";
-      bgClass = "bg-blue-50 text-blue-700 dark:bg-blue-950/45 dark:text-blue-400 border border-blue-100/40 dark:border-blue-900/30";
-    } else if (recipe.source === "ocr") {
-      label = "OCR";
-      bgClass = "bg-teal-50 text-teal-700 dark:bg-teal-950/45 dark:text-teal-400 border border-teal-100/40 dark:border-teal-900/30";
-    } else if (recipe.source === "document") {
-      label = "Documento";
-      bgClass = "bg-amber-50 text-amber-700 dark:bg-amber-950/45 dark:text-amber-300 border border-amber-100/40 dark:border-amber-900/30";
-    } else if (recipe.source === "text") {
-      label = "Texto";
-      bgClass = "bg-purple-50 text-purple-700 dark:bg-purple-950/45 dark:text-purple-400 border border-purple-100/40 dark:border-purple-900/30";
-    }
+    const getBadgeBg = (source: string) => {
+      switch (source) {
+        case "plan": return "bg-blue-50 text-blue-700 dark:bg-blue-950/45 dark:text-blue-400 border border-blue-100/40 dark:border-blue-900/30";
+        case "ocr": return "bg-teal-50 text-teal-700 dark:bg-teal-950/45 dark:text-teal-400 border border-teal-100/40 dark:border-teal-900/30";
+        case "document": return "bg-amber-50 text-amber-700 dark:bg-amber-950/45 dark:text-amber-300 border border-amber-100/40 dark:border-amber-900/30";
+        case "text": return "bg-purple-50 text-purple-700 dark:bg-purple-950/45 dark:text-purple-400 border border-purple-100/40 dark:border-purple-900/30";
+        default: return "bg-slate-100 text-slate-700 dark:bg-zinc-800 dark:text-zinc-350";
+      }
+    };
+
+    const label = getBadgeLabel(recipe.source || "");
+    const bgClass = getBadgeBg(recipe.source || "");
 
     return (
       <span className={`inline-flex items-center text-[8px] font-black tracking-widest px-2 py-0.5 rounded-md uppercase ${bgClass}`}>
         {label}
-        {recipe.isAiGenerated && " • IA 🤖"}
+        {recipe.isAiGenerated && t("recetario.ai_badge_suffix")}
       </span>
     );
   };
@@ -233,7 +242,7 @@ export default function Recetario({
     const matchesQuery =
       !searchQuery ||
       r.recipeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (r.tag && r.tag.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (r.tag && translateTag(r.tag, t).toLowerCase().includes(searchQuery.toLowerCase())) ||
       (() => {
         // Flatten ingredients to search them
         const ingredientsList: any[] = [];
@@ -252,25 +261,26 @@ export default function Recetario({
 
     // 2. Meal Type filter
     const matchesMealType = (() => {
-      if (selectedMealType === "Todos") return true;
-      
-      // Check if tag mentions the meal type
-      if (r.tag && r.tag.toLowerCase().includes(selectedMealType.toLowerCase())) {
-        return true;
-      }
-      
-      // Check if assigned in active plan
+      if (selectedMealType === "all") return true;
+
+      const recipeMealTag = getMealTag(r.tag);
+      if (recipeMealTag === selectedMealType) return true;
+
       if (plan && plan.days) {
         const daysKeys = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] as const;
-        const targetMeal = selectedMealType.toLowerCase() as MealType;
+        const planMeals = selectedMealType === "meal"
+          ? (["lunch", "dinner"] as const)
+          : ([selectedMealType] as const);
         for (const day of daysKeys) {
-          const mealRecipe = plan.days[day]?.[targetMeal];
-          if (
-            mealRecipe &&
-            (mealRecipe.id === r.id ||
-              mealRecipe.recipeName.trim().toLowerCase() === r.recipeName.trim().toLowerCase())
-          ) {
-            return true;
+          for (const mealKey of planMeals) {
+            const mealRecipe = plan.days[day]?.[mealKey as MealType];
+            if (
+              mealRecipe &&
+              (mealRecipe.id === r.id ||
+                mealRecipe.recipeName.trim().toLowerCase() === r.recipeName.trim().toLowerCase())
+            ) {
+              return true;
+            }
           }
         }
       }
@@ -320,12 +330,12 @@ export default function Recetario({
       {/* Title & Add Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-200/50 dark:border-zinc-800 pb-4 gap-4">
         <div>
-          <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+            <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
             <span className="material-symbols-outlined text-emerald-600 dark:text-emerald-455 text-[26px]">menu_book</span>
-            Recetario Personal
+            {t("recetario.personal_title")}
           </h1>
           <p className="text-xs text-slate-500 dark:text-zinc-400 mt-1">
-            Tu biblioteca única de recetas recopiladas de planes alimentarios y creaciones personalizadas
+            {t("recetario.personal_subtitle")}
           </p>
         </div>
 
@@ -337,34 +347,29 @@ export default function Recetario({
           className="inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm hover:shadow-md transition-all font-black text-xs cursor-pointer active:scale-95 self-start sm:self-auto"
         >
           <span className="material-symbols-outlined text-[16px] mr-1.5 font-bold">add</span>
-          Nueva Receta
+          {t("recetario.add_recipe_btn")}
         </button>
       </div>
 
       {/* Category Tabs */}
       <div className="flex select-none bg-slate-50 dark:bg-zinc-950 p-1 rounded-2xl border border-slate-200/50 dark:border-zinc-800/60 w-full sm:w-max max-w-full gap-0.5 sm:gap-1">
-        {["Todos", "Desayuno", "Almuerzo", "Merienda", "Cena"].map((type) => {
-          const icons: Record<string, string> = {
-            Todos: "restaurant_menu",
-            Desayuno: "coffee",
-            Almuerzo: "local_dining",
-            Merienda: "cookie",
-            Cena: "soup_kitchen",
-          };
-          const isSelected = selectedMealType === type;
+        {(["all", ...MEAL_TAGS] as const).map((key) => {
+          const label = key === "all" ? t("recetario.all") : t(`tags.${key}`);
+          const iconKey = key === "all" ? "Todos" : key;
+          const isSelected = selectedMealType === key;
           return (
             <button
-              key={type}
+              key={key}
               type="button"
-              onClick={() => setSelectedMealType(type)}
+              onClick={() => setSelectedMealType(key)}
               className={`flex-1 sm:flex-initial flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 px-1.5 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-[10px] sm:text-xs font-black transition-all duration-200 cursor-pointer ${
                 isSelected
                   ? "bg-emerald-600 text-white shadow-sm"
                   : "text-slate-600 hover:text-emerald-600 dark:text-zinc-400 dark:hover:text-emerald-400 hover:bg-white dark:hover:bg-zinc-900"
               }`}
             >
-              <span className="material-symbols-outlined text-[15px] sm:text-[17px]">{icons[type]}</span>
-              <span>{type === "Todos" ? "Todos" : type + "s"}</span>
+              <span className="material-symbols-outlined text-[15px] sm:text-[17px]">{MEAL_TAG_ICONS[iconKey]}</span>
+              <span>{label}</span>
             </button>
           );
         })}
@@ -380,7 +385,7 @@ export default function Recetario({
           <span className="material-symbols-outlined text-[18px]">
             {showFilters ? "filter_list_off" : "filter_list"}
           </span>
-          <span>{showFilters ? "Ocultar Filtros" : "Mostrar Filtros"}</span>
+          <span>{showFilters ? t("recetario.hide_filters") : t("recetario.show_filters")}</span>
           {activeFiltersCount > 0 && (
             <span className="ml-1.5 px-2 py-0.5 text-[10px] font-black bg-emerald-600 text-white rounded-full">
               {activeFiltersCount}
@@ -395,7 +400,7 @@ export default function Recetario({
             className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-400 hover:text-red-500 dark:text-zinc-500 dark:hover:text-red-400 cursor-pointer transition select-none"
           >
             <span className="material-symbols-outlined text-[14px]">restart_alt</span>
-            <span>Limpiar filtros</span>
+            <span>{t("recetario.clear_filters")}</span>
           </button>
         )}
       </div>
@@ -407,14 +412,14 @@ export default function Recetario({
           {/* Origen Filter */}
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 border-b border-slate-100 dark:border-zinc-800/30 pb-3">
             <span className="text-[10px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-widest min-w-[70px]">
-              Origen
+              {t("recetario.filter_origin")}
             </span>
             <div className="flex flex-wrap gap-2">
               {[
-                { value: "Todos", label: "Todos" },
-                { value: "manual", label: "Manual" },
-                { value: "plan", label: "Del Plan" },
-                { value: "ai", label: "Creado con IA 🤖" }
+                { value: "Todos", label: t("recetario.source_all") },
+                { value: "manual", label: t("recetario.source_manual") },
+                { value: "plan", label: t("recetario.source_plan") },
+                { value: "ai", label: t("recetario.source_ai_generated") }
               ].map((opt) => {
                 const isActive = selectedSource === opt.value;
                 return (
@@ -438,14 +443,14 @@ export default function Recetario({
           {/* Tiempo Filter */}
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 border-b border-slate-100 dark:border-zinc-800/30 pb-3">
             <span className="text-[10px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-widest min-w-[70px]">
-              Tiempo
+              {t("recetario.filter_time")}
             </span>
             <div className="flex flex-wrap gap-2">
               {[
-                { value: "Todos", label: "Cualquier tiempo" },
-                { value: "rapido", label: "Rápido (< 20 min) ⚡" },
-                { value: "medio", label: "Medio (20 - 45 min)" },
-                { value: "elaborado", label: "Elaborado (> 45 min)" }
+                { value: "Todos", label: t("recetario.time_any") },
+                { value: "rapido", label: t("recetario.time_fast") },
+                { value: "medio", label: t("recetario.time_medium") },
+                { value: "elaborado", label: t("recetario.time_elaborate") }
               ].map((opt) => {
                 const isActive = selectedTimeRange === opt.value;
                 return (
@@ -470,14 +475,14 @@ export default function Recetario({
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 lg:gap-4 pt-1">
             <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
               <span className="text-[10px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-widest min-w-[70px]">
-                Calorías
+                {t("recetario.filter_calories")}
               </span>
               <div className="flex flex-wrap gap-2">
                 {[
-                  { value: "Todos", label: "Cualquier caloría" },
-                  { value: "ligero", label: "Ligeras (< 350 kcal) 🥗" },
-                  { value: "equilibrado", label: "Equilibradas (350 - 600)" },
-                  { value: "calorico", label: "Calóricas (> 600)" }
+                  { value: "Todos", label: t("recetario.calories_any") },
+                  { value: "ligero", label: t("recetario.calories_light") },
+                  { value: "equilibrado", label: t("recetario.calories_balanced") },
+                  { value: "calorico", label: t("recetario.calories_high") }
                 ].map((opt) => {
                   const isActive = selectedCaloriesRange === opt.value;
                   return (
@@ -510,7 +515,7 @@ export default function Recetario({
               <span className={`material-symbols-outlined text-[15px] ${showOnlyFavorites ? "text-white fill-white font-variation-fill-1" : "text-slate-400"}`}>
                 favorite
               </span>
-              Solo Favoritos
+              {t("recetario.favorites_only")}
             </button>
           </div>
 
@@ -521,7 +526,7 @@ export default function Recetario({
       {loading ? (
         <div className="flex flex-col items-center justify-center py-28 gap-4">
           <div className="w-8 h-8 rounded-full border-[3px] border-emerald-100 dark:border-zinc-800 border-t-emerald-600 dark:border-t-emerald-400 animate-spin"></div>
-          <p className="text-xs font-bold text-slate-400 dark:text-zinc-500">Cargando recetario...</p>
+          <p className="text-xs font-bold text-slate-400 dark:text-zinc-500">{t("recetario.loading")}</p>
         </div>
       ) : error ? (
         <div className="bg-red-50 dark:bg-red-950/15 border border-red-200/50 dark:border-red-900/40 p-6 rounded-2xl text-center space-y-2">
@@ -531,22 +536,22 @@ export default function Recetario({
             onClick={fetchRecipes}
             className="text-xs font-extrabold text-red-800 dark:text-red-300 underline cursor-pointer"
           >
-            Reintentar
+            {t("recetario.retry")}
           </button>
         </div>
       ) : filteredRecipes.length === 0 ? (
         <div className="bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 rounded-3xl p-16 text-center shadow-xs flex flex-col items-center gap-3">
           <span className="text-5xl">🥑</span>
-          <h3 className="text-sm font-black text-slate-700 dark:text-zinc-300">No se encontraron recetas</h3>
+          <h3 className="text-sm font-black text-slate-700 dark:text-zinc-300">{t("recetario.no_recipes_title")}</h3>
           <p className="text-xs text-slate-400 dark:text-zinc-500 max-w-sm">
-            {searchQuery || selectedMealType !== "Todos" || selectedSource !== "Todos" || selectedTimeRange !== "Todos" || selectedCaloriesRange !== "Todos" || showOnlyFavorites
-              ? "Prueba a cambiar tus filtros de búsqueda o categoría en los paneles superiores."
-              : "Comienza importando tus pautas alimentarias o crea una receta de forma manual o asistida por la IA."}
+            {searchQuery || selectedMealType !== "all" || selectedSource !== "Todos" || selectedTimeRange !== "Todos" || selectedCaloriesRange !== "Todos" || showOnlyFavorites
+              ? t("recetario.no_recipes_filtered")
+              : t("recetario.no_recipes_default")}
           </p>
-          {(searchQuery || selectedMealType !== "Todos" || selectedSource !== "Todos" || selectedTimeRange !== "Todos" || selectedCaloriesRange !== "Todos" || showOnlyFavorites) && (
+          {(searchQuery || selectedMealType !== "all" || selectedSource !== "Todos" || selectedTimeRange !== "Todos" || selectedCaloriesRange !== "Todos" || showOnlyFavorites) && (
             <button
               onClick={() => {
-                setSelectedMealType("Todos");
+                setSelectedMealType("all");
                 setSelectedSource("Todos");
                 setSelectedTimeRange("Todos");
                 setSelectedCaloriesRange("Todos");
@@ -554,7 +559,7 @@ export default function Recetario({
               }}
               className="mt-2 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-600 dark:text-zinc-300 text-xs font-bold transition cursor-pointer"
             >
-              Restablecer Filtros
+              {t("recetario.reset_filters")}
             </button>
           )}
         </div>
@@ -578,7 +583,7 @@ export default function Recetario({
                   />
                 ) : (
                   <div className="w-full h-full bg-emerald-50/40 dark:bg-emerald-950/10 flex items-center justify-center transition-colors group-hover:bg-emerald-50/60 dark:group-hover:bg-emerald-950/20">
-                    <ImagePlaceholder text="Sin Imagen" animate={true} />
+                    <ImagePlaceholder animate={true} />
                   </div>
                 )}
 
@@ -592,7 +597,7 @@ export default function Recetario({
                   type="button"
                   onClick={(e) => handleToggleFavorite(e, r)}
                   className="absolute top-2.5 right-2.5 w-7 h-7 rounded-xl bg-white/95 dark:bg-zinc-900/95 border border-slate-100 dark:border-zinc-800 flex items-center justify-center shadow-sm text-slate-400 hover:text-rose-500 cursor-pointer active:scale-90 transition-all select-none hover:bg-white dark:hover:bg-zinc-900"
-                  title={r.isFavorite ? "Quitar de favoritos" : "Marcar como favorito"}
+                  title={r.isFavorite ? t("recetario.favorite_remove") : t("recetario.favorite_add")}
                 >
                   <span
                     className={`material-symbols-outlined text-[17px] transition-all duration-300 transform ${
@@ -608,7 +613,7 @@ export default function Recetario({
                 {/* Recipe Tag Overlay (bottom-right of image) */}
                 {r.tag && (
                   <span className="absolute bottom-2.5 right-2.5 text-[9px] font-extrabold text-emerald-700 dark:text-emerald-400 bg-white/95 dark:bg-zinc-900/95 border border-slate-100 dark:border-zinc-800/80 px-2 py-0.5 rounded-md uppercase tracking-wide shadow-xs backdrop-blur-xs">
-                    {r.tag.split(",")[0].trim()}
+                    {translateTag(r.tag, t)}
                   </span>
                 )}
               </div>
@@ -623,7 +628,7 @@ export default function Recetario({
                   <div className="flex gap-3 text-[10px] text-slate-500 dark:text-zinc-400 font-bold select-none">
                     <span className="flex items-center gap-1">
                       <span className="material-symbols-outlined text-[13px] text-slate-400 dark:text-zinc-500">schedule</span>
-                      {r.time || "20 min"}
+                      {r.time || t("recetario.default_time")}
                     </span>
                     <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
                       <span className="material-symbols-outlined text-[13px]">fitness_center</span>
@@ -631,12 +636,12 @@ export default function Recetario({
                     </span>
                     <span className="flex items-center gap-1">
                       <span className="material-symbols-outlined text-[13px] text-slate-400 dark:text-zinc-500">restaurant</span>
-                      {r.servings || 1} {r.servings === 1 ? "ración" : "raciones"}
+                      {r.servings || 1} {r.servings === 1 ? t("recetario.serving") : t("recetario.servings_plural")}
                     </span>
                   </div>
 
                   <p className="text-[11px] text-slate-500 dark:text-zinc-400 line-clamp-2 leading-relaxed">
-                    {r.tips || "Una receta saludable y equilibrada, perfecta para integrar en tu rutina semanal."}
+                    {r.tips || t("recetario.default_tips")}
                   </p>
                 </div>
 
@@ -644,7 +649,7 @@ export default function Recetario({
                 <div className="flex items-center justify-between border-t border-slate-100 dark:border-zinc-800 pt-3.5 mt-2.5">
                   {/* View Details Shortcut */}
                   <span className="inline-flex items-center text-[10px] font-black text-emerald-600 dark:text-emerald-400 group-hover:translate-x-0.5 transition-transform duration-200 gap-0.5 select-none">
-                    Ver receta
+                    {t("recetario.view_recipe")}
                     <span className="material-symbols-outlined text-[12px] font-bold">arrow_forward_ios</span>
                   </span>
 
@@ -657,7 +662,7 @@ export default function Recetario({
                         onEditRecipe(r);
                       }}
                       className="w-7 h-7 rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-500 dark:text-zinc-400 hover:text-emerald-600 dark:hover:text-emerald-400 flex items-center justify-center cursor-pointer transition"
-                      title="Editar receta"
+                      title={t("recetario.edit_tooltip")}
                     >
                       <span className="material-symbols-outlined text-[17px]">edit</span>
                     </button>
@@ -665,7 +670,7 @@ export default function Recetario({
                       type="button"
                       onClick={(e) => handleStartDelete(e, r)}
                       className="w-7 h-7 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/20 text-slate-500 hover:text-red-500 flex items-center justify-center cursor-pointer transition"
-                      title="Eliminar receta"
+                      title={t("recetario.delete_tooltip")}
                     >
                       <span className="material-symbols-outlined text-[17px]">delete</span>
                     </button>
@@ -680,9 +685,9 @@ export default function Recetario({
       {/* Confirmation Modal for Deleting */}
       <ConfirmationModal
         isOpen={!!recipeToDelete}
-        title="¿Eliminar receta?"
-        description={`¿Estás seguro de que deseas eliminar "${recipeToDelete?.recipeName}" del recetario? Esta acción no se puede deshacer.`}
-        confirmLabel={isDeleting ? "Eliminando..." : "Eliminar Receta"}
+        title={t("recetario.confirm_delete_title")}
+        description={t("recetario.confirm_delete_desc", { name: recipeToDelete?.recipeName })}
+        confirmLabel={isDeleting ? t("recetario.deleting") : t("recetario.confirm_delete_btn")}
         onConfirm={handleConfirmDelete}
         onCancel={() => setRecipeToDelete(null)}
         icon="delete_forever"
@@ -700,7 +705,7 @@ export default function Recetario({
       <button
         type="button"
         onClick={onAddNewRecipe}
-        aria-label="Nueva Receta"
+        aria-label={t("recetario.fab_aria_label")}
         className={`fixed right-20 bottom-20 md:right-24 md:bottom-8 z-40 w-14 h-14 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg hover:shadow-xl flex items-center justify-center cursor-pointer active:scale-90 transition-all duration-300 fab-button ${
           showFab ? "fab-visible" : "fab-hidden"
         }`}

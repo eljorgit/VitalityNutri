@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Recipe, Ingredient } from "../types";
 import ImagePlaceholder from "./ImagePlaceholder";
 import ConfirmationModal from "./ConfirmationModal";
+import { MEAL_TAGS, DESCRIPTOR_TAGS, parseTag, formatTag } from "../utils/tags";
 
 const getIngredientHelperText = (amount: number, unit: string, totalServings: number, t: (key: string, params?: any) => string) => {
   if (!amount || amount <= 0) return null;
@@ -49,7 +50,8 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
   const [calories, setCalories] = useState<number | null>(null);
   const [timeValue, setTimeValue] = useState<number>(20);
   const [timeUnit, setTimeUnit] = useState<"min" | "h">("min");
-  const [tag, setTag] = useState("");
+  const [mealTag, setMealTag] = useState("");
+  const [descriptorTag, setDescriptorTag] = useState("");
   const [image, setImage] = useState("");
   const [tips, setTips] = useState("");
   const [nutritionistTips, setNutritionistTips] = useState("");
@@ -112,6 +114,19 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
     "Verduras", "Proteínas", "Pescados", "Lácteos/Bebidas", "Granos/Semillas", "Despensa", "Otros",
     ...dbIngredients.map(di => di.category).filter(Boolean)
   ]));
+
+  const getCatLabel = (cat: string) => {
+    const labels: Record<string, string> = {
+      "Verduras": t("recipedetail.ingredient_category_verduras"),
+      "Proteínas": t("recipedetail.ingredient_category_proteinas"),
+      "Pescados": t("recipedetail.ingredient_category_pescados"),
+      "Lácteos/Bebidas": t("recipedetail.ingredient_category_lacteos"),
+      "Granos/Semillas": t("recipedetail.ingredient_category_granos"),
+      "Despensa": t("recipedetail.ingredient_category_despensa"),
+      "Otros": t("recipedetail.ingredient_category_otros"),
+    };
+    return labels[cat] || cat;
+  };
 
   const handleConfirmNewIngredient = async () => {
     const finalCategory = newIngredientModal.isCreatingCategory 
@@ -236,7 +251,7 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
             { name: finalName.toLowerCase().trim(), category: finalCategory }
           ]);
         } else {
-          throw new Error("No se pudo registrar el alimento en la base de datos.");
+          throw new Error(t("recipeform.error_save_food"));
         }
       } else {
         const existingIng = dbIngredients.find(
@@ -340,7 +355,9 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
     setCalories(recipe.calories);
     setTimeValue(recipe.timeValue);
     setTimeUnit(recipe.timeUnit);
-    setTag(recipe.tag);
+    const parsedTag = parseTag(recipe.tag);
+    setMealTag(parsedTag.meal || "meal");
+    setDescriptorTag(parsedTag.descriptor || "");
 
     // Filter out skipped ingredients
     let flatIngs = recipe.ingredients.filter((ing: any) => ing.name && ing.name.trim() !== "");
@@ -366,15 +383,6 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
     setErrorMessage(customSuccessMsg || t("recipeform.ai_import_complete"));
     setIsSuccessMessage(true);
   };
-
-  const [dbTags, setDbTags] = useState<string[]>([]);
-  const [isCreatingTag, setIsCreatingTag] = useState(false);
-
-  const tagsList = Array.from(new Set([
-    "Saludable", "Vegano", "Vegetariano", "Rápido", "Sin Gluten", "Keto",
-    ...dbTags,
-    ...(tag ? [tag] : [])
-  ]));
 
   // Unsplash/Image Search State
   const [imageSearchQuery, setImageSearchQuery] = useState("");
@@ -422,18 +430,6 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
   const [skippedIngredientsList, setSkippedIngredientsList] = useState<string[]>([]);
 
   // Fetch Database Recipe Tags
-  useEffect(() => {
-    fetch("/api/recipes/tags")
-      .then((res) => {
-        if (res.ok) return res.json();
-        return [];
-      })
-      .then((data) => {
-        setDbTags(Array.isArray(data) ? data : []);
-      })
-      .catch((err) => console.error("Error loading recipe tags:", err));
-  }, []);
-
   // Fetch Database Ingredients for Autocomplete
   useEffect(() => {
     fetch("/api/ingredients")
@@ -459,7 +455,9 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
       setTimeValue(parsedVal);
       setTimeUnit(timeStr.toLowerCase().includes("h") ? "h" : "min");
 
-      setTag(recipe.tag || "");
+      const parsedTag2 = parseTag(recipe.tag);
+      setMealTag(parsedTag2.meal || "meal");
+      setDescriptorTag(parsedTag2.descriptor || "");
       setImage(recipe.image || "");
       setTips(recipe.tips || "");
       setNutritionistTips(recipe.nutritionistTips || "");
@@ -529,7 +527,8 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
       setCalories(null);
       setTimeValue(20);
       setTimeUnit("min");
-      setTag("Saludable");
+      setMealTag("meal");
+      setDescriptorTag("");
       setImage("");
       setTips("");
       setNutritionistTips("");
@@ -726,7 +725,7 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
         } else {
           setImageSearchResults([]);
           setImageSearchMessage(data.reason === "Unsplash client not initialized" 
-            ? "Buscador de Unsplash inactivo (API key no configurada)." 
+            ? t("recipeform.unsplash_inactive")
             : t("recipeform.image_no_results"));
         }
       } else {
@@ -1116,7 +1115,8 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
         setCalories(parsedCalories);
         setTimeValue(parsedTimeVal);
         setTimeUnit(parsedTimeUnit);
-        setTag(parsedTag);
+        setMealTag("meal");
+        setDescriptorTag("");
 
         let flatIngs = [...finalIngredients];
         if (flatIngs.length === 0) {
@@ -1171,7 +1171,7 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
           recipeName,
           calories,
           time: `${timeValue} ${timeUnit}`,
-          tag,
+          tag: mealTag ? formatTag(mealTag, descriptorTag) : undefined,
           ingredients,
           steps,
           tips,
@@ -1186,7 +1186,7 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
         recipeName: recipeName.trim() || t("recipeform.ai_manual_version"),
         calories: calories,
         time: `${timeValue} ${timeUnit}`,
-        tag: tag || t("recipeform.ai_manual_tag"),
+        tag: mealTag ? formatTag(mealTag, descriptorTag) : undefined,
         image: image,
         ingredients: ingredients.filter(ing => ing.name.trim() !== "").map(ing => ({ ...ing })),
         steps: steps.filter(st => st.trim() !== "").map(st => st),
@@ -1245,7 +1245,9 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
     setTimeValue(parsedVal);
     setTimeUnit(timeStr.toLowerCase().includes("h") ? "h" : "min");
 
-    setTag(selected.tag || "Saludable");
+    const parsedTag3 = parseTag(selected.tag);
+    setMealTag(parsedTag3.meal || "meal");
+    setDescriptorTag(parsedTag3.descriptor || "");
     setTips(selected.tips || "");
     setNutritionistTips(selected.nutritionistTips || "");
     setServings(selected.servings || 1);
@@ -1298,7 +1300,7 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
       recipeName: recipeName.trim(),
       calories: calories || 0,
       time: `${timeValue} ${timeUnit}`,
-      tag: tag.trim() || undefined,
+      tag: mealTag ? formatTag(mealTag, descriptorTag) : undefined,
       image: image.trim() || undefined,
       ingredients: activeIngs,
       tips: tips.trim(),
@@ -1470,50 +1472,30 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
                   }}
                 />
               </div>
-              <div>
+              <div className="space-y-3">
                 <label className="text-[10px] font-bold text-zinc-400 dark:text-zinc-550 uppercase tracking-widest block mb-1.5">{t("recipeform.tag_label")}</label>
-                {!isCreatingTag ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <select
                     className="w-full px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-955 focus:outline-none focus:border-emerald-500 text-slate-700 dark:text-zinc-200 cursor-pointer"
-                    value={tag || ""}
-                    onChange={(e) => {
-                      if (e.target.value === "__NEW__") {
-                        setIsCreatingTag(true);
-                        setTag("");
-                      } else {
-                        setTag(e.target.value);
-                      }
-                    }}
+                    value={mealTag}
+                    onChange={(e) => setMealTag(e.target.value)}
                   >
                     <option value="">{t("recipeform.tag_none")}</option>
-                    {tagsList.map((t) => (
-                      <option key={t} value={t}>{t}</option>
+                    {MEAL_TAGS.map((key) => (
+                      <option key={key} value={key}>{t(`tags.${key}`)}</option>
                     ))}
-                    <option value="__NEW__" className="text-indigo-600 dark:text-indigo-400 font-bold">
-                      {t("recipeform.tag_create")}
-                    </option>
                   </select>
-                ) : (
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      className="flex-1 px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-955 focus:outline-none focus:border-emerald-500 text-slate-700 dark:text-zinc-200"
-                      placeholder={t("recipeform.tag_create_placeholder")}
-                      value={tag}
-                      onChange={(e) => setTag(e.target.value)}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsCreatingTag(false);
-                        setTag("");
-                      }}
-                      className="px-3 py-2 text-xs font-bold rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-600 dark:text-zinc-300 cursor-pointer"
-                    >
-                      {t("recipeform.cancel_btn")}
-                    </button>
-                  </div>
-                )}
+                  <select
+                    className="w-full px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-955 focus:outline-none focus:border-emerald-500 text-slate-700 dark:text-zinc-200 cursor-pointer"
+                    value={descriptorTag}
+                    onChange={(e) => setDescriptorTag(e.target.value)}
+                  >
+                    <option value="">{t("recipeform.tag_none")}</option>
+                    {DESCRIPTOR_TAGS.map((key) => (
+                      <option key={key} value={key}>{t(`tags.${key}`)}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
 
@@ -1548,7 +1530,7 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
                     value={timeUnit}
                     onChange={(e) => setTimeUnit(e.target.value as "min" | "h")}
                   >
-                    <option value="min">min</option>
+                    <option value="min">{t("recipeform.time_min")}</option>
                     <option value="h">{t("recipeform.time_unit_hours")}</option>
                   </select>
                 </div>
@@ -1673,7 +1655,7 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
                               }}
                             >
                               {hardcodedUnits.map((u) => (
-                                <option key={u} value={u}>{u}</option>
+                                <option key={u} value={u}>{t("recipeform.unit_" + u)}</option>
                               ))}
                               {showCustomUnit && (
                                 <option value={ing.unit}>{ing.unit}</option>
@@ -1694,7 +1676,7 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
                           }}
                         >
                           {categoriesList.map((c) => (
-                            <option key={c} value={c}>{c}</option>
+                            <option key={c} value={c}>{getCatLabel(c)}</option>
                           ))}
                         </select>
                         
@@ -1889,7 +1871,7 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
               {image && !previewError ? (
                 <img
                   src={image}
-                  alt="Vista previa de receta"
+                  alt={t("recipeform.image_preview_alt")}
                   onError={() => setPreviewError(true)}
                   className="w-full h-full object-cover"
                 />
@@ -1935,7 +1917,7 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
                         image === url ? "border-emerald-500 shadow-md" : "border-transparent opacity-80 hover:opacity-100"
                       }`}
                     >
-                      <img src={url} alt={`Resultado ${idx}`} className="w-full h-full object-cover" />
+                      <img src={url} alt={t("recipeform.search_result_alt", { idx })} className="w-full h-full object-cover" />
                     </button>
                   ))}
                 </div>
@@ -2217,7 +2199,7 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
                       }}
                     >
                       {categoriesList.map((c) => (
-                        <option key={c} value={c}>{c}</option>
+                        <option key={c} value={c}>{getCatLabel(c)}</option>
                       ))}
                       <option value="__NEW__" className="text-indigo-600 dark:text-indigo-400 font-bold">
                         {t("recipeform.tag_create")}
@@ -2350,7 +2332,7 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
                     }}
                   >
                     {categoriesList.map((c) => (
-                      <option key={c} value={c}>{c}</option>
+                      <option key={c} value={c}>{getCatLabel(c)}</option>
                     ))}
                     <option value="__NEW__" className="text-indigo-600 dark:text-indigo-400 font-bold">
                       {t("recipeform.tag_create")}

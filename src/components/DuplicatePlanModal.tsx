@@ -1,4 +1,6 @@
 import React, { useEffect } from "react";
+import { useTranslation } from "react-i18next";
+import { Trans } from "react-i18next";
 
 interface DuplicatePlanModalProps {
   isOpen: boolean;
@@ -17,6 +19,7 @@ export default function DuplicatePlanModal({
   onReprocess,
   onCancel
 }: DuplicatePlanModalProps) {
+  const { t } = useTranslation();
   useEffect(() => {
     if (!isOpen) return;
 
@@ -52,7 +55,7 @@ export default function DuplicatePlanModal({
 
         {/* Modal Header */}
         <h3 id="duplicate-modal-title" className="text-xl font-extrabold tracking-tight text-gray-900 dark:text-white">
-          Plan ya existente
+          {t("duplicate_plan.title")}
         </h3>
         
         {/* File Details Tag */}
@@ -66,13 +69,9 @@ export default function DuplicatePlanModal({
         {/* Modal Body Description */}
         <p className="mt-4 text-sm leading-relaxed text-gray-500 dark:text-zinc-400">
           {isActive ? (
-            <>
-              Este plan de alimentación ya está configurado como tu <strong>plan activo actual</strong>. No es necesario procesarlo nuevamente con IA.
-            </>
+            <Trans i18nKey="duplicate_plan.desc_active" components={{ 1: <strong /> }} />
           ) : (
-            <>
-              Se ha detectado que este plan ya fue subido y analizado con anterioridad y se encuentra guardado en tu historial.
-            </>
+            t("duplicate_plan.desc_inactive")
           )}
         </p>
 
@@ -86,7 +85,7 @@ export default function DuplicatePlanModal({
               className="w-full rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white py-3 px-4 text-sm font-bold shadow-md hover:shadow-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 focus:outline-none focus:ring-4 focus:ring-emerald-500/20"
             >
               <span className="material-symbols-outlined text-[18px]">history</span>
-              Usar este plan (Restaurar)
+              {t("duplicate_plan.btn_restore")}
             </button>
           )}
 
@@ -98,7 +97,7 @@ export default function DuplicatePlanModal({
               className="rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-800 py-2.5 px-4 text-sm font-bold transition-all cursor-pointer active:scale-[0.98] flex items-center justify-center gap-1.5 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-300 dark:hover:bg-amber-950/40 focus:outline-none focus:ring-4 focus:ring-amber-500/15"
             >
               <span className="material-symbols-outlined text-[18px]">refresh</span>
-              Reprocesar
+              {t("duplicate_plan.btn_reprocess")}
             </button>
             <button
               type="button"
@@ -106,7 +105,7 @@ export default function DuplicatePlanModal({
               className="rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 py-2.5 px-4 text-sm font-bold transition-all cursor-pointer active:scale-[0.98] flex items-center justify-center gap-1.5 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-350 dark:hover:bg-zinc-800 focus:outline-none focus:ring-4 focus:ring-gray-500/10"
             >
               <span className="material-symbols-outlined text-[18px]">close</span>
-              Cancelar
+              {t("duplicate_plan.btn_cancel")}
             </button>
           </div>
         </div>

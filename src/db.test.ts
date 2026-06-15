@@ -39,7 +39,7 @@ function makeRecipe(overrides: Partial<Recipe> = {}): Recipe {
     recipeName: "Test Recipe",
     calories: 500,
     time: "30 min",
-    tag: "Dinner",
+    tag: "meal",
     image: "",
     ingredients: [{ name: "test ingredient", originalAmount: 1, unit: "pcs" }],
     tips: "Test tip",
