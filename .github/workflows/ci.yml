@@ -3,6 +3,7 @@ name: CI/CD
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
     branches: [main]
 
@@ -150,6 +151,7 @@ jobs:
 
   build:
     name: Build
+    if: github.ref_type == 'tag'
     needs: [lint, test, codeql, snyk, e2e, sonar]
     runs-on: ubuntu-latest
     steps:
@@ -163,7 +165,7 @@ jobs:
 
   docker:
     name: Build & Push Docker Image
-    if: github.event_name != 'pull_request'
+    if: github.ref_type == 'tag'
     needs: build
     runs-on: ubuntu-latest
     permissions:
@@ -190,7 +192,7 @@ jobs:
             org.opencontainers.image.visibility=public
           tags: |
             type=sha,prefix=sha-,format=short
-            type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
+            type=raw,value=latest,enable=${{ github.ref_type == 'tag' }}
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
@@ -203,7 +205,7 @@ jobs:
 
   deploy:
     name: Deploy
-    if: github.event_name != 'pull_request'
+    if: github.ref_type == 'tag'
     needs: docker
     runs-on: ubuntu-latest
     steps:
