@@ -955,6 +955,11 @@ app.post("/api/upload", uploadLimiter, async (req, res) => {
     return res.status(400).json({ error: "No se recibió el nombre del archivo o los datos base64." });
   }
 
+  const ext = path.extname(fileName).toLowerCase();
+  if (ext !== ".pdf") {
+    return res.status(400).json({ error: t("error.pdf_format_error", lang) });
+  }
+
   if (!ai) {
     return res.status(500).json({
       error: "La API de Gemini no está configurada. Por favor, añade la variable GEMINI_API_KEY en la configuración del panel lateral."
