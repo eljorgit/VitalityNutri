@@ -36,7 +36,12 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm test
+      - run: npm test -- --coverage
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
 
   codeql:
     name: CodeQL
@@ -77,6 +82,7 @@ jobs:
 
   sonar:
     name: SonarQube Analysis
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -87,8 +93,12 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm test -- --coverage
       - run: npm run build
+      - name: Download coverage report
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
       - name: Connect to Tailscale
         uses: tailscale/github-action@v2
         with:
