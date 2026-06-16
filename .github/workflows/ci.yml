@@ -67,19 +67,22 @@ jobs:
   snyk:
     name: Snyk Security Scan
     runs-on: ubuntu-latest
-    env:
-      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
     steps:
       - uses: actions/checkout@v4
+      - name: Check SNYK_TOKEN
+        id: check-snyk
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: echo "available=$([ -n "$SNYK_TOKEN" ] && echo true || echo false)" >> $GITHUB_OUTPUT
       - name: Run Snyk test
-        if: env.SNYK_TOKEN != ''
+        if: steps.check-snyk.outputs.available == 'true'
         uses: snyk/actions@v1.0.0
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
           args: --severity-threshold=high
       - name: Run Snyk monitor
-        if: github.event_name == 'push' && env.SNYK_TOKEN != ''
+        if: github.event_name == 'push' && steps.check-snyk.outputs.available == 'true'
         uses: snyk/actions@v1.0.0
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
@@ -105,9 +108,6 @@ jobs:
     name: SonarQube Analysis
     needs: test
     runs-on: ubuntu-latest
-    env:
-      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-      TAILSCALE_AUTHKEY: ${{ secrets.TAILSCALE_AUTHKEY }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -123,13 +123,21 @@ jobs:
         with:
           name: coverage
           path: coverage/
+      - name: Check secrets
+        id: check-sonar
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          TAILSCALE_AUTHKEY: ${{ secrets.TAILSCALE_AUTHKEY }}
+        run: |
+          echo "tailscale=$([ -n "$TAILSCALE_AUTHKEY" ] && echo true || echo false)" >> $GITHUB_OUTPUT
+          echo "sonar=$([ -n "$SONAR_TOKEN" ] && echo true || echo false)" >> $GITHUB_OUTPUT
       - name: Connect to Tailscale
-        if: env.TAILSCALE_AUTHKEY != ''
+        if: steps.check-sonar.outputs.tailscale == 'true'
         uses: tailscale/github-action@v2
         with:
           authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
       - name: SonarQube Scan
-        if: env.SONAR_TOKEN != ''
+        if: steps.check-sonar.outputs.sonar == 'true'
         uses: SonarSource/sonarqube-scan-action@v8.2.0
         env:
           SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL || secrets.SONAR_HOST_URL }}
@@ -194,20 +202,24 @@ jobs:
     if: github.event_name != 'pull_request'
     needs: docker
     runs-on: ubuntu-latest
-    env:
-      SSH_HOST: ${{ secrets.SSH_HOST }}
-      SSH_KEY: ${{ secrets.SSH_KEY }}
-      SSH_USER: ${{ secrets.SSH_USER }}
-      TAILSCALE_AUTHKEY: ${{ secrets.TAILSCALE_AUTHKEY }}
     steps:
       - uses: actions/checkout@v4
+      - name: Check secrets
+        id: check-deploy
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+          TAILSCALE_AUTHKEY: ${{ secrets.TAILSCALE_AUTHKEY }}
+        run: |
+          echo "tailscale=$([ -n "$TAILSCALE_AUTHKEY" ] && echo true || echo false)" >> $GITHUB_OUTPUT
+          echo "ssh=$([ -n "$SSH_HOST" ] && [ -n "$SSH_KEY" ] && echo true || echo false)" >> $GITHUB_OUTPUT
       - name: Connect to Tailscale
-        if: env.TAILSCALE_AUTHKEY != ''
+        if: steps.check-deploy.outputs.tailscale == 'true'
         uses: tailscale/github-action@v2
         with:
           authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
       - name: Copy docker-compose.yml to server
-        if: env.SSH_HOST != '' && env.SSH_KEY != ''
+        if: steps.check-deploy.outputs.ssh == 'true'
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -218,7 +230,7 @@ jobs:
           target: "${{ secrets.DEPLOY_PATH }}"
           overwrite: true
       - name: Deploy via SSH
-        if: env.SSH_HOST != '' && env.SSH_KEY != ''
+        if: steps.check-deploy.outputs.ssh == 'true'
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST }}
