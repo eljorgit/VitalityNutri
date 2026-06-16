@@ -111,7 +111,10 @@
 
   "footer": {
     "tagline": "© 2026 VitalityNutri. Mindful, living, structured nutrition.",
-    "github": "Source code"
+    "github": "Source code",
+    "license": "MIT License",
+    "version": "v{{version}}",
+    "ai": "Powered by Google Gemini AI \u00B7 Built with OpenCode"
   },
 
   "mobile_nav": {

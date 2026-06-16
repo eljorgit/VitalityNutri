@@ -20,6 +20,7 @@ import {
 } from "./utils/searchHelpers";
 import { translateTag } from "./utils/tags";
 import { Github, ExternalLink } from "lucide-react";
+import { version } from "../package.json";
 
 // --- Search Types ---
 interface SearchRecipeItem {
@@ -1352,7 +1353,7 @@ export default function App() {
 
       {/* 3. Footer */}
       <footer className="w-full mt-auto bg-white dark:bg-zinc-900 border-t border-gray-100 dark:border-zinc-800 select-none no-print transition-colors">
-        <div className="flex flex-col md:flex-row items-center w-full pl-6 pr-16 pt-8 pb-36 md:py-8 md:pr-24 max-w-container-max mx-auto gap-6">
+        <div className="flex flex-col md:flex-row items-center w-full pl-6 pr-16 pt-8 pb-2 md:py-6 md:pr-24 max-w-container-max mx-auto gap-4 md:gap-6">
           <div className="flex flex-col items-center md:items-start gap-1">
             <span className="font-extrabold text-emerald-600 text-lg">VitalityNutri</span>
             <p className="text-xs text-gray-450 dark:text-zinc-550">{t("footer.tagline")}</p>
@@ -1378,6 +1379,23 @@ export default function App() {
               <span>MalvioApps</span>
             </a>
           </div>
+        </div>
+        <div className="flex flex-col sm:flex-row items-center justify-center w-full px-6 pb-8 md:pb-6 gap-1 sm:gap-3 max-w-container-max mx-auto">
+          <span className="text-[11px] text-gray-400 dark:text-zinc-600 font-medium">
+            {t("footer.version", { version })}
+            <span className="mx-1.5 opacity-40">|</span>
+            <a
+              href="https://github.com/eljorgit/VitalityNutri/blob/main/LICENSE"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+            >
+              {t("footer.license")}
+            </a>
+          </span>
+          <span className="text-[11px] text-gray-400 dark:text-zinc-600 font-medium">
+            {t("footer.ai")}
+          </span>
         </div>
       </footer>
 

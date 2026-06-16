@@ -111,7 +111,10 @@
 
   "footer": {
     "tagline": "© 2026 VitalityNutri. Alimentación consciente, viva y pautada.",
-    "github": "Código fuente"
+    "github": "Código fuente",
+    "license": "Licencia MIT",
+    "version": "v{{version}}",
+    "ai": "Desarrollado con Google Gemini AI \u00B7 Creado con OpenCode"
   },
 
   "mobile_nav": {
