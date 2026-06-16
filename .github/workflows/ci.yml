@@ -80,6 +80,21 @@ jobs:
         with:
           command: monitor
 
+  e2e:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+      - name: Run e2e tests
+        run: npm run test:e2e
+
   sonar:
     name: SonarQube Analysis
     needs: test
@@ -111,7 +126,7 @@ jobs:
 
   build:
     name: Build
-    needs: [lint, test, codeql, snyk, sonar]
+    needs: [lint, test, codeql, snyk, e2e, sonar]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
