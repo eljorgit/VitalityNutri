@@ -26,8 +26,18 @@ VitalityNutri is a full-stack nutritional planning web application that automate
 
 ## 📸 Screenshots
 
-<img src="docs/screenshot-calendar.png" alt="Weekly Calendar" width="49%" /> <img src="docs/screenshot-grocery-list.png" alt="Grocery List" width="49%" />
-<img src="docs/screenshot-recipe-detail.png" alt="Recipe Detail" width="49%" /> <img src="docs/screenshot-batch-cooking.png" alt="Batch Cooking" width="49%" />
+> The app interface is available in both English and Spanish. Screenshots below show the Spanish version.
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshot-calendar.png" alt="Weekly Calendar" width="100%" /><br/><em>Weekly calendar — overview of all meals with quick access to recipes and batch-cooking status.</em></td>
+    <td align="center"><img src="docs/screenshot-grocery-list.png" alt="Grocery List" width="100%" /><br/><em>Smart grocery list grouped by supermarket categories. Adjust quantities and check items off.</em></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshot-recipe-details.png" alt="Recipe Details" width="100%" /><br/><em>Complete recipe view with ingredients, step-by-step instructions, and nutritional info.</em></td>
+    <td align="center"><img src="docs/screenshot-batch-cooking.png" alt="Batch Cooking" width="100%" /><br/><em>Batch-cooking planner — see what to prep, cook, and store each day.</em></td>
+  </tr>
+</table>
 
 ---
 

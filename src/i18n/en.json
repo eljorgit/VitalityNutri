@@ -82,7 +82,10 @@
     "retry": "Retry Connection",
     "delete_recipe_title": "Could not delete recipe",
     "delete_recipe_msg": "Please try again in a few seconds.",
-    "download_plan_error": "Could not download the active plan from the database."
+    "download_plan_error": "Could not download the active plan from the database.",
+    "gemini_overloaded": "Gemini AI service is temporarily overloaded. Please try again in a few minutes.",
+    "gemini_quota": "Gemini API quota exceeded. Check your plan in Google AI Studio.",
+    "gemini_unexpected": "Unexpected error communicating with Gemini AI."
   },
 
   "confirm": {
@@ -107,7 +110,8 @@
   },
 
   "footer": {
-    "tagline": "© 2026 VitalityNutri. Mindful, living, structured nutrition."
+    "tagline": "© 2026 VitalityNutri. Mindful, living, structured nutrition.",
+    "github": "Source code"
   },
 
   "mobile_nav": {

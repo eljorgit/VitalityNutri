@@ -26,8 +26,16 @@ VitalityNutri es una aplicación web full-stack de planificación nutricional qu
 
 ## 📸 Capturas de Pantalla
 
-<img src="docs/screenshot-calendar.png" alt="Calendario Semanal" width="49%" /> <img src="docs/screenshot-grocery-list.png" alt="Lista de la Compra" width="49%" />
-<img src="docs/screenshot-recipe-detail.png" alt="Detalle de Receta" width="49%" /> <img src="docs/screenshot-batch-cooking.png" alt="Batch Cooking" width="49%" />
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshot-calendar.png" alt="Calendario Semanal" width="100%" /><br/><em>Calendario semanal — vista general del menú con acceso rápido a recetas y estado del batch cooking.</em></td>
+    <td align="center"><img src="docs/screenshot-grocery-list.png" alt="Lista de la Compra" width="100%" /><br/><em>Lista de la compra inteligente agrupada por categorías del supermercado. Ajusta cantidades y marca productos.</em></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshot-recipe-detail.png" alt="Detalle de Receta" width="100%" /><br/><em>Ficha completa de receta con ingredientes, instrucciones paso a paso e información nutricional.</em></td>
+    <td align="center"><img src="docs/screenshot-batch-cooking.png" alt="Batch Cooking" width="100%" /><br/><em>Planificador de cocinado — qué preparar, cocinar y almacenar cada día.</em></td>
+  </tr>
+</table>
 
 ---
 

@@ -19,6 +19,7 @@ import {
   highlightText,
 } from "./utils/searchHelpers";
 import { translateTag } from "./utils/tags";
+import { Github, ExternalLink } from "lucide-react";
 
 // --- Search Types ---
 interface SearchRecipeItem {
@@ -1351,10 +1352,31 @@ export default function App() {
 
       {/* 3. Footer */}
       <footer className="w-full mt-auto bg-white dark:bg-zinc-900 border-t border-gray-100 dark:border-zinc-800 select-none no-print transition-colors">
-        <div className="flex flex-col md:flex-row justify-between items-center w-full px-6 pt-8 pb-36 md:py-8 max-w-container-max mx-auto gap-6">
+        <div className="flex flex-col md:flex-row items-center w-full pl-6 pr-16 pt-8 pb-36 md:py-8 md:pr-24 max-w-container-max mx-auto gap-6">
           <div className="flex flex-col items-center md:items-start gap-1">
             <span className="font-extrabold text-emerald-600 text-lg">VitalityNutri</span>
             <p className="text-xs text-gray-450 dark:text-zinc-550">{t("footer.tagline")}</p>
+          </div>
+          <div className="flex items-center gap-5 md:ml-auto">
+            <a
+              href="https://github.com/eljorgit/VitalityNutri"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 text-sm text-gray-450 dark:text-zinc-550 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+            >
+              <Github size={16} />
+              <span>{t("footer.github")}</span>
+            </a>
+            <span className="text-gray-300 dark:text-zinc-700">|</span>
+            <a
+              href="https://malvioapps.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 text-sm text-gray-450 dark:text-zinc-550 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+            >
+              <ExternalLink size={14} />
+              <span>MalvioApps</span>
+            </a>
           </div>
         </div>
       </footer>
@@ -1427,7 +1449,7 @@ export default function App() {
       </nav>
 
       {/* Scroll Navigation Floating Buttons */}
-      <div className={`scroll-nav-buttons fixed right-4 ${activeTab === "recipe-detail" ? "bottom-36" : "bottom-20"} md:right-8 md:bottom-8 z-40 flex flex-col gap-2.5 no-print select-none`}>
+      <div className={`scroll-nav-buttons fixed right-4 ${activeTab === "recipe-detail" ? "bottom-36" : "bottom-20"} md:right-8 md:bottom-8 z-50 flex flex-col gap-2.5 no-print select-none`}>
         {showScrollTop && (
           <button
             type="button"

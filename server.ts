@@ -119,6 +119,71 @@ if (!ai) {
 }
 
 /**
+ * Wraps Gemini API calls with retry logic for transient errors (503, 429).
+ */
+async function generateContentWithRetry(params: any, retries = 3): Promise<any> {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      return await ai!.models.generateContent(params);
+    } catch (error: any) {
+      const isRetryable = error?.status === 503 || error?.status === 429 || error?.code === 503;
+      if (isRetryable && attempt < retries) {
+        const delay = Math.min(1000 * Math.pow(2, attempt), 10000);
+        logger.warn(`[Gemini] Error transitorio (alta demanda). Reintento ${attempt}/${retries} en ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      } else {
+        throw error;
+      }
+    }
+  }
+}
+
+// Server-side i18n helper using the same translation JSON files as the client
+const translations: Record<string, Record<string, string>> = {};
+function loadTranslations(): void {
+  for (const lang of ["es", "en"]) {
+    try {
+      const filePath = path.join(process.cwd(), "src", "i18n", `${lang}.json`);
+      const data = JSON.parse(fs.readFileSync(filePath, "utf-8"));
+      translations[lang] = flattenKeys(data);
+    } catch {
+      translations[lang] = {};
+    }
+  }
+}
+function flattenKeys(obj: Record<string, any>, prefix = ""): Record<string, string> {
+  return Object.keys(obj).reduce((acc, key) => {
+    const val = obj[key];
+    const newKey = prefix ? `${prefix}.${key}` : key;
+    if (typeof val === "object" && val !== null && !Array.isArray(val)) {
+      Object.assign(acc, flattenKeys(val, newKey));
+    } else if (typeof val === "string") {
+      acc[newKey] = val;
+    }
+    return acc;
+  }, {} as Record<string, string>);
+}
+function t(key: string, lang = "es"): string {
+  return translations[lang]?.[key] ?? translations["en"]?.[key] ?? key;
+}
+loadTranslations();
+
+/**
+ * Returns a user-friendly error message for Gemini API errors.
+ */
+function friendlyGeminiError(error: any, lang = "es"): string {
+  const status = error?.status || error?.code;
+  const msg = (error?.message || "").toLowerCase();
+  if (status === 503 || msg.includes("unavailable") || msg.includes("high demand")) {
+    return t("error.gemini_overloaded", lang);
+  }
+  if (status === 429 || msg.includes("resource_exhausted") || msg.includes("quota") || msg.includes("rate")) {
+    return t("error.gemini_quota", lang);
+  }
+  return t("error.gemini_unexpected", lang);
+}
+
+/**
  * Get path to a prompt file for the given type and language.
  * Falls back to Spanish if the file doesn't exist for the given language.
  */
@@ -500,7 +565,7 @@ async function processPDFWithGemini(filePath: string, lang: string = "es"): Prom
 
   const optimizedPrompt = await getOptimizedPrompt(lang);
 
-  const response = await ai.models.generateContent({
+  const response = await generateContentWithRetry({
     model: "gemini-3.5-flash",
     contents: [
       {
@@ -771,7 +836,7 @@ Restricciones:
 - Devuelve únicamente el JSON crudo, sin bloques de código conversacionales ni explicaciones iniciales/finales.
 `;
 
-  const response = await ai.models.generateContent({
+  const response = await generateContentWithRetry({
     model: "gemini-3.5-flash",
     contents: prompt,
     config: {
@@ -863,7 +928,7 @@ app.post("/api/plan/batch-cooking", batchCookingLimiter, async (req, res) => {
     });
   } catch (error: any) {
     logger.error("Error generating/saving batch cooking:", error);
-    res.status(500).json({ error: "No se pudo generar la guía de Batch Cooking. Detalles: " + error.message });
+    res.status(500).json({ error: friendlyGeminiError(error, req.body?.lang) });
   }
 });
 
@@ -975,7 +1040,7 @@ app.post("/api/upload", uploadLimiter, async (req, res) => {
 
   } catch (error: any) {
     responseSent = true;
-    logger.error("Error al procesar PDF con Gemini:", error);
+    logger.error("Error processing PDF with Gemini:", error);
 
     // Clean up file if parsing failed
     if (savedFileName) {
@@ -991,35 +1056,8 @@ app.post("/api/upload", uploadLimiter, async (req, res) => {
       }
     }
 
-    let rawError = "";
-    if (error && typeof error === "object") {
-      rawError = error.message || JSON.stringify(error);
-      if (error.cause) {
-        let causeMsg = "";
-        if (error.cause && typeof error.cause === "object") {
-          causeMsg = (error.cause as any).message || (error.cause as any).code || JSON.stringify(error.cause);
-        } else {
-          causeMsg = String(error.cause);
-        }
-        rawError += ` (Causa: ${causeMsg})`;
-      }
-    } else {
-      rawError = String(error);
-    }
-
-    if (
-      rawError.includes("prepayment") ||
-      rawError.includes("depleted") ||
-      rawError.includes("RESOURCE_EXHAUSTED") ||
-      rawError.includes("billing")
-    ) {
-      return res.status(429).json({
-        error: "Los créditos de prepago de Google AI Studio o el límite de uso de la clave de API de Gemini se han agotado (RESOURCE_EXHAUSTED). Por favor, ve a tu panel de control de Google AI Studio (https://aistudio.google.com/) o de Google Cloud Consola para gestionar el saldo de prepago, o revisa las claves de API configuradas en los ajustes."
-      });
-    }
-
     res.status(500).json({
-      error: "Ocurrió un error al procesar el PDF de alimentos con GenAI. Detalles: " + rawError
+      error: friendlyGeminiError(error, lang)
     });
   }
 });
@@ -1303,24 +1341,9 @@ app.post("/api/reprocess", uploadLimiter, async (req, res) => {
       metadata: savedPlan.metadata || planMetadata,
     });
   } catch (error: any) {
-    logger.error("Error al reprocesar PDF con Gemini:", error);
-    let rawError = "";
-    if (error && typeof error === "object") {
-      rawError = error.message || String(error);
-      if (error.cause) {
-        let causeMsg = "";
-        if (error.cause && typeof error.cause === "object") {
-          causeMsg = (error.cause as any).message || (error.cause as any).code || JSON.stringify(error.cause);
-        } else {
-          causeMsg = String(error.cause);
-        }
-        rawError += ` (Causa: ${causeMsg})`;
-      }
-    } else {
-      rawError = String(error);
-    }
+    logger.error("Error reprocessing PDF with Gemini:", error);
     res.status(500).json({
-      error: "Ocurrió un error al reprocesar el PDF. Detalles: " + rawError
+      error: friendlyGeminiError(error, req.body?.lang)
     });
   }
 });
@@ -1682,7 +1705,7 @@ app.post("/api/recipes/process-ai", generalWriteLimiter, async (req, res) => {
   }
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await generateContentWithRetry({
       model: "gemini-3.5-flash",
       contents: contents,
       config: {
@@ -1737,8 +1760,8 @@ app.post("/api/recipes/process-ai", generalWriteLimiter, async (req, res) => {
       res.status(500).json({ error: "La respuesta de Gemini no coincide con el formato esperado." });
     }
   } catch (error: any) {
-    logger.error("Error al procesar receta con IA:", error);
-    res.status(500).json({ error: "Error al procesar la receta con IA. Detalles: " + error.message });
+    logger.error("Error processing recipe with AI:", error);
+    res.status(500).json({ error: friendlyGeminiError(error, lang) });
   }
 });
 

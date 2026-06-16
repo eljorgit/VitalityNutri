@@ -82,7 +82,10 @@
     "retry": "Reintentar Conexión",
     "delete_recipe_title": "No se pudo eliminar la receta",
     "delete_recipe_msg": "Inténtalo de nuevo en unos segundos.",
-    "download_plan_error": "No se pudo descargar la planificación activa de la base."
+    "download_plan_error": "No se pudo descargar la planificación activa de la base.",
+    "gemini_overloaded": "El servicio de IA de Gemini está temporalmente saturado. Inténtalo de nuevo en unos minutos.",
+    "gemini_quota": "Se ha alcanzado el límite de uso de la API de Gemini. Revisa tu plan en Google AI Studio.",
+    "gemini_unexpected": "Error inesperado al comunicarse con la IA de Gemini."
   },
 
   "confirm": {
@@ -107,7 +110,8 @@
   },
 
   "footer": {
-    "tagline": "© 2026 VitalityNutri. Alimentación consciente, viva y pautada."
+    "tagline": "© 2026 VitalityNutri. Alimentación consciente, viva y pautada.",
+    "github": "Código fuente"
   },
 
   "mobile_nav": {
