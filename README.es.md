@@ -24,6 +24,13 @@ VitalityNutri es una aplicación web full-stack de planificación nutricional qu
 
 ---
 
+## 📸 Capturas de Pantalla
+
+<img src="docs/screenshot-calendar.png" alt="Calendario Semanal" width="49%" /> <img src="docs/screenshot-grocery-list.png" alt="Lista de la Compra" width="49%" />
+<img src="docs/screenshot-recipe-detail.png" alt="Detalle de Receta" width="49%" /> <img src="docs/screenshot-batch-cooking.png" alt="Batch Cooking" width="49%" />
+
+---
+
 ## ✨ Características
 
 * **🤖 Extracción Automática con IA** — Carga planes PDF y la IA extrae menús semanales estructurados automáticamente
@@ -211,3 +218,40 @@ Diccionario de ingredientes conocidos con categorías para el agrupamiento intel
 | `npm run lint` | Verificación de tipos TypeScript (`tsc --noEmit`) |
 | `npm test` | Ejecuta la suite de tests Vitest |
 | `npm run test:watch` | Ejecuta tests en modo watch |
+| `npm run test:e2e` | Ejecuta tests e2e con Playwright |
+
+---
+
+## 🤖 Pipeline CI/CD
+
+El proyecto usa un único workflow de GitHub Actions (`.github/workflows/ci.yml`) con las siguientes etapas:
+
+| Job | Descripción | Requiere secrets | Bloquea build |
+|-----|-------------|-----------------|:---:|
+| `lint` | TypeScript type-check | — | ✅ |
+| `test` | Tests unitarios Vitest + coverage | — | ✅ |
+| `codeql` | Análisis de seguridad CodeQL | — (solo en repo público) | ✅ |
+| `snyk` | Escaneo de dependencias Snyk | `SNYK_TOKEN` | ✅ |
+| `e2e` | Smoke tests con Playwright | — | ✅ |
+| `sonar` | Quality gate SonarQube | `SONAR_TOKEN` | ✅ |
+| `build` | Compilación frontend + backend | — | ✅ |
+| `docker` | Build & push imagen a GHCR | — (usa `GITHUB_TOKEN`) | solo push |
+| `deploy` | Despliegue por SSH al servidor | `SSH_HOST`, `SSH_KEY`, `DEPLOY_PATH` | solo push |
+
+### 🔧 Forks / Autogestión
+
+Los jobs que requieren servicios externos (`snyk`, `sonar`, `deploy`) se **saltan automáticamente** si sus secrets no están configurados. Para activarlos, añade estos **repository secrets** (`Settings → Secrets and variables → Actions`):
+
+| Secret | Usado por | Propósito |
+|--------|-----------|-----------|
+| `SNYK_TOKEN` | `snyk` | Token API de Snyk para escaneo de dependencias |
+| `SONAR_TOKEN` | `sonar` | Token de proyecto SonarQube |
+| `SONAR_HOST_URL` | `sonar` | URL de tu servidor SonarQube (o usa `vars`) |
+| `TAILSCALE_AUTHKEY` | `sonar`, `deploy` | Clave de Tailscale (opcional — saltar si el server es público) |
+| `SSH_HOST` | `deploy` | Hostname del servidor de despliegue |
+| `SSH_USER` | `deploy` | Usuario SSH |
+| `SSH_KEY` | `deploy` | Clave privada SSH |
+| `SSH_PORT` | `deploy` | Puerto SSH (por defecto: 22) |
+| `DEPLOY_PATH` | `deploy` | Ruta en el servidor para el despliegue |
+
+Para ejecutar el pipeline completo, haz el repositorio **público** (necesario para CodeQL code scanning en forks).

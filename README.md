@@ -24,6 +24,13 @@ VitalityNutri is a full-stack nutritional planning web application that automate
 
 ---
 
+## 📸 Screenshots
+
+<img src="docs/screenshot-calendar.png" alt="Weekly Calendar" width="49%" /> <img src="docs/screenshot-grocery-list.png" alt="Grocery List" width="49%" />
+<img src="docs/screenshot-recipe-detail.png" alt="Recipe Detail" width="49%" /> <img src="docs/screenshot-batch-cooking.png" alt="Batch Cooking" width="49%" />
+
+---
+
 ## ✨ Features
 
 * **🤖 AI-Powered Extraction** — Upload PDF meal plans and let Gemini AI extract structured weekly menus automatically
@@ -211,3 +218,40 @@ Dictionary of known ingredients with categories for smart grocery list grouping.
 | `npm run lint` | TypeScript type-check (`tsc --noEmit`) |
 | `npm test` | Run Vitest test suite |
 | `npm run test:watch` | Run tests in watch mode |
+| `npm run test:e2e` | Run Playwright e2e tests |
+
+---
+
+## 🤖 CI/CD Pipeline
+
+The project uses a single GitHub Actions workflow (`.github/workflows/ci.yml`) with the following stages:
+
+| Job | Description | Requires secrets | Blocks build |
+|-----|-------------|-----------------|:---:|
+| `lint` | TypeScript type-check | — | ✅ |
+| `test` | Vitest unit tests + coverage | — | ✅ |
+| `codeql` | CodeQL security analysis | — (solo en repo público) | ✅ |
+| `snyk` | Snyk dependency scan | `SNYK_TOKEN` | ✅ |
+| `e2e` | Playwright smoke tests | — | ✅ |
+| `sonar` | SonarQube quality gate | `SONAR_TOKEN` | ✅ |
+| `build` | Compile frontend + backend | — | ✅ |
+| `docker` | Build & push image to GHCR | — (uses `GITHUB_TOKEN`) | push only |
+| `deploy` | Deploy via SSH to server | `SSH_HOST`, `SSH_KEY`, `DEPLOY_PATH` | push only |
+
+### 🔧 Forking / Self-hosting
+
+Jobs that require external services (`snyk`, `sonar`, `deploy`) are automatically **skipped** if their required secrets are not configured. To enable them, add these **repository secrets** (`Settings → Secrets and variables → Actions`):
+
+| Secret | Used by | Purpose |
+|--------|---------|---------|
+| `SNYK_TOKEN` | `snyk` | Snyk API token for dependency scanning |
+| `SONAR_TOKEN` | `sonar` | SonarQube project token |
+| `SONAR_HOST_URL` | `sonar` | Your SonarQube server URL (or use `vars`) |
+| `TAILSCALE_AUTHKEY` | `sonar`, `deploy` | Tailscale auth key (optional — skip if server is public) |
+| `SSH_HOST` | `deploy` | Deployment server hostname |
+| `SSH_USER` | `deploy` | SSH user |
+| `SSH_KEY` | `deploy` | SSH private key |
+| `SSH_PORT` | `deploy` | SSH port (default: 22) |
+| `DEPLOY_PATH` | `deploy` | Server path for deployment |
+
+To run the full pipeline, make the repository **public** (required for CodeQL code scanning on forks).

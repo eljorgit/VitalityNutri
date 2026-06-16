@@ -13,6 +13,7 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.number || github.sha }}
   cancel-in-progress: true
 
+
 jobs:
   lint:
     name: Lint (type-check)
@@ -45,6 +46,7 @@ jobs:
 
   codeql:
     name: CodeQL
+    if: ${{ github.repository_visibility == 'public' }}
     runs-on: ubuntu-latest
     permissions:
       actions: read
@@ -64,6 +66,7 @@ jobs:
 
   snyk:
     name: Snyk Security Scan
+    if: ${{ secrets.SNYK_TOKEN != '' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -98,6 +101,7 @@ jobs:
 
   sonar:
     name: SonarQube Analysis
+    if: ${{ secrets.SONAR_TOKEN != '' }}
     needs: test
     runs-on: ubuntu-latest
     steps:
@@ -116,6 +120,7 @@ jobs:
           name: coverage
           path: coverage/
       - name: Connect to Tailscale
+        if: ${{ secrets.TAILSCALE_AUTHKEY != '' }}
         uses: tailscale/github-action@v2
         with:
           authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
@@ -180,12 +185,13 @@ jobs:
 
   deploy:
     name: Deploy to Production
-    if: github.event_name != 'pull_request'
+    if: ${{ github.event_name != 'pull_request' && secrets.SSH_HOST != '' && secrets.SSH_KEY != '' }}
     needs: docker
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Connect to Tailscale
+        if: ${{ secrets.TAILSCALE_AUTHKEY != '' }}
         uses: tailscale/github-action@v2
         with:
           authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
@@ -197,7 +203,7 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           port: ${{ secrets.SSH_PORT || 22 }}
           source: "docker-compose.yml"
-          target: "/opt/apps/malvioapps/vitalitynutri"
+          target: "${{ secrets.DEPLOY_PATH }}"
           overwrite: true
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
@@ -207,7 +213,7 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           port: ${{ secrets.SSH_PORT || 22 }}
           script: |
-            cd /opt/apps/malvioapps/vitalitynutri
+            cd ${{ secrets.DEPLOY_PATH }}
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker compose pull
             docker compose up -d --remove-orphans
