@@ -66,18 +66,20 @@ jobs:
 
   snyk:
     name: Snyk Security Scan
-    if: ${{ secrets.SNYK_TOKEN != '' }}
     runs-on: ubuntu-latest
+    env:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - name: Run Snyk test
+        if: env.SNYK_TOKEN != ''
         uses: snyk/actions@v1.0.0
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
           args: --severity-threshold=high
       - name: Run Snyk monitor
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' && env.SNYK_TOKEN != ''
         uses: snyk/actions@v1.0.0
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
@@ -101,9 +103,11 @@ jobs:
 
   sonar:
     name: SonarQube Analysis
-    if: ${{ secrets.SONAR_TOKEN != '' }}
     needs: test
     runs-on: ubuntu-latest
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      TAILSCALE_AUTHKEY: ${{ secrets.TAILSCALE_AUTHKEY }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -120,11 +124,12 @@ jobs:
           name: coverage
           path: coverage/
       - name: Connect to Tailscale
-        if: ${{ secrets.TAILSCALE_AUTHKEY != '' }}
+        if: env.TAILSCALE_AUTHKEY != ''
         uses: tailscale/github-action@v2
         with:
           authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
       - name: SonarQube Scan
+        if: env.SONAR_TOKEN != ''
         uses: SonarSource/sonarqube-scan-action@v8.2.0
         env:
           SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL || secrets.SONAR_HOST_URL }}
@@ -132,6 +137,7 @@ jobs:
 
   build:
     name: Build
+    if: ${{ !failure() && !cancelled() }}
     needs: [lint, test, codeql, snyk, e2e, sonar]
     runs-on: ubuntu-latest
     steps:
@@ -185,17 +191,23 @@ jobs:
 
   deploy:
     name: Deploy to Production
-    if: ${{ github.event_name != 'pull_request' && secrets.SSH_HOST != '' && secrets.SSH_KEY != '' }}
+    if: github.event_name != 'pull_request'
     needs: docker
     runs-on: ubuntu-latest
+    env:
+      SSH_HOST: ${{ secrets.SSH_HOST }}
+      SSH_KEY: ${{ secrets.SSH_KEY }}
+      SSH_USER: ${{ secrets.SSH_USER }}
+      TAILSCALE_AUTHKEY: ${{ secrets.TAILSCALE_AUTHKEY }}
     steps:
       - uses: actions/checkout@v4
       - name: Connect to Tailscale
-        if: ${{ secrets.TAILSCALE_AUTHKEY != '' }}
+        if: env.TAILSCALE_AUTHKEY != ''
         uses: tailscale/github-action@v2
         with:
           authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
       - name: Copy docker-compose.yml to server
+        if: env.SSH_HOST != '' && env.SSH_KEY != ''
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -206,6 +218,7 @@ jobs:
           target: "${{ secrets.DEPLOY_PATH }}"
           overwrite: true
       - name: Deploy via SSH
+        if: env.SSH_HOST != '' && env.SSH_KEY != ''
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST }}
