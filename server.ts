@@ -103,6 +103,16 @@ const unsplash = process.env.UNSPLASH_ACCESS_KEY && process.env.UNSPLASH_ACCESS_
   ? createApi({ accessKey: process.env.UNSPLASH_ACCESS_KEY })
   : null;
 
+const GEMINI_MODEL_FALLBACK_ORDER = [
+  "gemini-3.5-flash",
+  "gemini-3.1-flash-lite",
+  "gemini-3-flash",
+  "gemini-2.5-flash",
+  "gemini-2.5-flash-lite",
+] as const;
+
+const GEMINI_RETRIES_PER_MODEL = 3;
+
 // Auto-seed demo plan when no Gemini API key is configured
 if (!ai) {
   const { plan: activePlan } = getPlan();
@@ -121,21 +131,74 @@ if (!ai) {
 /**
  * Wraps Gemini API calls with retry logic for transient errors (503, 429).
  */
-async function generateContentWithRetry(params: any, retries = 3): Promise<any> {
-  for (let attempt = 1; attempt <= retries; attempt++) {
-    try {
-      return await ai!.models.generateContent(params);
-    } catch (error: any) {
-      const isRetryable = error?.status === 503 || error?.status === 429 || error?.code === 503;
-      if (isRetryable && attempt < retries) {
-        const delay = Math.min(1000 * Math.pow(2, attempt), 10000);
-        logger.warn(`[Gemini] Error transitorio (alta demanda). Reintento ${attempt}/${retries} en ${delay}ms...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-      } else {
-        throw error;
+function isRetryableGeminiError(error: any): boolean {
+  const status = error?.status || error?.code;
+  const message = String(error?.message || "").toLowerCase();
+  return (
+    status === 429 ||
+    status === 503 ||
+    status === 504 ||
+    message.includes("high demand") ||
+    message.includes("unavailable") ||
+    message.includes("resource_exhausted") ||
+    message.includes("quota") ||
+    message.includes("rate") ||
+    message.includes("timeout")
+  );
+}
+
+function isUnsupportedModelError(error: any): boolean {
+  const status = error?.status || error?.code;
+  const message = String(error?.message || "").toLowerCase();
+  return (
+    status === 400 ||
+    status === 404 ||
+    message.includes("model") && (message.includes("not found") || message.includes("unsupported") || message.includes("not available"))
+  );
+}
+
+async function generateContentWithRetry(params: any, retriesPerModel = GEMINI_RETRIES_PER_MODEL): Promise<any> {
+  const { model: _ignoredModel, ...restParams } = params;
+  let lastError: any = null;
+
+  for (const model of GEMINI_MODEL_FALLBACK_ORDER) {
+    for (let attempt = 1; attempt <= retriesPerModel; attempt++) {
+      try {
+        if (attempt === 1) {
+          logger.info(`[Gemini] Trying model: ${model}`);
+        }
+        return await ai!.models.generateContent({
+          ...restParams,
+          model,
+        });
+      } catch (error: any) {
+        lastError = error;
+        const retryable = isRetryableGeminiError(error);
+        const unsupportedModel = isUnsupportedModelError(error);
+        const isLastAttemptForModel = attempt >= retriesPerModel;
+
+        if (unsupportedModel) {
+          logger.warn(`[Gemini] Model ${model} is unavailable/unsupported for this account. Trying next fallback model...`);
+          break;
+        }
+
+        if (!retryable) {
+          throw error;
+        }
+
+        if (!isLastAttemptForModel) {
+          const delay = Math.min(1000 * Math.pow(2, attempt - 1), 10000);
+          logger.warn(`[Gemini] Model ${model} transient error. Retry ${attempt}/${retriesPerModel} in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+
+        logger.warn(`[Gemini] Model ${model} exhausted retries (${retriesPerModel}). Trying next fallback model...`);
       }
     }
   }
+
+  throw lastError || new Error("No se pudo obtener respuesta de ningún modelo Gemini.");
 }
 
 // Server-side i18n helper using the same translation JSON files as the client
@@ -566,7 +629,6 @@ async function processPDFWithGemini(filePath: string, lang: string = "es"): Prom
   const optimizedPrompt = await getOptimizedPrompt(lang);
 
   const response = await generateContentWithRetry({
-    model: "gemini-3.5-flash",
     contents: [
       {
         inlineData: {
@@ -837,7 +899,6 @@ Restricciones:
 `;
 
   const response = await generateContentWithRetry({
-    model: "gemini-3.5-flash",
     contents: prompt,
     config: {
       responseMimeType: "application/json",
@@ -1711,7 +1772,6 @@ app.post("/api/recipes/process-ai", generalWriteLimiter, async (req, res) => {
 
   try {
     const response = await generateContentWithRetry({
-      model: "gemini-3.5-flash",
       contents: contents,
       config: {
         responseMimeType: "application/json",
