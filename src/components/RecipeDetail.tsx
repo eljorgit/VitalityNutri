@@ -1847,6 +1847,43 @@ export default function RecipeDetail({
               })}
             </ul>
 
+            {/* Nutritional info per serving (optional field) */}
+            {recipe.nutrition ? (
+              <div className="mt-8 p-4 bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200/50 dark:border-zinc-800 shadow-sm flex flex-col gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-emerald-600 dark:text-emerald-400 select-none shrink-0 text-[18px]">monitoring</span>
+                  <h4 className="text-xs font-bold text-slate-800 dark:text-zinc-200 uppercase tracking-wider">
+                    {t("recipedetail.nutrition_per_serving")}
+                  </h4>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <div className="bg-emerald-50/60 dark:bg-emerald-950/30 rounded-xl p-3 text-left border border-emerald-100/40 dark:border-emerald-900/40">
+                    <p className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest mb-1">{t("recipedetail.nutrition_calories")}</p>
+                    <p className="text-sm font-black text-slate-800 dark:text-zinc-100">{Math.round(recipe.nutrition.calories * multiplier)} <span className="text-[10px] font-semibold text-zinc-400">{t("recipedetail.kcal")}</span></p>
+                  </div>
+                  <div className="bg-emerald-50/60 dark:bg-emerald-950/30 rounded-xl p-3 text-left border border-emerald-100/40 dark:border-emerald-900/40">
+                    <p className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest mb-1">{t("recipedetail.nutrition_protein")}</p>
+                    <p className="text-sm font-black text-slate-800 dark:text-zinc-100">{Math.round(recipe.nutrition.protein * multiplier)} <span className="text-[10px] font-semibold text-zinc-400">g</span></p>
+                  </div>
+                  <div className="bg-emerald-50/60 dark:bg-emerald-950/30 rounded-xl p-3 text-left border border-emerald-100/40 dark:border-emerald-900/40">
+                    <p className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest mb-1">{t("recipedetail.nutrition_carbs")}</p>
+                    <p className="text-sm font-black text-slate-800 dark:text-zinc-100">{Math.round(recipe.nutrition.carbs * multiplier)} <span className="text-[10px] font-semibold text-zinc-400">g</span></p>
+                  </div>
+                  <div className="bg-emerald-50/60 dark:bg-emerald-950/30 rounded-xl p-3 text-left border border-emerald-100/40 dark:border-emerald-900/40">
+                    <p className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest mb-1">{t("recipedetail.nutrition_fat")}</p>
+                    <p className="text-sm font-black text-slate-800 dark:text-zinc-100">{Math.round(recipe.nutrition.fat * multiplier)} <span className="text-[10px] font-semibold text-zinc-400">g</span></p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-8 p-4 bg-zinc-50/60 dark:bg-zinc-950/30 rounded-2xl border border-dashed border-zinc-200/70 dark:border-zinc-800/70 flex items-center gap-3">
+                <span className="material-symbols-outlined text-zinc-400 dark:text-zinc-600 select-none shrink-0 text-[18px]">info</span>
+                <p className="text-xs text-zinc-500 dark:text-zinc-500 italic">
+                  {t("recipedetail.nutrition_not_available")}
+                </p>
+              </div>
+            )}
+
             {/* Nutrition tip card box */}
             {recipe.tips && (
               <div className="mt-8 p-4 bg-emerald-50/50 dark:bg-emerald-950/20 rounded-2xl border border-emerald-100/45 dark:border-emerald-900/40 flex gap-3">

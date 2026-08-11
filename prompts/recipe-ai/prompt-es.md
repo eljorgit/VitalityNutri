@@ -37,10 +37,22 @@ Esquema JSON del objeto de respuesta:
       ],
       "tips": "Consejos breves de cocina",
       "nutritionistTips": "Consejo de nutricionista personalizado para esta receta",
-      "servings": 4
+      "servings": 4,
+      "nutrition": {
+        "calories": 350,
+        "protein": 25,
+        "carbs": 40,
+        "fat": 12
+      }
     }
   ]
 }
+
+INFORMACIÓN NUTRICIONAL (campo nutrition):
+- Estima los macronutrientes POR RACIÓN basándote en los ingredientes y las cantidades cuando sea posible.
+- Unidades: calorías en kcal, proteína/carbohidratos/grasa en gramos.
+- Si la receta de origen no incluye datos nutricionales y no puedes estimarlos de forma fiable a partir de los ingredientes, OMITE el campo "nutrition" por completo (no inventes ni adivines).
+- El campo "calories" de nivel superior es el total aproximado por ración; "nutrition" aporta el desglose de macronutrientes.
 
 REGLA CRÍTICA PARA LOS PASOS (steps):
 No incluyas ningún prefijo numérico ni de texto como "Paso X:" o "Paso X." al inicio de los pasos de preparación. Cada paso debe ser directamente la acción a realizar.

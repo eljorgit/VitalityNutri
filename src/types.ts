@@ -22,6 +22,13 @@ export interface CategorizedSteps {
   general?: string[];
 }
 
+export interface RecipeNutrition {
+  calories: number; // kcal per serving
+  protein: number; // grams per serving
+  carbs: number; // grams per serving
+  fat: number; // grams per serving
+}
+
 export interface Recipe {
   id?: number;
   recipeName: string;
@@ -34,6 +41,7 @@ export interface Recipe {
   steps?: CategorizedSteps | string[]; // optional: detailed culinary steps
   servings?: number; // optional, minimum 1
   nutritionistTips?: string; // optional
+  nutrition?: RecipeNutrition; // optional: per-serving macros, absent = not available
   source?: "plan" | "manual" | "ocr" | "document" | "text"; // optional since plans parsed from PDFs might not have it initially
   sourcePlanId?: number; // optional
   isAiGenerated?: boolean; // optional

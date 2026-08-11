@@ -55,6 +55,7 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
   const [image, setImage] = useState("");
   const [tips, setTips] = useState("");
   const [nutritionistTips, setNutritionistTips] = useState("");
+  const [nutrition, setNutrition] = useState<Recipe["nutrition"]>(undefined);
   const [servings, setServings] = useState<number>(1);
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [steps, setSteps] = useState<string[]>([]);
@@ -461,6 +462,7 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
       setImage(recipe.image || "");
       setTips(recipe.tips || "");
       setNutritionistTips(recipe.nutritionistTips || "");
+      setNutrition(recipe.nutrition || undefined);
       setServings(recipe.servings || 1);
       setSeason(recipe.season || "Todas");
 
@@ -1250,6 +1252,7 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
     setDescriptorTag(parsedTag3.descriptor || "");
     setTips(selected.tips || "");
     setNutritionistTips(selected.nutritionistTips || "");
+    setNutrition(selected.nutrition || undefined);
     setServings(selected.servings || 1);
 
     if (selected.image || selected.isOriginalManual) {
@@ -1306,6 +1309,7 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
       tips: tips.trim(),
       steps: activeStps,
       nutritionistTips: nutritionistTips.trim() || undefined,
+      nutrition,
       servings: Math.max(1, servings),
       source: isEditing ? recipe.source || "manual" : (importType || "manual"),
       sourcePlanId: isEditing ? recipe.sourcePlanId : undefined,

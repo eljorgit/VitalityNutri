@@ -37,10 +37,22 @@ JSON schema of the response object:
       ],
       "tips": "Brief cooking tips",
       "nutritionistTips": "Personalized nutritionist advice for this recipe",
-      "servings": 4
+      "servings": 4,
+      "nutrition": {
+        "calories": 350,
+        "protein": 25,
+        "carbs": 40,
+        "fat": 12
+      }
     }
   ]
 }
+
+NUTRITIONAL INFORMATION (nutrition field):
+- Estimate macronutrients PER SERVING based on the ingredients and quantities when possible.
+- Units: calories in kcal, protein/carbs/fat in grams.
+- If the source recipe does not include nutritional data and you cannot reliably estimate it from ingredients, OMIT the "nutrition" field entirely (do not invent or guess).
+- The "calories" field at the top level is the approximate total per serving; "nutrition" provides the macro breakdown.
 
 CRITICAL RULE FOR STEPS:
 Do not include any numeric prefixes or text like "Step X:" or "Step X." at the beginning of the preparation steps. Each step should directly describe the action to be performed.

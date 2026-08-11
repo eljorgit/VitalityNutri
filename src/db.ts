@@ -77,6 +77,7 @@ db.exec(`
     tips TEXT,
     steps_json TEXT,
     nutritionist_tips TEXT,
+    nutrition_json TEXT,
     servings INTEGER DEFAULT 1,
     source TEXT,
     source_plan_id INTEGER,
@@ -110,6 +111,17 @@ try {
   logger.error("Error creating database indexes:", error);
 }
 
+// Migration: add nutrition_json column to recipes (existing databases)
+try {
+  const recipesColumns = db.prepare("PRAGMA table_info(recipes)").all() as any[];
+  if (!recipesColumns.some((c) => c.name === "nutrition_json")) {
+    db.exec(`ALTER TABLE recipes ADD COLUMN nutrition_json TEXT`);
+    logger.info("[Migration] Added nutrition_json column to recipes table.");
+  }
+} catch (error) {
+  logger.error("Error migrating recipes.nutrition_json:", error);
+}
+
 /**
  * Resolves a recipe in the database. If it exists (by name), returns its ID.
  * Otherwise, inserts it into the database and returns the new auto-incremented ID.
@@ -130,9 +142,9 @@ export function getOrCreateRecipeInBook(recipe: Recipe, planId?: number): number
     const stmt = db.prepare(`
       INSERT INTO recipes (
         recipe_name, calories, time, tag, image, ingredients_json, tips, steps_json,
-        nutritionist_tips, servings, source, source_plan_id, is_ai_generated, is_favorite, season, created_at, updated_at
+        nutritionist_tips, nutrition_json, servings, source, source_plan_id, is_ai_generated, is_favorite, season, created_at, updated_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const result = stmt.run(
@@ -145,6 +157,7 @@ export function getOrCreateRecipeInBook(recipe: Recipe, planId?: number): number
       recipe.tips || "",
       JSON.stringify(recipe.steps || []),
       recipe.nutritionistTips || null,
+      recipe.nutrition ? JSON.stringify(recipe.nutrition) : null,
       servings,
       recipe.source || "plan",
       planId || null,
@@ -856,9 +869,9 @@ export function saveUniqueRecipesFromPlan(plan: MealPlan, planId?: number): void
   const insertRecipeStmt = db.prepare(`
     INSERT INTO recipes (
       recipe_name, calories, time, tag, image, ingredients_json, tips, steps_json,
-      nutritionist_tips, servings, source, source_plan_id, is_ai_generated, created_at, updated_at
+      nutritionist_tips, nutrition_json, servings, source, source_plan_id, is_ai_generated, created_at, updated_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(recipe_name) DO NOTHING
   `);
 
@@ -878,6 +891,7 @@ export function saveUniqueRecipesFromPlan(plan: MealPlan, planId?: number): void
         recipe.tips || "",
         JSON.stringify(steps),
         recipe.nutritionistTips || null,
+        recipe.nutrition ? JSON.stringify(recipe.nutrition) : null,
         servings,
         "plan",
         planId || null,
@@ -966,6 +980,7 @@ export function getRecipes(): Recipe[] {
       tips: r.tips,
       steps: JSON.parse(r.steps_json),
       nutritionistTips: r.nutritionist_tips || undefined,
+      nutrition: r.nutrition_json ? JSON.parse(r.nutrition_json) : undefined,
       servings: r.servings || 1,
       source: (r.source as any) || "manual",
       sourcePlanId: r.source_plan_id || undefined,
@@ -996,6 +1011,7 @@ export function getRecipeById(id: number): Recipe | null {
         tips: r.tips,
         steps: JSON.parse(r.steps_json),
         nutritionistTips: r.nutritionist_tips || undefined,
+        nutrition: r.nutrition_json ? JSON.parse(r.nutrition_json) : undefined,
         servings: r.servings || 1,
         source: (r.source as any) || "manual",
         sourcePlanId: r.source_plan_id || undefined,
@@ -1023,9 +1039,9 @@ export function insertRecipe(recipe: Omit<Recipe, "id">): number {
     const stmt = db.prepare(`
       INSERT INTO recipes (
         recipe_name, calories, time, tag, image, ingredients_json, tips, steps_json,
-        nutritionist_tips, servings, source, source_plan_id, is_ai_generated, is_favorite, season, created_at, updated_at
+        nutritionist_tips, nutrition_json, servings, source, source_plan_id, is_ai_generated, is_favorite, season, created_at, updated_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const result = stmt.run(
@@ -1038,6 +1054,7 @@ export function insertRecipe(recipe: Omit<Recipe, "id">): number {
       recipe.tips || "",
       JSON.stringify(recipe.steps || []),
       recipe.nutritionistTips || null,
+      recipe.nutrition ? JSON.stringify(recipe.nutrition) : null,
       servings,
       recipe.source || "manual",
       recipe.sourcePlanId || null,
@@ -1070,7 +1087,7 @@ export function updateRecipeInBook(id: number, recipe: Recipe): void {
     const stmt = db.prepare(`
       UPDATE recipes
       SET recipe_name = ?, calories = ?, time = ?, tag = ?, image = ?,
-          ingredients_json = ?, tips = ?, steps_json = ?, nutritionist_tips = ?,
+          ingredients_json = ?, tips = ?, steps_json = ?, nutritionist_tips = ?, nutrition_json = ?,
           servings = ?, source = ?, source_plan_id = ?, is_ai_generated = ?, is_favorite = ?, season = ?, updated_at = ?
       WHERE id = ?
     `);
@@ -1085,6 +1102,7 @@ export function updateRecipeInBook(id: number, recipe: Recipe): void {
       recipe.tips || "",
       JSON.stringify(recipe.steps || []),
       recipe.nutritionistTips || null,
+      recipe.nutrition ? JSON.stringify(recipe.nutrition) : null,
       servings,
       recipe.source || "manual",
       recipe.sourcePlanId || null,
