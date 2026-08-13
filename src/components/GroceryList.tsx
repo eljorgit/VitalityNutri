@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { MealPlan, Ingredient, DayType, MealType } from "../types";
+import { MealPlan, Ingredient, DayType, MealType } from "@src/types";
 import ConfirmationModal, { ConfirmationVariant } from "./ConfirmationModal";
-import { getSiteVisibility } from "../utils/siteVisibility";
+import { getSiteVisibility } from "@utils/siteVisibility";
 
 const formatAmountAndUnit = (amount: number, unit: string) => {
   let normalizedUnit = unit.trim().toLowerCase();

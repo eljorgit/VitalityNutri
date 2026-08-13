@@ -20,7 +20,7 @@ import {
 } from "./utils/searchHelpers";
 import { translateTag } from "./utils/tags";
 import { Github, ExternalLink } from "lucide-react";
-import { version } from "../package.json";
+import { version } from "@/package.json";
 
 // --- Search Types ---
 interface SearchRecipeItem {

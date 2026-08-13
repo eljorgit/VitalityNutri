@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { Recipe, MealPlan, MealType } from "../types";
+import { Recipe, MealPlan, MealType } from "@src/types";
 import ConfirmationModal from "./ConfirmationModal";
 import ImagePlaceholder from "./ImagePlaceholder";
-import { MEAL_TAGS, MEAL_TAG_ICONS, getMealTag, translateTag } from "../utils/tags";
-import { logger } from "../utils/logger";
+import { MEAL_TAGS, MEAL_TAG_ICONS, getMealTag, translateTag } from "@utils/tags";
+import { logger } from "@utils/logger";
 
 interface RecetarioProps {
   onSelectRecipe: (recipe: Recipe) => void;

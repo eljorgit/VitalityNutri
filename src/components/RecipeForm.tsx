@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Recipe, Ingredient } from "../types";
+import { Recipe, Ingredient } from "@src/types";
 import ImagePlaceholder from "./ImagePlaceholder";
 import ConfirmationModal from "./ConfirmationModal";
-import { MEAL_TAGS, DESCRIPTOR_TAGS, parseTag, formatTag } from "../utils/tags";
+import { MEAL_TAGS, DESCRIPTOR_TAGS, parseTag, formatTag } from "@utils/tags";
 
 const getIngredientHelperText = (amount: number, unit: string, totalServings: number, t: (key: string, params?: any) => string) => {
   if (!amount || amount <= 0) return null;

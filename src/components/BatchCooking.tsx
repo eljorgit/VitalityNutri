@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { PlanMetadata, MealPlan, Recipe, DayType, MealType } from "../types";
+import { PlanMetadata, MealPlan, Recipe, DayType, MealType } from "@src/types";
 
 interface BatchCookingProps {
   plan: MealPlan | null;

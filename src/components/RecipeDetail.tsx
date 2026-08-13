@@ -1,11 +1,11 @@
 import React, { useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { DayType, MealType, Recipe, MealPlan, PlanMetadata } from "../types";
+import { DayType, MealType, Recipe, MealPlan, PlanMetadata } from "@src/types";
 import ConfirmationModal from "./ConfirmationModal";
 import ImagePlaceholder from "./ImagePlaceholder";
-import { getSiteVisibility } from "../utils/siteVisibility";
-import { translateTag } from "../utils/tags";
-import { logger } from "../utils/logger";
+import { getSiteVisibility } from "@utils/siteVisibility";
+import { translateTag } from "@utils/tags";
+import { logger } from "@utils/logger";
 
 const formatAmountAndUnit = (amount: number, unit: string) => {
   let normalizedUnit = unit.trim().toLowerCase();

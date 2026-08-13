@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { PlanMetadata, MealPlan } from "../types";
+import { PlanMetadata, MealPlan } from "@src/types";
 import ConfirmationModal from "./ConfirmationModal";
 import DuplicatePlanModal from "./DuplicatePlanModal";
-import { logger } from "../utils/logger";
+import { logger } from "@utils/logger";
 
 interface DashboardProps {
   metadata: PlanMetadata | null;

@@ -1,5 +1,5 @@
-import i18n from "../i18n/config";
-import { SUPPORTED_LANGS, type SupportedLang } from "../i18n/config";
+import i18n from "@i18n/config";
+import { SUPPORTED_LANGS, type SupportedLang } from "@i18n/config";
 
 type RouteDict = Record<string, string>;
 

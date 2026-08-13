@@ -1,6 +1,6 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { MealPlan, DayType, MealType, Recipe } from "../types";
+import { MealPlan, DayType, MealType, Recipe } from "@src/types";
 
 interface CalendarGridProps {
   plan: MealPlan | null;

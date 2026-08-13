@@ -13,17 +13,18 @@ Technical specification document and roadmap for developing the AI-powered diet 
 | **0. Config & Infra** | Zod env validation module (`server/config/env.ts`) | ⬜ Pending | High |
 | **0. Config & Infra** | AI provider abstraction interface + factory (`server/ai/`) | ⬜ Pending | High |
 | **0. Config & Infra** | SaaS vs OSS mode separation (`server/saas/`) | ⬜ Pending | High |
-| **1. Setup & DB** | Initial Node.js server configuration (Express / Fastify) | ⬜ Pending | High |
-| **1. Setup & DB** | Configure Database schema (SQLite for OSS, PostgreSQL for SaaS) | ⬜ Pending | High |
+| **1. Setup & DB** | Initial Node.js server configuration (Express / Fastify) | 🟡 In Progress | High |
+| **1. Setup & DB** | Configure Database backend + schema (`DB_DRIVER=sqlite|postgres`) with mode-aware defaults | ⬜ Pending | High |
+| **1. Setup & DB** | Implement Drizzle DB client + repositories (`server/db/`) for dialect-agnostic data access | ⬜ Pending | High |
 | **1. Setup & DB** | Create isolated accounts and obtain API Keys for Groq & Google AI Studio | ⬜ Pending | High |
 | **2. PDF Extraction** | Implement local plain text extraction (`pdf-parse` / `pdfjs-dist`) | ⬜ Pending | High |
 | **2. PDF Extraction** | Auto-detect selectable vs non-selectable PDF (text threshold >100 chars) | ⬜ Pending | High |
 | **2. PDF Extraction** | Implement Hash generator (SHA-256) for document caching | ⬜ Pending | High |
 | **3. AI Engine** | Groq provider implementation (OpenAI-compatible) | ⬜ Pending | High |
 | **3. AI Engine** | Gemini provider implementation (multimodal) | ⬜ Pending | High |
-| **3. AI Engine** | **Text Fallback Chain:** Groq Llama 3.3 → Groq Qwen 3.6 → Groq Llama 8B → Gemini Flash Lite → Gemini Flash Lite | ⬜ Pending | High |
-| **3. AI Engine** | **Dual-mode AI execution:** `USE_OMNIROUTE` gateway (default) vs Direct BYOK fallback — `generateAIResponse(alias, req)` single entry | ⬜ Pending | High |
-| **3. AI Engine** | **Multimodal Fallback Chain:** Gemini 3.5 Flash Lite → Gemini 3.1 Flash Lite | ⬜ Pending | High |
+| **3. AI Engine** | **Text Fallback Chain:** Groq Llama 3.3 → Groq Qwen 3.6 → Groq Llama 8B → Gemini 2.5 Flash Lite → Gemini 2.0 Flash | ⬜ Pending | High |
+| **3. AI Engine** | **Dual-mode AI execution:** `USE_OMNIROUTE` gateway (optional) vs Direct BYOK fallback — `generateAIResponse(alias, req)` single entry | ⬜ Pending | High |
+| **3. AI Engine** | **Multimodal Fallback Chain:** Gemini 2.5 Flash → Gemini 2.0 Flash | ⬜ Pending | High |
 | **3. AI Engine** | Consolidate prompts: 6 files → 3 (English base + runtime lang suffix) | ⬜ Pending | Medium |
 | **3. AI Engine** | Prompt tests: placeholder validation + non-empty checks | ⬜ Pending | Medium |
 | **3. AI Engine** | Recipe deduplication module prior to DB storage | ⬜ Pending | Medium |
@@ -38,13 +39,14 @@ Technical specification document and roadmap for developing the AI-powered diet 
 | **5. Auth & Modes** | JWT Authentication & Rate Limiting by IP/User (SaaS Mode) | ⬜ Pending | Medium |
 | **5. Auth & Modes** | Runtime language selector: AppBar dropdown + `/api/config` + per-user `users.lang` | ⬜ Pending | High |
 | **5. Auth & Modes** | SaaS landing page (`domain.com`) + app (`app.domain.com`) subdomain split | ⬜ Pending | Medium |
+| **6. Frontend & Deploy** | Offline mode: read-only PWA (cached plan/recipe book) + offline banner + gated actions | ⬜ Pending | Medium |
 | **6. Frontend & Deploy** | React UI development (PDF upload, Diet viewer, Chat widget) | ⬜ Pending | High |
 | **6. Frontend & Deploy** | Medical disclaimer on landing page + footer | ⬜ Pending | High |
-| **6. Frontend & Deploy** | Create `docker-compose.yml` for self-hosted deployment | ⬜ Pending | Medium |
-| **7. Testing** | Unit tests: backend functions, providers, utilities | ⬜ Pending | High |
+| **6. Frontend & Deploy** | Create `docker-compose.yml` for self-hosted deployment | ✅ Completed | Medium |
+| **7. Testing** | Unit tests: backend functions, providers, utilities | 🟡 In Progress | High |
 | **7. Testing** | Unit tests: React components, hooks, utils | ⬜ Pending | High |
 | **7. Testing** | Integration tests: API endpoints, DB queries | ⬜ Pending | High |
-| **7. Testing** | E2E tests: Playwright full user flows | ⬜ Pending | High |
+| **7. Testing** | E2E tests: Playwright full user flows | 🟡 In Progress | High |
 | **7. Testing** | CI pipeline: Vitest + Playwright on every PR | ⬜ Pending | High |
 | **8. Security** | Husky pre-commit hooks (lint, test, typecheck) | ⬜ Pending | High |
 | **8. Security** | HTTP security headers (Helmet.js, CSP, HSTS) | ⬜ Pending | High |
@@ -56,6 +58,7 @@ Technical specification document and roadmap for developing the AI-powered diet 
 | **8. Security** | Audit logging for sensitive events | ⬜ Pending | Medium |
 | **8. Security** | File upload security (magic bytes, size limits) | ⬜ Pending | Medium |
 | **9. Operations** | Health check endpoints (/health, /health/ready) | ⬜ Pending | High |
+| **9. Operations** | Startup DB reachability gate (fail-fast + retry before listen) | ⬜ Pending | High |
 | **9. Operations** | Graceful shutdown (SIGTERM/SIGINT handling) | ⬜ Pending | High |
 | **9. Operations** | Structured logging (pino) with request tracking | ⬜ Pending | High |
 | **9. Operations** | Database migrations (Drizzle ORM) | ⬜ Pending | High |
@@ -89,6 +92,11 @@ vitalitynutri/
 │   │       ├── gemini.ts           # Multimodal
 │   │       ├── openai.ts           # OpenAI-compatible (text-only)
 │   │       └── anthropic.ts        # Anthropic Messages API
+│   ├── db/                         # Drizzle client + repositories (dialect-agnostic boundary)
+│   │   ├── client.ts
+│   │   ├── schema.ts
+│   │   ├── migrations/
+│   │   └── repositories/
 │   ├── saas/                       # SaaS-only features (removable for OSS)
 │   │   ├── auth/
 │   │   │   ├── jwt.ts
@@ -99,12 +107,14 @@ vitalitynutri/
 │   │   └── rateLimit.ts            # Global if MODE=oss, per-user if MODE=saas
 │   └── server.ts                   # Main entry (routes conditionally loaded)
 ├── src/                            # Frontend (React)
-├── prompts/                        # Prompt templates (1 per type, English only)
+├── prompts/                        # Target state (post-refactor): 1 English base prompt per type
 │   ├── plan-analysis/prompt.md
 │   ├── batch-cooking/prompt.md
 │   └── recipe-ai/prompt.md         # Used by PDF, image, text, and mejora flows
 └── ...
 ```
+
+Current repo state (2026-08-12): each prompt type currently has `prompt-en.md` + `prompt-es.md`; consolidation to `prompt.md` is pending.
 
 > **Note:** `server/saas/billing/` is intentionally omitted. Add Stripe integration when first paying user arrives. YAGNI.
 >
@@ -133,11 +143,11 @@ vitalitynutri/
           └── NO: Start AI processing   ├── Selectable (text >100 chars)
                                         │   → Text extraction → TEXT CHAIN
                                         │     Groq Llama 3.3 → Qwen 3.6 → Llama 8B
-                                        │     → Gemini Flash Lite → Gemini Flash Lite
+                                        │     → Gemini 2.5 Flash Lite → Gemini 2.0 Flash
                                         │
                                         └── Non-selectable (scanned/image)
                                             → Render to image → MULTIMODAL CHAIN
-                                              Gemini 3.5 Flash Lite → Gemini 3.1 Flash Lite
+                                              Gemini 2.5 Flash → Gemini 2.0 Flash
 ```
 
 ---
@@ -158,7 +168,7 @@ vitalitynutri/
 ### KISS
 - **Env vars over config files.** Two keys: `AI_PROVIDERS` (order) + `AI_MODELS` (overrides). No YAML/TOML parsing.
 - **Factory over registry.** `createClient(provider)` is a switch statement. No plugin system, no dynamic imports.
-- **SQLite for OSS.** No PostgreSQL setup for self-hosters. Single file, zero config.
+- **Sensible DB defaults, configurable backend.** Global schema default is `DB_DRIVER=sqlite`; SaaS policy enforces `DB_DRIVER=postgres`; OSS users can keep SQLite or switch to PostgreSQL.
 - **Billing is a stub.** `server/saas/billing/` doesn't exist yet. Implement when first paying user arrives.
 - **No LangSmith.** Prompt versioning via git. Observability via simple logging if needed later.
 
@@ -179,11 +189,20 @@ const aiProviderEnum = z.enum(["groq", "gemini", "openai", "anthropic"]);
 const envSchema = z.object({
   // ─── Mode ─────────────────────────────────────────────
   MODE: z.enum(["oss", "saas"]).default("oss"),
+
+  // ─── Database Backend ─────────────────────────────────
+  // Configurable in both modes. Default: sqlite.
+  // Policy: MODE=saas must set DB_DRIVER=postgres (validated below).
+  DB_DRIVER: z.enum(["sqlite", "postgres"]).default("sqlite"),
+  SQLITE_PATH: z.string().default("./data/vitalitynutri.db"),
+  DATABASE_URL: z.string().url().optional(),
+  DB_STARTUP_MAX_RETRIES: z.coerce.number().int().min(0).default(10),
+  DB_STARTUP_RETRY_MS: z.coerce.number().int().positive().default(2000),
   
   // ─── Server ───────────────────────────────────────────
   PORT: z.coerce.number().int().positive().default(5027),
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
-  APP_URL: z.string().url().optional().default(""),
+  APP_URL: z.union([z.literal(""), z.string().url()]).default(""),
   SITE_VISIBILITY: z.enum(["public", "local"]).default("local"),
   // ─── Localization (runtime, NOT build-time) ───────────
   // Available UI languages served via GET /api/config → AppBar dropdown.
@@ -192,6 +211,15 @@ const envSchema = z.object({
   AVAILABLE_LANGS: z.string().default("en,es"),
   DEFAULT_LANG: z.string().default("en"),
   DISABLE_HMR: z.coerce.boolean().default(false),
+
+  // ─── Email Delivery (SaaS auth flows) ───────────────
+  EMAIL_PROVIDER: z.enum(["smtp"]).default("smtp"),
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().int().positive().optional(),
+  SMTP_SECURE: z.coerce.boolean().default(true),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
+  SMTP_FROM: z.string().email().optional(),
   
   // ─── AI Gateway (OmniRoute) — available to both modes ──
   // USE_OMNIROUTE=true  → route all AI calls through an OpenAI-compatible
@@ -200,7 +228,7 @@ const envSchema = z.object({
   //                       (Caveman/RTK) using virtual model aliases (combos).
   // USE_OMNIROUTE=false → Direct BYOK: connect straight to vendor APIs, local
   //                       fallback loops across user's enabled keys.
-  USE_OMNIROUTE: z.coerce.boolean().default(true),
+  USE_OMNIROUTE: z.coerce.boolean().default(false),
   OMNIROUTE_URL: z.string().url().default("http://omniroute:20128/v1"),
   OMNIROUTE_API_KEY: z.string().optional().default("omniroute"),
   
@@ -218,17 +246,16 @@ const envSchema = z.object({
   // Free tier providers: groq (30 RPM), gemini (15 RPM Flash, 1500 req/day)
   // Paid-only: openai ($5 trial, expires 3mo), anthropic ($5 trial, expires ~90d)
   // Default: groq,gemini (both free forever)
-  AI_PROVIDERS: z.string()
+  AI_PROVIDERS: z.string().default("groq,gemini")
     .transform(s => s.split(",").map(s => s.trim()))
-    .pipe(z.array(aiProviderEnum).min(1))
-    .default("groq,gemini"),
+    .pipe(z.array(aiProviderEnum).min(1)),
   
   // ─── AI Models (optional overrides per provider) ──────
   // Format: "provider:model,provider:model,..."
   // Example: "groq:llama-3.3-70b-versatile,groq:qwen/qwen3.6-27b"
   // If omitted, each provider uses its built-in default chain.
   // Used ONLY when USE_OMNIROUTE=false (Direct BYOK).
-  AI_MODELS: z.string().optional().default(""),
+  AI_MODELS: z.string().default(""),
   
   // ─── Direct Provider Keys (BYOK when USE_OMNIROUTE=false) ──
   // Selectively configure only the providers you want.
@@ -240,6 +267,7 @@ const envSchema = z.object({
   
   // ─── Optional ─────────────────────────────────────────
   UNSPLASH_ACCESS_KEY: z.string().optional(),
+  BYOK_ENCRYPTION_KEY: z.string().optional(), // 64-char hex (32 bytes), required when MODE=saas
   
   // ─── Chat cost controls (optional feature) ────────────
   CHAT_ENABLED: z.coerce.boolean().default(true),
@@ -300,6 +328,60 @@ const envSchema = z.object({
       path: ["JWT_SECRET"],
     });
   }
+
+  if (data.MODE === "saas" && !data.APP_URL) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "MODE=saas requires APP_URL",
+      path: ["APP_URL"],
+    });
+  }
+
+  if (data.MODE === "saas") {
+    if (!data.BYOK_ENCRYPTION_KEY) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "MODE=saas requires BYOK_ENCRYPTION_KEY (64-char hex)",
+        path: ["BYOK_ENCRYPTION_KEY"],
+      });
+    } else if (!/^[0-9a-fA-F]{64}$/.test(data.BYOK_ENCRYPTION_KEY)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "BYOK_ENCRYPTION_KEY must be 64 hex chars (32 bytes)",
+        path: ["BYOK_ENCRYPTION_KEY"],
+      });
+    }
+  }
+
+  // SaaS email delivery requirements (verification + reset emails)
+  if (data.MODE === "saas") {
+    const missingSmtp = !data.SMTP_HOST || !data.SMTP_PORT || !data.SMTP_USER || !data.SMTP_PASS || !data.SMTP_FROM;
+    if (missingSmtp) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "MODE=saas requires SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, and SMTP_FROM",
+        path: ["SMTP_HOST"],
+      });
+    }
+  }
+
+  // Database backend validation
+  if (data.DB_DRIVER === "postgres" && !data.DATABASE_URL) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "DB_DRIVER=postgres requires DATABASE_URL",
+      path: ["DATABASE_URL"],
+    });
+  }
+
+  // SaaS default policy: postgres required unless explicitly changing architecture.
+  if (data.MODE === "saas" && data.DB_DRIVER !== "postgres") {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "MODE=saas requires DB_DRIVER=postgres",
+      path: ["DB_DRIVER"],
+    });
+  }
   
   // Validate AI_MODELS format if provided
   if (data.AI_MODELS) {
@@ -330,6 +412,8 @@ export const env = envSchema.parse(process.env);
 // ─── Derived values ───────────────────────────────────────
 export const isSaaS = env.MODE === "saas";
 export const isOSS = env.MODE === "oss";
+export const isPostgres = env.DB_DRIVER === "postgres";
+export const isSqlite = env.DB_DRIVER === "sqlite";
 
 // Gateway vs Direct BYOK routing
 export const useOmniRoute = env.USE_OMNIROUTE;
@@ -378,6 +462,28 @@ export function getModelOverrides(): Map<string, string[]> {
 # Default: oss
 MODE=oss
 
+# ─── Database Backend ─────────────────────────────────
+# DB_DRIVER is configurable in both modes.
+# Recommended defaults: oss=sqlite, saas=postgres.
+# OSS users can set DB_DRIVER=postgres if they prefer managed DB infra.
+DB_DRIVER=sqlite
+SQLITE_PATH=./data/vitalitynutri.db
+# Required if DB_DRIVER=postgres
+# DATABASE_URL=postgresql://user:pass@localhost:5432/vitalitynutri
+# Startup DB check (before app.listen)
+DB_STARTUP_MAX_RETRIES=10
+DB_STARTUP_RETRY_MS=2000
+#
+# Common DATABASE_URL variants:
+# Local dev (no SSL):
+# DATABASE_URL=postgresql://postgres:postgres@localhost:5432/vitalitynutri
+#
+# Docker compose service name (same network):
+# DATABASE_URL=postgresql://vitalitynutri:your_password@postgres:5432/vitalitynutri
+#
+# Managed PostgreSQL (SSL required):
+# DATABASE_URL=postgresql://user:pass@db.example.com:5432/vitalitynutri?sslmode=require
+
 # ─── Server ───────────────────────────────────────────
 PORT=5027
 NODE_ENV=development
@@ -390,13 +496,23 @@ SITE_VISIBILITY=local
 AVAILABLE_LANGS=en,es
 DEFAULT_LANG=en
 
+# ─── Email Delivery (SaaS auth) ─────────────────────────
+# Used for verification and password-reset emails.
+EMAIL_PROVIDER=smtp
+# SMTP_HOST=smtp.your-provider.com
+# SMTP_PORT=465
+# SMTP_SECURE=true
+# SMTP_USER=apikey_or_username
+# SMTP_PASS=your_smtp_password
+# SMTP_FROM=no-reply@yourdomain.com
+
 # ─── AI Gateway (OmniRoute) ──────────────────────────────
 # USE_OMNIROUTE=true  → route through OmniRoute gateway (virtual model aliases,
 #                       gateway handles fallback/compression/pooling).
 # USE_OMNIROUTE=false → Direct BYOK: connect straight to vendor APIs, local
 #                       fallback loops across enabled keys.
-# Default: true (SaaS + self-hosted with local OmniRoute)
-USE_OMNIROUTE=true
+# Default: false (self-host safe). Set true only when OmniRoute is reachable.
+USE_OMNIROUTE=false
 OMNIROUTE_URL=http://omniroute:20128/v1
 OMNIROUTE_API_KEY=omniroute
 
@@ -436,6 +552,7 @@ UNSPLASH_ACCESS_KEY=""
 
 # ─── SaaS Only (MODE=saas requires these) ────────────
 # JWT_SECRET=min-32-characters-for-jwt-signing
+# BYOK_ENCRYPTION_KEY=64_hex_chars_for_aes_256_gcm
 ```
 
 ---
@@ -454,6 +571,7 @@ export interface GenerateTextRequest {
   temperature?: number;
   responseFormat?: "json" | "text";
   maxTokens?: number;
+  image?: { data: string; mimeType: string };
 }
 
 /** What the caller receives */
@@ -737,7 +855,7 @@ import { AnthropicClient } from "./providers/anthropic.js";
 
 const RETRIES_PER_MODEL = 3;
 
-function createClient(provider: string, modelsOverride?: string[]): AIClient {
+export function createClient(provider: string, modelsOverride?: string[]): AIClient {
   const overrides = getModelOverrides();
   const models = modelsOverride ?? overrides.get(provider);
   const apiKey = env[`${provider.toUpperCase()}_API_KEY` as keyof typeof env] as string;
@@ -821,8 +939,7 @@ function getGatewayClient(): OpenAI {
 
 async function generateViaGateway(
   alias: string,
-  req: GenerateTextRequest,
-  options?: { multimodal?: boolean }
+  req: GenerateTextRequest
 ): Promise<GenerateTextResponse> {
   const client = getGatewayClient();
   const model = MODEL_ALIASES[alias] ?? alias;
@@ -830,7 +947,22 @@ async function generateViaGateway(
   if (req.systemPrompt) {
     messages.push({ role: "system", content: req.systemPrompt });
   }
-  messages.push({ role: "user", content: req.prompt });
+  if (req.image) {
+    messages.push({
+      role: "user",
+      content: [
+        { type: "text", text: req.prompt },
+        {
+          type: "image_url",
+          image_url: {
+            url: `data:${req.image.mimeType};base64,${req.image.data}`,
+          },
+        },
+      ],
+    });
+  } else {
+    messages.push({ role: "user", content: req.prompt });
+  }
   
   const response = await client.chat.completions.create({
     model, // virtual alias — OmniRoute maps it to a real combo
@@ -896,7 +1028,7 @@ export async function generateAIResponse(
   options?: { multimodal?: boolean }
 ): Promise<GenerateTextResponse> {
   if (env.USE_OMNIROUTE) {
-    return generateViaGateway(alias, req, options);
+    return generateViaGateway(alias, req);
   }
   // Direct BYOK: alias only selects the task; provider routing is per-provider
   // via getAvailableProviders(). The alias is not sent to any vendor.
@@ -911,7 +1043,9 @@ export async function generateAIResponse(
 
 ## 📝 3.5 Prompt Strategy (DRY) + Eval Suite
 
-**One prompt per type, English only.** Language instruction appended at runtime.
+**Target state:** one prompt per type, English only. Language instruction appended at runtime.
+
+Current repo state (2026-08-12): dual-language files exist (`prompt-en.md`, `prompt-es.md`) and are planned to be consolidated.
 
 ```
 prompts/
@@ -1360,8 +1494,10 @@ export function computeFileHash(buffer: Buffer): string {
  *    a. Extract text → if >100 chars → MODEL_PDF_TEXT (searchable)
  *    b. Else → render image → MODEL_PDF_VISION (scanned/image)
  */
-export async function processPDF(filePath: string, prompt: string): Promise<PDFResult> {
-  const fileBuffer = fs.readFileSync(filePath);
+export async function processPDF(fileInput: string | Buffer, prompt: string): Promise<PDFResult> {
+  const fileBuffer = typeof fileInput === "string"
+    ? fs.readFileSync(fileInput)
+    : fileInput;
   const fileHash = computeFileHash(fileBuffer);
   
   // Attempt text extraction
@@ -1472,6 +1608,7 @@ async function processRecipePDF(buffer: Buffer, lang: string): Promise<any> {
   // Import from pdf-processor.ts (NOT this file — avoid infinite recursion)
   const { processPDF } = await import("./pdf-processor.js");
   const prompt = await getPrompt("recipe-ai", lang);
+  // processPDF accepts Buffer | string, so no temp-file roundtrip is needed.
   return processPDF(buffer, prompt);
 }
 
@@ -1582,11 +1719,17 @@ es: "Este plan no incluye información nutricional."
 
 ## 🗄️ 5. Database Design
 
-**SQLite** for OSS (self-hosted), **PostgreSQL** for SaaS (managed).
+Database backend is configurable through `DB_DRIVER`.
+
+- Recommended default for OSS: `sqlite` (simple local file)
+- Recommended/required for SaaS: `postgres` (multi-tenant features)
+- OSS can opt into PostgreSQL without changing application business logic
+
+All application services should call repositories (not raw SQL in route handlers). Repositories are built on a DB factory that returns the active adapter.
 
 ```sql
 -- ============================================================
--- OSS MODE (SQLite) — simple, single-user, no auth
+-- OSS DEFAULT (SQLite) — simple, single-user, no auth
 -- ============================================================
 
 -- Processed Diets Table (Cache by Hash)
@@ -1609,7 +1752,7 @@ CREATE TABLE chat_messages (
 CREATE INDEX idx_diets_hash ON diets(file_hash);
 
 -- ============================================================
--- SaaS MODE (PostgreSQL) — multi-tenant, auth, billing
+-- SaaS DEFAULT (PostgreSQL) — multi-tenant, auth, billing
 -- ============================================================
 
 -- Users Table (email/password + OAuth)
@@ -1694,9 +1837,10 @@ CREATE INDEX idx_audit_logs_action ON audit_logs(action, created_at);
 CREATE TABLE diets (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    file_hash VARCHAR(64) UNIQUE NOT NULL,
+    file_hash VARCHAR(64) NOT NULL,
     diet_data JSONB NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (user_id, file_hash)
 );
 
 -- Chat Conversations Table
@@ -1713,6 +1857,56 @@ CREATE INDEX idx_diets_hash ON diets(file_hash);
 CREATE INDEX idx_diets_user ON diets(user_id);
 ```
 
+### DB Abstraction (Drizzle ORM for Both Dialects)
+
+Use **Drizzle ORM** for both backends:
+- PostgreSQL: `drizzle-orm/node-postgres`
+- SQLite: `drizzle-orm/better-sqlite3`
+
+This keeps one ORM and one schema model while switching only the driver by `DB_DRIVER`.
+
+```ts
+// server/db/client.ts
+import { env } from "../config/env.js";
+import { Pool } from "pg";
+import Database from "better-sqlite3";
+import { drizzle as drizzlePg } from "drizzle-orm/node-postgres";
+import { drizzle as drizzleSqlite } from "drizzle-orm/better-sqlite3";
+import * as schema from "./schema.js";
+
+export function createDb() {
+  if (env.DB_DRIVER === "postgres") {
+    const pool = new Pool({ connectionString: env.DATABASE_URL });
+    return drizzlePg(pool, { schema });
+  }
+  const sqlite = new Database(env.SQLITE_PATH);
+  return drizzleSqlite(sqlite, { schema });
+}
+
+export type AppDb = ReturnType<typeof createDb>;
+```
+
+```ts
+// server/db/repositories/diets.ts
+import { eq } from "drizzle-orm";
+import { diets } from "../schema.js";
+import type { AppDb } from "../client.js";
+
+export class DietRepository {
+  constructor(private db: AppDb) {}
+
+  async getById(id: string) {
+    const row = await this.db.select().from(diets).where(eq(diets.id, id)).limit(1);
+    return row[0] ?? null;
+  }
+}
+```
+
+Implementation rule:
+- Repository method signatures are dialect-agnostic.
+- Prefer Drizzle query builder in repositories/services.
+- Raw SQL is allowed only when unavoidable and must stay encapsulated in repository helpers.
+
 ---
 
 ## 🔒 6. Open Source vs SaaS Separation
@@ -1724,7 +1918,7 @@ CREATE INDEX idx_diets_user ON diets(user_id);
 | **Auth** | No auth (single user) | Email/password + OAuth (Google, GitHub) |
 | **API Keys** | User brings own keys (BYOK) | Platform keys default, optional BYOK per user |
 | **Rate Limiting** | Global (IP-based) | Per-user (authenticated), tighter if using platform keys |
-| **Database** | SQLite (simple) | PostgreSQL (multi-tenant) |
+| **Database** | Configurable via `DB_DRIVER` (default SQLite) | PostgreSQL (default/required) |
 | **Landing Page** | None (direct access to app) | Full marketing landing (`domain.com`) + App (app.domain.com) + Login / Register / Forgot Password + Medical Disclaimer |
 | **Updates** | Manual (git pull) | Automatic (managed) |
 | **Support** | Community (GitHub Issues) | Direct (email/chat) |
@@ -1766,6 +1960,11 @@ server/
 │   ├── factory.ts
 │   ├── pdf-processor.ts
 │   └── providers/
+├── db/                     # DB abstraction layer (Drizzle client + repositories)
+│   ├── client.ts
+│   ├── schema.ts
+│   ├── migrations/
+│   └── repositories/
 ├── saas/                   # SaaS-only features (removable for OSS)
 │   ├── auth/
 │   │   ├── jwt.ts
@@ -1845,7 +2044,7 @@ export async function initI18n(): Promise<void> {
 
 - Options = `window.__AVAILABLE_LANGS` from `/api/config` — adding a language = edit one env var, no rebuild
 - On select: `i18n.changeLanguage(lang)` + persist:
-  - SaaS: `PATCH /api/user/preferences { lang }` → `users.lang`
+  - SaaS: `PATCH /api/auth/preferences { lang }` → `users.lang`
   - OSS: `localStorage.setItem("lang", lang)`
 - Router already localizes paths (`navigateTo`/`getCanonicalPath`) — unchanged
 
@@ -1915,6 +2114,68 @@ server {
 | **Total** | **~2-3 days** | No backend changes; app unchanged; auth untouched |
 
 > **Simpler alternative (skip subdomains):** single SPA, route-based — `domain.com/` = landing, `domain.com/app/*` = app. Zero infra change, but landing shares the login-gated bundle and app paths gain a prefix. Subdomain split recommended for SaaS marketing/SEO; route split fine for OSS.
+
+### 6.3 Offline Mode (Read-Only PWA)
+
+> **Scope decision:** Tier 1 read-only — **both modes**. Core value (PDF→AI, chat, mejora) is cloud-only and cannot work offline. Full write-sync (Tier 2) deferred (YAGNI) — see risk notes below.
+
+**What works offline:** browse last loaded plan (calendar/recipe detail/grocery/batch view), browse recipe book, search pool, app shell, i18n. **What is disabled:** upload/reprocess, recipe create/edit, chat, mejora, completed-recipe toggles, dark-mode toggle still works (local).
+
+**Caching strategy (service worker):**
+
+| Asset | Strategy | Why |
+|---|---|---|
+| App shell, JS/CSS, i18n JSON | Precache (build-time) | Instant load offline |
+| `/api/plan`, `/api/recipes`, `/api/all-recipes` | Network-first, fallback to runtime cache | Fresh when online, cached when offline |
+| Unsplash images | Cache-first (stale-while-revalidate) | Read-mostly, external origin |
+
+> **Stale-plan trap:** diet data can change server-side (reprocess). Network-first for API = offline shows *last successfully fetched* version. Show "Last synced: <time>" in the offline banner — never silently present stale data as current.
+
+**Offline detection** — don't trust `navigator.onLine` alone (unreliable):
+
+```ts
+// src/utils/offline.ts
+export function useOfflineStatus(): boolean {
+  const [offline, setOffline] = useState(!navigator.onLine);
+  useEffect(() => {
+    const on = () => setOffline(false);
+    const off = () => setOffline(true);
+    window.addEventListener("online", on);
+    window.addEventListener("offline", off);
+    return () => { window.removeEventListener("online", on); window.removeEventListener("offline", off); };
+  }, []);
+  return offline;
+}
+```
+
+**UI indicator** — persistent banner + gated actions (not just a passive badge):
+
+```tsx
+// In App.tsx, below the header when offline
+{offline && (
+  <div className="no-print bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-900/40">
+    <div className="max-w-container-max mx-auto px-6 py-2 flex items-center gap-2 text-xs font-bold text-amber-700 dark:text-amber-400">
+      <span className="material-symbols-outlined text-sm">cloud_off</span>
+      {t("offline.banner")}
+      {lastSync && <span className="font-medium opacity-70">— {t("offline.last_synced", { time: lastSync })}</span>}
+    </div>
+  </div>
+)}
+```
+
+- Banner text: *"Offline mode — viewing only. Upload, AI, chat, and edits are unavailable."* (+ last-synced time)
+- Disabled affordances show tooltip reason (e.g. chat input → `disabled` + `title="Chat needs a connection"`), not silent failure
+
+**i18n keys:** `offline.banner`, `offline.last_synced`, `offline.disabled_chat`, `offline.disabled_upload`, `offline.disabled_edit`, `offline.disabled_toggle` (EN + ES).
+
+**Security (SaaS):**
+- Cached data = health data. IndexedDB/Service Worker cache is origin-scoped (per-subdomain) — OK, but **purge all local caches on logout** (`caches.keys()` + `indexedDB.deleteDatabase()`) so a shared device can't leak the previous user's plan.
+- Session revocation: offline browser cache persists beyond JWT expiry → on next online fetch, a 401 triggers full cache purge + redirect to login. No offline session tokens (Tier 2 feature, deliberately avoided).
+- No client-side crypto theater: cache is plaintext inside the origin's storage sandbox; device-theft risk is accepted for Tier 1 (mitigation = purge on logout + app lock listed as future work).
+
+**Implementation:** `vite-plugin-pwa` (workbox under the hood) + `manifest.webmanifest` + offline banner in `App.tsx` + `src/utils/offline.ts`. Env: no new vars (always-on). E2E test: Playwright `context.setOffline(true)` → assert banner + chat/upload disabled, plan still visible.
+
+**Effort:** ~3-5 days (service worker config + banner + gating + tests).
 
 ### Why No License Key
 
@@ -1986,6 +2247,9 @@ export function buildDietContext(dietData: any): string {
 
 ```ts
 // POST /api/chat
+import { desc, eq, sql } from "drizzle-orm";
+import { chatMessages, diets } from "../db/schema.js";
+
 app.post("/api/chat", async (req, res) => {
   const { dietId, userMessage } = req.body;
 
@@ -1999,20 +2263,25 @@ app.post("/api/chat", async (req, res) => {
     return res.status(400).json({ error: `Message too long (max ${env.CHAT_MAX_USER_CHARS} chars)` });
   }
 
-  const count = await db.query(
-    "SELECT COUNT(*) as count FROM chat_messages WHERE diet_id = ?",
-    [dietId]
-  );
-  if (count.count >= env.CHAT_MAX_MESSAGES * 2) { // user + assistant rows
+  const countRows = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(chatMessages)
+    .where(eq(chatMessages.dietId, dietId));
+
+  if (Number(countRows[0]?.count ?? 0) >= env.CHAT_MAX_MESSAGES * 2) { // user + assistant rows
     return res.status(429).json({ error: "Conversation limit reached" });
   }
 
   // 1. Load saved diet JSON
-  const diet = await db.query("SELECT diet_data FROM diets WHERE id = ?", [dietId]);
+  const diet = await db.query.diets.findFirst({
+    where: eq(diets.id, dietId),
+    columns: { dietData: true },
+  });
+  if (!diet) return res.status(404).json({ error: "Diet not found" });
 
   // 2. Compact system prompt (cost control — summary, not full JSON)
   const systemPrompt = `You are an assistant nutritionist. Answer questions regarding the following user diet plan:
-${buildDietContext(diet.diet_data)}
+${buildDietContext(diet.dietData)}
 
 Rules:
 - Be concise and answer strictly about this meal plan.
@@ -2022,26 +2291,43 @@ Rules:
 Medical disclaimer: This tool does not replace professional nutritional advice.`;
 
   // 3. History: last 6 messages (sliding window)
-  const history = await db.query(
-    "SELECT role, content FROM chat_messages WHERE diet_id = ? ORDER BY created_at DESC LIMIT 6",
-    [dietId]
-  );
+  const history = await db
+    .select({ role: chatMessages.role, content: chatMessages.content })
+    .from(chatMessages)
+    .where(eq(chatMessages.dietId, dietId))
+    .orderBy(desc(chatMessages.createdAt))
+    .limit(6);
+
+  // Approximate token budgeting (rule of thumb: 1 token ~= 4 chars)
+  const historyText = history
+    .reverse()
+    .map((m: any) => `${m.role}: ${m.content}`)
+    .join("\n");
+  const composedPrompt = historyText
+    ? `Conversation so far:\n${historyText}\n\nUser question:\n${userMessage}`
+    : userMessage;
+  const approxInputTokens = Math.ceil((systemPrompt.length + composedPrompt.length) / 4);
+  if (approxInputTokens > env.CHAT_MAX_CONTEXT_TOKENS) {
+    return res.status(413).json({
+      error: `Context too large (max ${env.CHAT_MAX_CONTEXT_TOKENS} tokens). Start a new conversation.`,
+    });
+  }
 
   // 4. Use the "chat" alias through the single AI entry point.
   //    Gateway mode → MODEL_CHAT (nutri-chat) combo.
   //    Direct mode  → env.CHAT_MODEL pinned (llama-3.1-8b-instant), cheap.
   const response = await generateAIResponse("chat", {
     systemPrompt,
-    prompt: userMessage,
+    prompt: composedPrompt,
     responseFormat: "text",
     maxTokens: 300, // short answers
   });
 
   // 5. Save both user + assistant messages
-  await db.query(
-    "INSERT INTO chat_messages (diet_id, role, content) VALUES (?, 'user', ?), (?, 'assistant', ?)",
-    [dietId, userMessage, dietId, response.text]
-  );
+  await db.insert(chatMessages).values([
+    { dietId, role: "user", content: userMessage },
+    { dietId, role: "assistant", content: response.text },
+  ]);
 
   res.json({ reply: response.text });
 });
@@ -2083,6 +2369,9 @@ services:
       - "5027:5027"
     environment:
       - MODE=oss
+      - DB_DRIVER=${DB_DRIVER:-sqlite}
+      - SQLITE_PATH=${SQLITE_PATH:-./data/vitalitynutri.db}
+      - DATABASE_URL=${DATABASE_URL:-}
       - NODE_ENV=production
       - PORT=5027
       - APP_URL=${APP_URL:-}
@@ -2115,17 +2404,29 @@ services:
       - "5027:5027"
     environment:
       - MODE=saas
+      - DB_DRIVER=postgres
       - NODE_ENV=production
       - PORT=5027
       - APP_URL=${APP_URL}
       - DATABASE_URL=${DATABASE_URL}
+      - EMAIL_PROVIDER=smtp
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT:-465}
+      - SMTP_SECURE=${SMTP_SECURE:-true}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASS=${SMTP_PASS}
+      - SMTP_FROM=${SMTP_FROM}
       - AVAILABLE_LANGS=${AVAILABLE_LANGS:-en,es}
       - DEFAULT_LANG=${DEFAULT_LANG:-en}
+      - USE_OMNIROUTE=${USE_OMNIROUTE:-false}
+      - OMNIROUTE_URL=${OMNIROUTE_URL:-http://omniroute:20128/v1}
+      - OMNIROUTE_API_KEY=${OMNIROUTE_API_KEY:-omniroute}
       - AI_PROVIDERS=${AI_PROVIDERS:-groq,gemini}
       - AI_MODELS=${AI_MODELS:-}
       - GROQ_API_KEY=${GROQ_API_KEY:-}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - JWT_SECRET=${JWT_SECRET}
+      - BYOK_ENCRYPTION_KEY=${BYOK_ENCRYPTION_KEY}
     volumes:
       - ./data:/app/data
     restart: unless-stopped
@@ -2152,6 +2453,8 @@ volumes:
 
 ```ts
 // server/middleware/health.ts
+import { sql } from "drizzle-orm";
+
 app.get("/health", (req, res) => {
   res.json({
     status: "ok",
@@ -2164,7 +2467,7 @@ app.get("/health", (req, res) => {
 app.get("/health/ready", async (req, res) => {
   const checks = {
     database: await checkDatabase(),
-    ai_providers: await checkAIProviders(),
+    ai_routing: await checkAIRouting(),
     memory: checkMemory(),
   };
   
@@ -2175,16 +2478,27 @@ app.get("/health/ready", async (req, res) => {
 async function checkDatabase(): Promise<{ status: string; latency?: number }> {
   try {
     const start = Date.now();
-    await db.query("SELECT 1");
+    await db.execute(sql`select 1`);
     return { status: "ok", latency: Date.now() - start };
   } catch {
     return { status: "error" };
   }
 }
 
-async function checkAIProviders(): Promise<{ status: string; providers: string[] }> {
+async function checkAIRouting(): Promise<{ status: string; mode: string; providers?: string[]; gateway?: string }> {
+  if (env.USE_OMNIROUTE) {
+    return {
+      status: env.OMNIROUTE_URL ? "ok" : "error",
+      mode: "gateway",
+      gateway: env.OMNIROUTE_URL,
+    };
+  }
   const available = getAvailableProviders();
-  return { status: available.length > 0 ? "ok" : "error", providers: available };
+  return {
+    status: available.length > 0 ? "ok" : "error",
+    mode: "direct-byok",
+    providers: available,
+  };
 }
 
 function checkMemory(): { status: string; used: number; total: number } {
@@ -2197,6 +2511,52 @@ function checkMemory(): { status: string; used: number; total: number } {
   };
 }
 ```
+
+### Startup DB Reachability Gate (Before `app.listen`)
+
+```ts
+// server/bootstrap.ts
+import { env } from "./config/env.js";
+import { db } from "./db/index.js";
+import { logger } from "./logger.js";
+import { sql } from "drizzle-orm";
+
+export async function verifyDatabaseOnStartup() {
+  for (let attempt = 1; attempt <= env.DB_STARTUP_MAX_RETRIES + 1; attempt++) {
+    try {
+      await db.execute(sql`select 1`);
+      logger.info({ attempt }, "Database reachable");
+      return;
+    } catch (err) {
+      const lastAttempt = attempt === env.DB_STARTUP_MAX_RETRIES + 1;
+      logger.error({ attempt, err }, "Database not reachable");
+      if (lastAttempt) {
+        throw new Error("Startup aborted: database unreachable after retries");
+      }
+      await new Promise(resolve => setTimeout(resolve, env.DB_STARTUP_RETRY_MS));
+    }
+  }
+}
+```
+
+```ts
+// server/server.ts
+import { verifyDatabaseOnStartup } from "./bootstrap.js";
+
+async function startServer() {
+  await verifyDatabaseOnStartup(); // Fail fast before opening HTTP port
+  app.listen(env.PORT, () => logger.info(`Server listening on :${env.PORT}`));
+}
+
+startServer().catch((err) => {
+  logger.fatal({ err }, "Startup failed");
+  process.exit(1);
+});
+```
+
+Behavior:
+- If DB is down at startup, process retries (`DB_STARTUP_MAX_RETRIES`) and exits non-zero if still unreachable.
+- Readiness endpoint still checks ongoing health, but startup gate prevents accepting traffic in a broken state.
 
 ### Graceful Shutdown
 
@@ -2272,12 +2632,13 @@ app.use((req, res, next) => {
 ### Database Migrations (Drizzle ORM)
 
 ```ts
-// drizzle.config.ts
+// drizzle.postgres.config.ts
 import { defineConfig } from "drizzle-kit";
+import { env } from "./server/config/env.js";
 
 export default defineConfig({
   schema: "./server/db/schema.ts",
-  out: "./server/db/migrations",
+  out: "./server/db/migrations/postgres",
   dialect: "postgresql",
   dbCredentials: {
     url: env.DATABASE_URL,
@@ -2286,16 +2647,39 @@ export default defineConfig({
 ```
 
 ```ts
+// drizzle.sqlite.config.ts
+import { defineConfig } from "drizzle-kit";
+import { env } from "./server/config/env.js";
+
+export default defineConfig({
+  schema: "./server/db/schema.ts",
+  out: "./server/db/migrations/sqlite",
+  dialect: "sqlite",
+  dbCredentials: {
+    url: `file:${env.SQLITE_PATH}`,
+  },
+});
+```
+
+```ts
 // package.json scripts
 {
   "scripts": {
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
-    "db:push": "drizzle-kit push",
+    "db:generate:pg": "drizzle-kit generate --config drizzle.postgres.config.ts",
+    "db:migrate:pg": "drizzle-kit migrate --config drizzle.postgres.config.ts",
+    "db:push:pg": "drizzle-kit push --config drizzle.postgres.config.ts",
+    "db:generate:sqlite": "drizzle-kit generate --config drizzle.sqlite.config.ts",
+    "db:migrate:sqlite": "drizzle-kit migrate --config drizzle.sqlite.config.ts",
+    "db:push:sqlite": "drizzle-kit push --config drizzle.sqlite.config.ts",
     "db:studio": "drizzle-kit studio"
   }
 }
 ```
+
+Operational rule:
+- Use PostgreSQL migration scripts when `DB_DRIVER=postgres`.
+- Use SQLite migration scripts when `DB_DRIVER=sqlite`.
+- Keep repository contract tests passing on both adapters before release.
 
 ### Backup Strategy (SaaS)
 
@@ -2437,7 +2821,8 @@ export const pool = new Pool({
   connectionTimeoutMillis: 2000,
 });
 
-// SQLite: Already uses WAL mode + connection pooling via better-sqlite3
+// SQLite: WAL mode improves concurrency, but SQLite is not a pooled client/server DB
+// like PostgreSQL. Keep one shared connection and short transactions.
 ```
 
 ### AI Response Streaming
@@ -2519,7 +2904,7 @@ app.post("/api/upload", async (req, res) => {
 ### Step 2: Create `AIClient` Interface
 - Create `server/ai/types.ts`
 - Extract `generateContentWithRetry` logic into interface
-- Create `server/ai/fallback.ts` with generic retry + provider iteration
+- Implement generic retry + provider iteration in `server/ai/factory.ts`
 
 ### Step 3: Move Gemini to `providers/gemini.ts`
 - Adapt existing `generateContentWithRetry` code
@@ -2538,7 +2923,7 @@ app.post("/api/upload", async (req, res) => {
 
 ### Step 6: Wire Factory + Fallback
 - Replace all call sites in `server.ts` with `generateAIResponse(alias, req)` (single entry point; dual-mode internal routing)
-- Remove `generateContentWithRetry`, `isRetryableGeminiError`, `isUnsupportedModelError`
+- Remove `generateContentWithRetry`, `isRetryableGeminiError`
 - Update `friendlyGeminiError` → `friendlyAIError` (provider-agnostic)
 
 ### Step 7: Add SaaS Infrastructure
@@ -2547,18 +2932,102 @@ app.post("/api/upload", async (req, res) => {
 - Add `MODE` conditional loading in `server.ts`
 - Billing: stub only (no-op functions) — implement when first paying user arrives
 
+### Step 7.1: DB Layer Implementation Order (recommended)
+
+Use this sequence to keep the app DB-agnostic and avoid circular refactors:
+
+1. Define Drizzle schema in `server/db/schema.ts`.
+2. Implement `createDb()` in `server/db/client.ts` for both drivers (`node-postgres` + `better-sqlite3`).
+3. Add repository modules in `server/db/repositories/*` that accept the Drizzle DB instance.
+4. Keep dialect-specific logic inside repository helpers only when unavoidable.
+5. Replace route/service raw SQL with repository calls.
+6. Enable `verifyDatabaseOnStartup` before `app.listen`.
+7. Pass repository contract tests on both drivers before merge.
+
+Guardrails:
+- No route/service should branch on SQL dialect.
+- Placeholder and SQL-dialect differences stay inside adapters/repositories.
+
 ### Step 8: Auth System (SaaS)
 **Email/Password + OAuth (Google, GitHub). Full flow.**
 
-```
+```text
 server/saas/auth/
 ├── jwt.ts              # Sign/verify access + refresh tokens
-├── middleware.ts        # Auth middleware (extracts user from token)
+├── middleware.ts       # Auth middleware (extracts user from token)
 ├── password.ts         # Hash (bcrypt) + verify passwords
 ├── oauth.ts            # OAuth provider callbacks (Google, GitHub)
 ├── routes.ts           # Auth endpoints (see below)
-└── byok.ts             # BYOK: check user api_keys, fallback to platform
+├── byok.ts             # BYOK: check user api_keys, fallback to platform
+└── mailer.ts           # SMTP sender (verification/reset)
 ```
+
+### Email Delivery for Verification/Reset
+
+**Provider choice:** SMTP via `nodemailer` (works with SES, Postmark, SendGrid SMTP, Mailgun SMTP, etc.).
+
+```ts
+// server/saas/auth/mailer.ts
+import nodemailer from "nodemailer";
+import { env } from "../../config/env.js";
+
+const transporter = nodemailer.createTransport({
+  host: env.SMTP_HOST,
+  port: env.SMTP_PORT,
+  secure: env.SMTP_SECURE,
+  auth: { user: env.SMTP_USER, pass: env.SMTP_PASS },
+});
+
+export async function sendVerificationMail(to: string, token: string) {
+  const verifyUrl = `${env.APP_URL}/verify?token=${encodeURIComponent(token)}`;
+  const html = `
+    <p>Please verify your email address.</p>
+    <p>
+      <a href="${verifyUrl}" style="display:inline-block;padding:10px 16px;background:#0f766e;color:#fff;text-decoration:none;border-radius:6px;font-weight:600;">
+        Verify Email
+      </a>
+    </p>
+    <p>If the button does not work, copy this link:</p>
+    <p><a href="${verifyUrl}">${verifyUrl}</a></p>
+  `;
+
+  await transporter.sendMail({
+    from: env.SMTP_FROM,
+    to,
+    subject: "Verify your VitalityNutri account",
+    html,
+    text: `Verify your account: ${verifyUrl}`,
+  });
+}
+
+export async function sendPasswordResetMail(to: string, token: string) {
+  const resetUrl = `${env.APP_URL}/reset-password?token=${encodeURIComponent(token)}`;
+  const html = `
+    <p>We received a password reset request.</p>
+    <p>
+      <a href="${resetUrl}" style="display:inline-block;padding:10px 16px;background:#1d4ed8;color:#fff;text-decoration:none;border-radius:6px;font-weight:600;">
+        Reset Password
+      </a>
+    </p>
+    <p>If the button does not work, copy this link:</p>
+    <p><a href="${resetUrl}">${resetUrl}</a></p>
+  `;
+
+  await transporter.sendMail({
+    from: env.SMTP_FROM,
+    to,
+    subject: "Reset your VitalityNutri password",
+    html,
+    text: `Reset your password: ${resetUrl}`,
+  });
+}
+```
+
+Behavior:
+- Email contains both a **button** and raw link.
+- Clicking either redirects user to the web app verification route.
+- Frontend route validates token by calling backend (`GET /api/auth/verify?token=...`).
+- Reset email follows the same pattern (`/reset-password?token=...`) with a button and fallback link.
 
 **Auth Endpoints:**
 | Endpoint | Method | Description |
@@ -2585,7 +3054,6 @@ server/saas/auth/
 3. On AI request: check user.api_keys[provider]
    ├── Has key? → Decrypt + use user's key (user gets their rate limits)
    └── No key? → Use platform key (platform's rate limits apply)
-4. Rate limits: tighter for platform keys (protect your quota), standard for BYOK
 ```
 
 **OAuth Flow:**
@@ -2602,7 +3070,8 @@ server/saas/auth/
 {
   "dependencies": {
     "bcryptjs": "^2.4.3",
-    "jsonwebtoken": "^9.0.2"
+    "jsonwebtoken": "^9.0.2",
+    "nodemailer": "^6.10.0"
   }
 }
 ```
@@ -2661,8 +3130,10 @@ ALTER TABLE users ADD COLUMN mfa_recovery_codes JSONB; -- 10 hashed single-use c
 
 ```ts
 // server/saas/auth/mfa.ts
+import { eq } from "drizzle-orm";
 import { authenticator } from "otplib";
 import QRCode from "qrcode";
+import { users } from "../../db/schema.js";
 
 const otp = authenticator;
 otp.options = { window: env.MFA_WINDOW, step: 30 };
@@ -2694,10 +3165,13 @@ export async function enableMFA(user: User, code: string): Promise<string[]> {
   );
   const hashed = recoveryCodes.map((c) => hash(c)); // SHA-256 + salt
   
-  await db.query(
-    "UPDATE users SET mfa_enabled = TRUE, mfa_verified_at = NOW(), mfa_recovery_codes = ? WHERE id = ?",
-    [JSON.stringify(hashed), user.id]
-  );
+  await db.update(users)
+    .set({
+      mfaEnabled: true,
+      mfaVerifiedAt: new Date(),
+      mfaRecoveryCodes: hashed,
+    })
+    .where(eq(users.id, user.id));
   
   return recoveryCodes; // shown ONCE — user must save them
 }
@@ -2786,11 +3260,11 @@ const { email, password, recoveryCode } = req.body;
 | **PDF detection** | Auto-detect (text extraction first) | KISS | No user friction, works for both types |
 | **Config validation** | Zod (crash on startup) | Clean | Fail-fast, typed config at boundary |
 | **Provider abstraction** | Interface + factory | Clean | Contract at boundary, implementations behind |
-| **AI execution mode** | Dual-mode: `USE_OMNIROUTE` gateway (default) vs Direct BYOK | KISS | One codebase, zero-config gateway for SaaS/self-host; BYOK escape hatch for power users |
+| **AI execution mode** | Dual-mode: `USE_OMNIROUTE` gateway (optional) vs Direct BYOK | KISS | One codebase; direct mode is safest default for self-host, gateway can be enabled when deployed |
 | **Retry/fallback** | Single `generateWithFallback()` + gateway no-local-retry | DRY | One retry path, no duplication |
 | **OSS vs SaaS** | Same repo, `MODE` flag | KISS | No branch conflicts, clean separation |
 | **SaaS gating** | No license key | KISS | Value is operational, not code |
-| **DB for OSS** | SQLite | KISS | Zero config, single file, single user |
+| **DB for OSS** | Configurable (`sqlite` default, optional `postgres`) | KISS | Simple default, flexible for advanced self-hosters |
 | **DB for SaaS** | PostgreSQL | Clean | Multi-tenant, JSONB, row-level security |
 | **Billing** | None yet (YAGNI) | KISS | Implement when first paying user arrives |
 | **Model config** | `AI_PROVIDERS` + `AI_MODELS` | KISS | Two env vars, no config files |
@@ -2812,6 +3286,7 @@ const { email, password, recoveryCode } = req.body;
 | **MFA** | TOTP via otplib (app-based, no SMS) | Security | Actively maintained; SMS = SIM-swap risk; speakeasy unmaintained |
 | **UI language** | Runtime selection (AppBar dropdown) via `AVAILABLE_LANGS` + `GET /api/config` | KISS | `VITE_LANGUAGE` is build-time and global; per-user runtime choice removes rebuilds |
 | **SaaS URLs** | Landing `domain.com` + app `app.domain.com` (subdomain split) | Clean | Marketing/SEO isolated from login-gated app; no cross-subdomain cookies; ~2-3 days effort |
+| **Offline mode** | Tier 1 read-only PWA (both modes) — browse cached plan/recipe book, offline banner, gated actions | KISS | AI/chat are cloud-only anyway; Tier 2 write-sync = 2-4 wks + health-data cache + offline-auth risk (YAGNI) |
 
 ---
 
@@ -2828,6 +3303,16 @@ const { email, password, recoveryCode } = req.body;
 | **Eval** | Vitest + Gemini | Prompt quality scoring | Every commit | 100% of prompts |
 
 ### Test Structure
+
+Target structure below is post-refactor.
+Current repo state (2026-08-12): tests are mainly in `src/*.test.ts` plus `e2e/smoke.spec.ts`; migration to `__tests__/` layout is pending.
+
+Import alias convention (avoid deep relative paths like `../../../../`):
+- `@components/*` -> `src/components/*`
+- `@utils/*` -> `src/utils/*`
+- `@i18n/*` -> `src/i18n/*`
+- `@services/*` -> `src/services/*`
+- `@server/*` -> `server/*` (post-refactor backend tree)
 
 ```
 __tests__/
@@ -2870,6 +3355,7 @@ __tests__/
 │   ├── chat-flow.spec.ts              # Ask question → get answer
 │   ├── auth-flow.spec.ts              # Register → login → logout
 │   ├── mfa-flow.spec.ts               # Enable 2FA → login with code → recovery
+│   ├── offline-flow.spec.ts           # context.setOffline → banner + gated actions, plan still visible
 │   └── batch-cooking.spec.ts          # Generate batch plan
 └── prompts/                           # (already defined in eval section)
     ├── prompt.test.ts                 # L1: Static
@@ -2878,6 +3364,50 @@ __tests__/
     └── eval.quality.ts                # L4: Quality (manual)
 ```
 
+### DB Repository Contract Tests (dual-dialect safety)
+
+Goal: same repository behavior in SQLite and PostgreSQL.
+
+```ts
+// __tests__/integration/db/repository-contract.test.ts
+import { describe, test, expect } from "vitest";
+import { createDb } from "@server/db/client.js";
+import { DietRepository } from "@server/db/repositories/diets.js";
+
+const drivers = [
+  {
+    name: "sqlite",
+    setup: () => {
+      process.env.DB_DRIVER = "sqlite";
+      process.env.SQLITE_PATH = "./data/test.db";
+      return createDb();
+    },
+  },
+  {
+    name: "postgres",
+    setup: () => {
+      process.env.DB_DRIVER = "postgres";
+      process.env.DATABASE_URL = process.env.TEST_DATABASE_URL!;
+      return createDb();
+    },
+  },
+];
+
+describe.each(drivers)("DietRepository contract (%s)", ({ setup }) => {
+  test("create + read returns same shape", async () => {
+    const db = setup();
+    const repo = new DietRepository(db);
+    const created = await repo.create({ userId: "u1", fileHash: "h1", dietData: { ok: true } });
+    const loaded = await repo.getById(created.id);
+    expect(loaded?.fileHash).toBe("h1");
+  });
+});
+```
+
+Rule:
+- Services/routes should not branch by SQL dialect.
+- Any unavoidable dialect-specific behavior must stay inside repository internals.
+
 ### Unit Tests
 
 #### Backend
@@ -2885,7 +3415,7 @@ __tests__/
 ```ts
 // __tests__/unit/server/ai/factory.test.ts
 import { describe, test, expect, vi } from "vitest";
-import { createClient, generateWithFallback, generateAIResponse } from "../../../../server/ai/factory.js";
+import { createClient, generateWithFallback, generateAIResponse } from "@server/ai/factory.js";
 
 describe("createClient", () => {
   test("creates GroqClient for groq provider", () => {
@@ -2971,7 +3501,7 @@ describe("generateAIResponse (dual-mode routing)", () => {
 // __tests__/unit/src/components/PdfUpload.test.tsx
 import { describe, test, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
-import PdfUpload from "../../../src/components/PdfUpload";
+import PdfUpload from "@components/PdfUpload";
 
 describe("PdfUpload", () => {
   test("renders upload button", () => {
@@ -2996,7 +3526,7 @@ describe("PdfUpload", () => {
 // __tests__/integration/api/upload.test.ts
 import { describe, test, expect, beforeAll, afterAll } from "vitest";
 import request from "supertest";
-import { app } from "../../../../server/server.js";
+import { app } from "@server/server.js";
 
 describe("POST /api/upload", () => {
   let server: any;
@@ -3123,6 +3653,8 @@ export default defineConfig({
 
 ### CI Pipeline
 
+Current repo CI (2026-08-12) should use existing scripts. The workflow below is the safe current-state baseline:
+
 ```yaml
 # .github/workflows/test.yml
 name: Tests
@@ -3138,8 +3670,7 @@ jobs:
           node-version: 20
           cache: "npm"
       - run: npm ci
-      - run: npm run test:unit -- --coverage
-      - run: npm run test:integration
+      - run: npm run test
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -3175,10 +3706,33 @@ jobs:
           node-version: 20
           cache: "npm"
       - run: npm ci
-      - run: npm run test:eval
+      - run: npm run test
+
+    # Target-state workflow (post-refactor) may split unit/integration/eval once
+    # test:unit, test:integration, and test:eval scripts are added.
 ```
 
 ### Package.json Scripts
+
+Current repo scripts (2026-08-12):
+
+```json
+{
+  "scripts": {
+    "dev": "tsx server.ts",
+    "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
+    "start": "node dist/server.cjs",
+    "clean": "rimraf dist server.js",
+    "lint": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
+  }
+}
+```
+
+Target scripts (post-refactor):
 
 ```json
 {
@@ -3194,6 +3748,23 @@ jobs:
   }
 }
 ```
+
+### Phase Done Criteria (minimum bar)
+
+#### Phase 1 Setup and DB
+- `env.ts` validates `DB_DRIVER`, `DATABASE_URL` (when postgres), and startup retry knobs.
+- Drizzle DB client and repositories compile, and repository contract tests pass on both drivers.
+- API routes use repositories (no dialect checks in service/route logic).
+
+#### Phase 9 Operations
+- Startup DB gate runs before `app.listen` and exits non-zero on repeated DB failure.
+- `/health` and `/health/ready` are implemented and integration-tested.
+- Graceful shutdown closes DB resources correctly in both drivers.
+
+#### Dual-SQL Release Gate
+- CI executes DB integration tests for SQLite and PostgreSQL.
+- Same repository tests pass in both modes.
+- Boot smoke tests pass with `DB_DRIVER=sqlite` and `DB_DRIVER=postgres`.
 
 ---
 
@@ -3252,20 +3823,31 @@ test(eval): add regression tests for prompts
 
 ## 🔒 15. Cybersecurity (SaaS Critical)
 
-### OWASP Top 10 (2021) Mapping
+### OWASP Top 10 (2025) Mapping
 
 | OWASP | Vulnerability | Our Mitigation | Status |
 |---|---|---|---|
-| **A01** | Broken Access Control | Row-level security, JWT auth, tenant isolation, CORS | ✅ |
-| **A02** | Cryptographic Failures | AES-256-GCM for BYOK, bcrypt for passwords, HTTPS | ✅ |
-| **A03** | Injection | Zod validation, parameterized queries, sanitize-html | ✅ |
-| **A04** | Insecure Design | Threat modeling, security-first architecture,最小权限 | ✅ |
-| **A05** | Security Misconfiguration | Helmet.js, env validation, no defaults in prod | ✅ |
-| **A06** | Vulnerable Components | npm audit CI, Dependabot, lockfile | ✅ |
-| **A07** | Auth Failures | Account lockout, JWT rotation, email verification | ✅ |
-| **A08** | Data Integrity Failures | Refresh token rotation, signed JWTs, lockfile | ✅ |
-| **A09** | Logging Failures | Audit logs, failed login tracking, error monitoring | ✅ |
-| **A10** | SSRF | No user-controlled URLs in server requests | ✅ |
+| **A01** | Broken Access Control | Row-level security, JWT auth, tenant isolation, CORS | 🟡 Planned/In Progress |
+| **A02** | Security Misconfiguration | Helmet.js, env validation, required secrets in prod | 🟡 Planned/In Progress |
+| **A03** | Software Supply Chain Failures | npm audit CI, Dependabot, lockfile, pinned CI workflows | 🟡 Planned/In Progress |
+| **A04** | Cryptographic Failures | AES-256-GCM for BYOK, bcrypt for passwords, HTTPS | 🟡 Planned/In Progress |
+| **A05** | Injection | Zod validation, parameterized queries, sanitize-html | 🟡 Planned/In Progress |
+| **A06** | Insecure Design | Threat modeling, security-first architecture, least privilege | 🟡 Planned/In Progress |
+| **A07** | Authentication Failures | Account lockout, JWT rotation, email verification, optional/required MFA | 🟡 Planned/In Progress |
+| **A08** | Software or Data Integrity Failures | Refresh token rotation, signed JWTs, lockfile integrity checks | 🟡 Planned/In Progress |
+| **A09** | Security Logging and Alerting Failures | Audit logs, failed login tracking, centralized error monitoring | 🟡 Planned/In Progress |
+| **A10** | Mishandling of Exceptional Conditions | Graceful error handling, startup DB fail-fast, health/readiness checks, bounded retries/timeouts | 🟡 Planned/In Progress |
+
+Legacy note (2021 -> 2025 crosswalk):
+- `A02:2021 Cryptographic Failures` -> `A04:2025`
+- `A03:2021 Injection` -> `A05:2025`
+- `A04:2021 Insecure Design` -> `A06:2025`
+- `A05:2021 Security Misconfiguration` -> `A02:2025`
+- `A06:2021 Vulnerable and Outdated Components` -> `A03:2025`
+- `A07:2021 Identification and Authentication Failures` -> `A07:2025`
+- `A08:2021 Software and Data Integrity Failures` -> `A08:2025`
+- `A09:2021 Security Logging and Monitoring Failures` -> `A09:2025`
+- `A10:2021 SSRF` is now mostly represented via broader controls in `A06/A10`.
 
 ### MITRE ATT&CK Mapping (Web Application)
 
@@ -3313,20 +3895,25 @@ test(eval): add regression tests for prompts
 
 | Level | Requirement | Our Status |
 |---|---|---|
-| **V1** | Architecture, Design and Threat Modeling | ✅ Documented in plan |
-| **V2** | Authentication | ✅ bcrypt, JWT, lockout, verification |
-| **V3** | Session Management | ✅ Refresh token rotation, secure cookies |
-| **V4** | Access Control | ✅ Row-level security, tenant isolation |
-| **V5** | Input Validation | ✅ Zod schemas, parameterized queries |
-| **V6** | Cryptography | ✅ AES-256-GCM, bcrypt, HTTPS |
-| **V7** | Error Handling and Logging | ✅ Audit logs, no verbose errors |
-| **V8** | Data Protection | ✅ Encryption at rest, secure deletion |
-| **V9** | Communication | ✅ HTTPS, HSTS, secure cookies |
-| **V10** | Malicious Code | ✅ No eval(), CSP, input sanitization |
-| **V11** | Business Logic | ✅ Rate limiting, workflow validation |
-| **V12** | Files and Resources | ✅ File type validation, size limits |
-| **V13** | API and Web Service | ✅ Rate limiting, input validation, auth |
-| **V14** | Configuration | ✅ Zod env, no defaults in prod |
+| **V1** | Architecture, Design and Threat Modeling | 🟡 Planned/In Progress |
+| **V2** | Authentication | 🟡 Planned/In Progress |
+| **V3** | Session Management | 🟡 Planned/In Progress |
+| **V4** | Access Control | 🟡 Planned/In Progress |
+| **V5** | Input Validation | 🟡 Planned/In Progress |
+| **V6** | Cryptography | 🟡 Planned/In Progress |
+| **V7** | Error Handling and Logging | 🟡 Planned/In Progress |
+| **V8** | Data Protection | 🟡 Planned/In Progress |
+| **V9** | Communication | 🟡 Planned/In Progress |
+| **V10** | Malicious Code | 🟡 Planned/In Progress |
+| **V11** | Business Logic | 🟡 Planned/In Progress |
+| **V12** | Files and Resources | 🟡 Planned/In Progress |
+| **V13** | API and Web Service | 🟡 Planned/In Progress |
+| **V14** | Configuration | 🟡 Planned/In Progress |
+
+Session model note:
+- Access token: short-lived bearer token in `Authorization: Bearer <token>`.
+- Refresh token: HTTP-only, Secure, SameSite=Strict cookie (rotation on every refresh).
+- Because refresh uses cookie transport, protect `/api/auth/refresh` and `/api/auth/logout` with CSRF defense (double-submit token or equivalent).
 
 ### HTTP Security Headers
 
@@ -3438,6 +4025,8 @@ export const uploadSchema = z.object({
 
 ```ts
 // server/saas/auth/security.ts
+import { and, eq, gt, sql } from "drizzle-orm";
+import { emailVerifications, loginAttempts, passwordResets, refreshTokens, users } from "../../db/schema.js";
 
 // 1. Password hashing (bcrypt, 12 rounds)
 export async function hashPassword(password: string): Promise<string> {
@@ -3445,32 +4034,31 @@ export async function hashPassword(password: string): Promise<string> {
 }
 
 // 2. Account lockout (5 failed attempts → 15 min lock)
-export async function checkAccountLockout(userId: string): Promise<boolean> {
-  const attempts = await db.query(
-    "SELECT COUNT(*) as count FROM login_attempts WHERE user_id = ? AND created_at > NOW() - INTERVAL '15 minutes'",
-    [userId]
-  );
-  return attempts.count >= 5;
+export async function checkAccountLockout(email: string): Promise<boolean> {
+  const since = sql`NOW() - INTERVAL '15 minutes'`;
+  const rows = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(loginAttempts)
+    .where(and(eq(loginAttempts.email, email), gt(loginAttempts.createdAt, since)));
+  return Number(rows[0]?.count ?? 0) >= 5;
 }
 
 // 3. JWT token rotation (refresh token used once)
 export async function rotateRefreshToken(oldToken: string): Promise<string> {
   // Verify old token exists and hasn't been used
-  const stored = await db.query(
-    "SELECT * FROM refresh_tokens WHERE token_hash = ? AND used = false",
-    [sha256(oldToken)]
-  );
+  const stored = await db.query.refreshTokens.findFirst({
+    where: and(eq(refreshTokens.tokenHash, sha256(oldToken)), eq(refreshTokens.used, false)),
+  });
   
   if (!stored) throw new Error("Invalid refresh token");
   
   // Mark old token as used
-  await db.query(
-    "UPDATE refresh_tokens SET used = true WHERE token_hash = ?",
-    [sha256(oldToken)]
-  );
+  await db.update(refreshTokens)
+    .set({ used: true })
+    .where(eq(refreshTokens.tokenHash, sha256(oldToken)));
   
   // Issue new pair
-  return generateTokenPair(stored.user_id);
+  return generateTokenPair(stored.userId);
 }
 
 // 4. Email verification (required for registration)
@@ -3478,30 +4066,68 @@ export async function sendVerificationEmail(userId: string, email: string) {
   const token = crypto.randomBytes(32).toString("hex");
   const expires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
   
-  await db.query(
-    "INSERT INTO email_verifications (user_id, token, expires_at) VALUES (?, ?, ?)",
-    [userId, sha256(token), expires]
-  );
+  await db.insert(emailVerifications).values({
+    userId,
+    tokenHash: sha256(token),
+    expiresAt: expires,
+  });
   
-  await sendEmail(email, "Verify your account", `Click: ${APP_URL}/verify?token=${token}`);
+  await sendVerificationMail(email, token);
 }
 
 // 5. Password reset (token expires in 1 hour)
 export async function requestPasswordReset(email: string) {
-  const user = await db.query("SELECT id FROM users WHERE email = ?", [email]);
+  const user = await db.query.users.findFirst({
+    where: eq(users.email, email),
+    columns: { id: true },
+  });
   if (!user) return; // Don't reveal if email exists
   
   const token = crypto.randomBytes(32).toString("hex");
   const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
   
-  await db.query(
-    "INSERT INTO password_resets (user_id, token_hash, expires_at) VALUES (?, ?, ?)",
-    [user.id, sha256(token), expires]
-  );
+  await db.insert(passwordResets).values({
+    userId: user.id,
+    tokenHash: sha256(token),
+    expiresAt: expires,
+  });
   
-  await sendEmail(email, "Reset password", `Click: ${APP_URL}/reset?token=${token}`);
+  await sendPasswordResetMail(email, token);
 }
 ```
+
+### Email Validation Flow (Registration)
+
+```ts
+// POST /api/auth/register
+// 1) Create user with email_verified=false (or verified_at NULL)
+// 2) Generate random token (32 bytes), store ONLY token_hash with 24h expiry
+// 3) Send verification link containing raw token
+
+// GET /api/auth/verify?token=...
+export async function verifyEmail(rawToken: string): Promise<boolean> {
+  const tokenHash = sha256(rawToken);
+  const record = await db.query.emailVerifications.findFirst({
+    where: eq(emailVerifications.tokenHash, tokenHash),
+  });
+
+  if (!record) return false;
+  if (new Date(record.expiresAt).getTime() < Date.now()) return false;
+
+  await db.update(users)
+    .set({ emailVerifiedAt: sql`NOW()` })
+    .where(eq(users.id, record.userId));
+
+  await db.delete(emailVerifications)
+    .where(eq(emailVerifications.tokenHash, tokenHash));
+  return true;
+}
+```
+
+Rules:
+- Never store raw verification tokens in DB.
+- Verification endpoint should be idempotent and return generic messages.
+- Optional resend endpoint must rotate token (invalidate previous token_hash rows).
 
 ### BYOK Encryption
 
@@ -3543,15 +4169,19 @@ export function decryptApiKey(encrypted: string): string {
 ### SQL Injection Prevention
 
 ```ts
-// All queries use parameterized statements
-// NEVER: `SELECT * FROM users WHERE id = '${userId}'`
-// ALWAYS: db.query("SELECT * FROM users WHERE id = ?", [userId])
+import { eq } from "drizzle-orm";
+import { users } from "../db/schema.js";
 
-// Safe example:
-const user = await db.query(
-  "SELECT id, email, name FROM users WHERE id = $1",
-  [userId]
-);
+// Never build SQL by string concatenation.
+// ORM-first safe path:
+const user = await db.query.users.findFirst({
+  where: eq(users.id, userId),
+  columns: { id: true, email: true, name: true },
+});
+
+// Legacy raw-SQL reference (repository internals only):
+// SQLite: SELECT * FROM users WHERE id = ?
+// PostgreSQL: SELECT * FROM users WHERE id = $1
 ```
 
 ### File Upload Security
@@ -3580,6 +4210,7 @@ export function validateFileSize(buffer: Buffer, maxSizeMB: number = 10): boolea
 
 ```ts
 // server/saas/auth/audit.ts
+import { auditLogs } from "../../db/schema.js";
 
 export interface AuditEvent {
   userId?: string;
@@ -3590,11 +4221,14 @@ export interface AuditEvent {
 }
 
 export async function logAuditEvent(event: AuditEvent) {
-  await db.query(
-    `INSERT INTO audit_logs (user_id, action, ip_address, user_agent, details, created_at)
-     VALUES (?, ?, ?, ?, ?, NOW())`,
-    [event.userId, event.action, event.ip, event.userAgent, JSON.stringify(event.details)]
-  );
+  await db.insert(auditLogs).values({
+    userId: event.userId ?? null,
+    action: event.action,
+    ipAddress: event.ip,
+    userAgent: event.userAgent,
+    details: event.details ?? {},
+    createdAt: new Date(),
+  });
 }
 
 // Track sensitive events
@@ -3657,15 +4291,17 @@ export function configureCORS(app: Express) {
 
 ### Dependencies (Security)
 
+Current repo versions (2026-08-12) are shown for packages already installed; additional entries are target dependencies for the SaaS hardening scope.
+
 ```json
 {
   "dependencies": {
-    "helmet": "^7.1.0",
-    "express-rate-limit": "^7.2.0",
+    "helmet": "^8.2.0",
+    "express-rate-limit": "^8.5.2",
     "rate-limit-redis": "^4.2.0",
     "sanitize-html": "^2.13.0",
     "file-type": "^19.0.0",
-    "cors": "^2.8.5"
+    "cors": "^2.8.6"
   }
 }
 ```
@@ -3674,10 +4310,120 @@ export function configureCORS(app: Express) {
 
 **Not adding:** LangSmith (prompt versioning via git).
 
-Remove after refactor:
-- `@google/genai` → wrapped by `server/ai/providers/gemini.ts` (still uses same SDK)
+Dependency note:
+- Keep `@google/genai` while Gemini provider is implemented in `server/ai/providers/gemini.ts`.
+- Refactor goal is architectural isolation (single provider wrapper), not dependency removal.
 
 ---
 
-*Last updated: 2026-08-11 (v14 — added: runtime language selector (AppBar dropdown + /api/config + users.lang), SaaS marketing landing page, subdomain split domain.com / app.domain.com with complexity assessment)*
-*Principles: Clean Architecture (deps inward, typed boundary), DRY (one retry path, one PDF flow, one hash function, one prompt per type), KISS (env vars over config files, SQLite for OSS, Groq+Gemini defaults — both free forever, no LangSmith, no billing yet).*
+## ✅ 16. Execution Profile (Confirmed Constraints)
+
+This section translates the current project constraints into concrete delivery rules.
+
+### Priority Order (Highest -> Lowest)
+
+1. ORM-first DB architecture (Drizzle + dual driver discipline)
+2. OmniRoute-based AI routing and fallback strategy
+3. Security hardening baseline (OWASP/MITRE controls already listed)
+4. Docker/ops reliability and rollout hygiene
+5. Chat module (lowest priority, can be deferred)
+
+### Scope Definition (for current dev stage)
+
+Because business risk is currently zero (development only), the recommended scope is:
+
+- **Now (v1-dev focus):** ORM + AI routing foundation + security baseline + health/ops gates
+- **Later (v1.1-dev):** advanced SaaS auth polish and extended test matrix
+- **Last (v1.2-dev):** chat cost/UX hardening and optional chat expansion
+
+This avoids spending time on low-priority chat work before the core architecture is stable.
+
+### Timeline Estimate (single-operator baseline)
+
+Assuming one primary implementer and iterative PRs:
+
+- **Milestone A (1-2 days):** finalize env schema, Drizzle client/repositories, dual-driver boot checks
+- **Milestone B (1-2 days):** OmniRoute + direct BYOK routing cleanup, alias/model wiring, failure-path tests
+- **Milestone C (2-3 days):** auth/security baseline (token rotation flow, email verification/reset, audit hooks)
+- **Milestone D (1-2 days):** ops gates (readiness, startup DB reachability, shutdown, structured logs)
+- **Milestone E (1 day):** CI/test tightening and doc sync
+
+**Total working estimate:** ~6-10 days (without major external blockers).
+
+### Commit and Rollback Strategy
+
+Use one commit per primary point/milestone to keep rollback simple:
+
+1. `feat(db): drizzle foundation and dual-driver bootstrap`
+2. `feat(ai): omniroute and direct-byok routing unification`
+3. `feat(auth): verification reset rotation and audit baseline`
+4. `feat(ops): readiness startup gate shutdown logging`
+5. `test(ci): contract integration and release gates`
+6. `docs(plan): status and decision log synchronization`
+
+Operational rule:
+- Keep each milestone commit deployable in dev.
+- If a regression appears, revert only the affected milestone commit.
+
+### Infrastructure Constraints (Applied)
+
+- **Development host:** homelab web server, 4 GB RAM / 4 cores
+- **Production target:** VPS, 4 GB RAM / 2 cores
+- **Container baseline:** Docker / Docker Compose (primary deployment model)
+- **Orchestration option:** Kubernetes is supported as a future/parallel target when running multiple containers/services
+- **Coexistence requirement:** deployment must coexist with other containers on the same host (resource caps and predictable startup order)
+
+Implications:
+- Prefer memory-stable defaults (bounded concurrency, bounded payloads).
+- Keep default AI mode cost-aware and failure-tolerant.
+- Keep startup and readiness checks lightweight.
+- Prefer explicit CPU/memory limits and health probes for each service container.
+- Keep service networking simple and deterministic (stable internal names, minimal exposed ports).
+
+### Security and Cost Posture
+
+- Security target stays aligned with OWASP + MITRE controls in this plan.
+- Budget policy: **0 EUR target** (free tiers whenever possible).
+- Cost-control rule: no paid dependency/service unless explicitly approved.
+
+### Chat Policy (de-prioritized)
+
+Chat remains optional and low priority until Milestones A-D are complete.
+Only minimal maintenance for chat should be done before core architecture milestones are stable.
+
+### 17. Pre-Implementation Checklist
+
+Use this checklist before starting Milestone A.
+
+#### Milestone Lock
+- [ ] Confirm implementation starts with **Milestone A** (ORM/DB foundation).
+- [ ] Confirm chat work stays deferred unless it unblocks Milestones A-D.
+
+#### Commit Discipline
+- [ ] Enforce one primary commit per milestone scope.
+- [ ] Reject mixed-scope commits (for example DB+auth+ops together).
+
+#### Environment Readiness
+- [ ] Validate `.env` for selected mode before each milestone run.
+- [ ] Start in `MODE=oss` for first iteration, then validate `MODE=saas` path.
+
+#### Database Execution Mode
+- [ ] Run SQLite path first for local speed and baseline stability.
+- [ ] Verify PostgreSQL path in integration tests before milestone close.
+
+#### Test Gate Baseline
+- [ ] Minimum gate per milestone: typecheck + unit + targeted integration.
+- [ ] Run E2E on milestone boundaries (not required for every micro-commit).
+
+#### Rollback Hygiene
+- [ ] Each milestone commit leaves the project runnable in dev.
+- [ ] If regression appears, revert the milestone commit as a unit.
+
+#### Scope Freeze (v1-dev)
+- [ ] No new features unless they unblock milestone work.
+- [ ] Any security/ops additions must map to an existing milestone item.
+
+---
+
+*Last updated: 2026-08-13 (v31 — added pre-implementation checklist with milestone lock, commit discipline, env readiness, DB/test gates, rollback hygiene, and v1-dev scope freeze controls)*
+*Principles: Clean Architecture (deps inward, typed boundary), DRY (one retry path, one PDF flow, one hash function, one prompt per type), KISS (env vars over config files, schema default sqlite + SaaS-enforced postgres + optional OSS postgres, Groq+Gemini defaults — both free forever, no LangSmith, no billing yet).*
