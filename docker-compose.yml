@@ -1,19 +1,54 @@
+name: vitalitynutri
+
 services:
-  vitalitynutri:
-    image: ${IMAGE_NAME:-ghcr.io/eljorgit/vitalitynutri:latest}
-    container_name: vitalitynutri
+  frontend:
+    image: ghcr.io/eljorgit/vitalitynutri-frontend:latest
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: docker/frontend.Dockerfile
     ports:
-      - "5027:5027"
+      - "5027:80"
+    expose:
+      - "80"
     environment:
-      - NODE_ENV=production
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - PORT=${PORT:-5027}
-      - APP_URL=${APP_URL:-}
-      - SITE_VISIBILITY=${SITE_VISIBILITY:-}
-      - UNSPLASH_ACCESS_KEY=${UNSPLASH_ACCESS_KEY:-}
-    volumes:
-      - ./data:/app/data
+      - BACKEND_UPSTREAM=http://backend:80
+    env_file:
+      - path: .env.frontend
+        required: false
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:80/frontend-health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
     restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  backend:
+    image: ghcr.io/eljorgit/vitalitynutri-backend:latest
+    build:
+      context: .
+      dockerfile: docker/backend.Dockerfile
+    ports:
+      - "5026:80"
+    expose:
+      - "80"
+    env_file:
+      - path: .env.backend
+        required: false
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:80/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
+    volumes:
+      - backend-data:/app/data
+
+volumes:
+  backend-data:

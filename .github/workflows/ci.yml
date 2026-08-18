@@ -25,8 +25,11 @@ jobs:
         with:
           node-version: 22
           cache: npm
+          cache-dependency-path: frontend/package-lock.json
       - run: npm ci
+        working-directory: frontend
       - run: npm run lint
+        working-directory: frontend
 
   test:
     name: Tests
@@ -37,13 +40,28 @@ jobs:
         with:
           node-version: 22
           cache: npm
+          cache-dependency-path: frontend/package-lock.json
       - run: npm ci
+        working-directory: frontend
       - run: npm test -- --coverage
+        working-directory: frontend
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
         with:
           name: coverage
-          path: coverage/
+          path: frontend/coverage/
+
+  backend:
+    name: Backend Build & Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - run: dotnet restore backend/VitalityNutri.slnx
+      - run: dotnet build backend/VitalityNutri.slnx --configuration Release --no-restore
+      - run: dotnet test backend/VitalityNutri.slnx --configuration Release --no-build
 
   codeql:
     name: CodeQL
@@ -61,7 +79,7 @@ jobs:
         if: steps.check-visibility.outputs.public == 'true'
         uses: github/codeql-action/init@v4
         with:
-          languages: javascript-typescript
+          languages: csharp, javascript-typescript
           queries: +security-extended
       - name: Autobuild
         if: steps.check-visibility.outputs.public == 'true'
@@ -75,6 +93,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
       - name: Check SNYK_TOKEN
         id: check-snyk
         env:
@@ -86,7 +110,7 @@ jobs:
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
-          args: --severity-threshold=high
+          args: --all-projects --severity-threshold=high
       - name: Run Snyk monitor
         if: github.event_name == 'push' && steps.check-snyk.outputs.available == 'true'
         uses: snyk/actions@v1.0.0
@@ -104,11 +128,15 @@ jobs:
         with:
           node-version: 22
           cache: npm
+          cache-dependency-path: frontend/package-lock.json
       - run: npm ci
+        working-directory: frontend
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
+        working-directory: frontend
       - name: Run e2e tests
         run: npm run test:e2e
+        working-directory: frontend
 
   sonar:
     name: SonarQube Analysis
@@ -122,13 +150,16 @@ jobs:
         with:
           node-version: 22
           cache: npm
+          cache-dependency-path: frontend/package-lock.json
       - run: npm ci
+        working-directory: frontend
       - run: npm run build
+        working-directory: frontend
       - name: Download coverage report
         uses: actions/download-artifact@v4
         with:
           name: coverage
-          path: coverage/
+          path: frontend/coverage/
       - name: Check secrets
         id: check-sonar
         env:
@@ -152,7 +183,7 @@ jobs:
   build:
     name: Build
     if: github.ref_type == 'tag'
-    needs: [lint, test, codeql, snyk, e2e, sonar]
+    needs: [lint, test, backend, codeql, snyk, e2e, sonar]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -160,8 +191,15 @@ jobs:
         with:
           node-version: 22
           cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
       - run: npm ci
+        working-directory: frontend
       - run: npm run build
+        working-directory: frontend
+      - run: dotnet build backend/VitalityNutri.slnx --configuration Release
 
   docker:
     name: Build & Push Docker Image
@@ -183,31 +221,48 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.IMAGE_NAME }}
-          labels: |
-            org.opencontainers.image.visibility=public
-          tags: |
-            type=sha,prefix=sha-,format=short
-            type=raw,value=latest,enable=${{ github.ref_type == 'tag' }}
-      - name: Build and push
+      - name: Build and push backend image
         uses: docker/build-push-action@v6
         with:
           context: .
+          file: docker/backend.Dockerfile
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          tags: |
+            ${{ env.IMAGE_NAME }}-backend:latest
+            ${{ env.IMAGE_NAME }}-backend:${{ github.ref_name }}
+          cache-from: type=gha,scope=vitalitynutri-backend
+          cache-to: type=gha,mode=max,scope=vitalitynutri-backend
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/frontend.Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}-frontend:latest
+            ${{ env.IMAGE_NAME }}-frontend:${{ github.ref_name }}
+          cache-from: type=gha,scope=vitalitynutri-frontend
+          cache-to: type=gha,mode=max,scope=vitalitynutri-frontend
+      - name: Build and push all-in-one image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:latest
+            ${{ env.IMAGE_NAME }}:${{ github.ref_name }}
+          cache-from: type=gha,scope=vitalitynutri
+          cache-to: type=gha,mode=max,scope=vitalitynutri
 
   deploy:
     name: Deploy
     if: github.ref_type == 'tag'
     needs: docker
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
     steps:
       - uses: actions/checkout@v4
       - name: Check secrets
@@ -238,13 +293,18 @@ jobs:
       - name: Deploy via SSH
         if: steps.check-deploy.outputs.ssh == 'true'
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
           port: ${{ secrets.SSH_PORT || 22 }}
+          envs: GHCR_TOKEN,GHCR_USER
           script: |
             cd ${{ secrets.DEPLOY_PATH }}
+            echo "$GHCR_TOKEN" | docker login ghcr.io --username "$GHCR_USER" --password-stdin
             docker compose pull
             docker compose up -d --remove-orphans
             docker image prune -f

@@ -10,7 +10,7 @@ Thank you for your interest in contributing! Here's how you can help.
 
 ## Adding Translations
 
-1. Add keys to `src/i18n/es.json` and `src/i18n/en.json`
+1. Add keys to `frontend/src/i18n/es.json` and `frontend/src/i18n/en.json`
 2. Use the key as `t("namespace.key")` in components
 3. See [TRANSLATING.md](./TRANSLATING.md) for details
 
@@ -18,5 +18,5 @@ Thank you for your interest in contributing! Here's how you can help.
 
 1. Create a feature branch
 2. Make your changes
-3. Run `npm run lint` and `npm run typecheck`
+3. Run `npm --prefix frontend run lint` and `npm --prefix frontend run test`
 4. Submit a PR with a clear description

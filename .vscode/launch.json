@@ -2,15 +2,15 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Dev Server + Chrome Debug",
+      "name": "Frontend + Chrome Debug",
       "type": "node-terminal",
       "request": "launch",
-      "command": "npm run dev",
+      "command": "npm --prefix frontend run dev",
       "serverReadyAction": {
-        "pattern": "Server running on port ([0-9]+)",
+        "pattern": "Local:\s+http://localhost:([0-9]+)",
         "uriFormat": "http://localhost:%s",
         "action": "debugWithChrome",
-        "webRoot": "${workspaceFolder}"
+        "webRoot": "${workspaceFolder}/frontend"
       }
     }
   ]

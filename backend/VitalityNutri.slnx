@@ -1,0 +1,9 @@
+<Solution>
+  <Project Path="VitalityNutri.Api/VitalityNutri.Api.csproj" />
+  <Project Path="VitalityNutri.Application/VitalityNutri.Application.csproj" />
+  <Project Path="VitalityNutri.Domain/VitalityNutri.Domain.csproj" />
+  <Project Path="VitalityNutri.Infrastructure/VitalityNutri.Infrastructure.csproj" />
+  <Project Path="VitalityNutri.Migrations.MySql/VitalityNutri.Migrations.MySql.csproj" />
+  <Project Path="VitalityNutri.Migrations.Sqlite/VitalityNutri.Migrations.Sqlite.csproj" />
+  <Project Path="VitalityNutri.Tests/VitalityNutri.Tests.csproj" />
+</Solution>

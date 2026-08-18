@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json.schemastore.org/launchsettings.json",
+  "profiles": {
+    "VitalityNutri.Api": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": true,
+      "launchUrl": "scalar/v1",
+      "applicationUrl": "https://localhost:5026",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ApiConfiguration__ConnectionStrings__Default": "Server=localhost;Port=3306;Database=vitalitynutri;User ID=CHANGE_ME;Password=CHANGE_ME;SslMode=Preferred;",
+        "ApiConfiguration__Ai__OmniRoute__ApiKey": "CHANGE_ME",
+        "ApiConfiguration__Ai__Providers__Gemini__ApiKey": "CHANGE_ME",
+        "ApiConfiguration__Ai__Providers__Groq__ApiKey": "CHANGE_ME",
+        "ApiConfiguration__ExternalServices__Unsplash__AccessKey": "CHANGE_ME",
+        "ApiConfiguration__Telemetry__Sentry__Dsn": "hCHANGE_ME",
+        "ApiConfiguration__Telemetry__ApplicationInsights__ConnectionString": "CHANGE_ME"
+      }
+    }
+  }
+}

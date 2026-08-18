@@ -58,27 +58,22 @@ VitalityNutri is a full-stack nutritional planning web application that automate
 
 ```
 vitalitynutri/
-├── data/                 # Persistence (SQLite DB + PDF uploads)
-├── prompts/              # AI system prompts (EN/ES)
-│   ├── recipe-ai/
-│   ├── batch-cooking/
-│   └── plan-analysis/
-├── src/                  # React Frontend (TypeScript)
-│   ├── components/       # UI components
-│   ├── i18n/             # Translation files (en.json, es.json) + config.ts
-│   ├── utils/            # Helpers (routes, siteVisibility, searchHelpers)
-│   ├── types.ts          # TypeScript type definitions
-│   ├── db.ts             # SQLite database logic
-│   ├── main.tsx          # React entry point
-│   └── index.css         # Global styles (Tailwind CSS v4)
-├── server.ts             # Express server, API, Gemini AI integration
-├── .github/              # CI/CD workflows & templates
-├── Dockerfile            # Multi-stage container build
-├── docker-compose.yml    # Container orchestration
-├── .nvmrc                # Node.js version pinning
-├── vite.config.ts
-├── tsconfig.json
-└── package.json
+├── backend/                        # .NET 10 Clean Architecture solution
+│   ├── VitalityNutri.Api/
+│   ├── VitalityNutri.Application/
+│   ├── VitalityNutri.Domain/
+│   ├── VitalityNutri.Infrastructure/
+│   ├── VitalityNutri.Tests/
+│   ├── prompts/
+│   └── ...
+├── frontend/                       # React/Vite workspace
+│   ├── src/
+│   ├── public/
+│   ├── e2e/
+│   └── package.json
+├── docker/                         # Independent image definitions + Nginx
+├── docs/
+└── docker-compose.yml
 ```
 
 ---
@@ -93,13 +88,13 @@ vitalitynutri/
 * **Lucide React** & **Material Symbols** (icons)
 
 ### Backend:
-* **Node.js** & **Express**
-* **Google GenAI SDK** (`@google/genai`) with `gemini-3.5-flash`
-* **SQLite** via `better-sqlite3`
-* **esbuild** (server bundling)
+* **.NET 10** & **ASP.NET Core controllers**
+* **Clean Architecture**, **MediatR**, **FluentValidation**, and **AutoMapper**
+* **Entity Framework Core 10** with **MySQL**
+* First-party **OpenAPI 3.1** + **Scalar**
 
 ### DevOps:
-* **Docker** multi-stage builds
+* Separate Docker images for React/Nginx and ASP.NET Core
 * **GitHub Actions** CI/CD (lint, build, deploy)
 * **rimraf** (cross-platform clean)
 
@@ -108,38 +103,38 @@ vitalitynutri/
 ## 🚀 Local Setup
 
 ### Prerequisites:
-*   [Node.js](https://nodejs.org/) (Node 18 or later recommended)
-*   A Google Gemini API key (free at [Google AI Studio](https://aistudio.google.com/))
+*   [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
+*   [Node.js](https://nodejs.org/) 22 or later
+*   MySQL server
+*   Docker Desktop for container deployment
 
 ### 1. Clone and install dependencies
 ```bash
 cd vitalitynutri
-npm install
+npm --prefix frontend install
 ```
 
 ### 2. Configure environment variables
 
-Create a `.env` file in the project root:
+Configuration is split by trust boundary:
 
-```env
-GEMINI_API_KEY=your_gemini_api_key
+```powershell
+Copy-Item .env.backend.example .env.backend
+Copy-Item .env.frontend.example .env.frontend
 ```
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `GEMINI_API_KEY` | ✅ Yes | — | Google Gemini AI API key |
-| `PORT` | ❌ No | `5027` | HTTP server port |
-| `NODE_ENV` | ❌ No | `development` | `development` or `production` |
-| `APP_URL` | ❌ No | auto-detected | Public URL (for OG meta tags, share links) |
-| `SITE_VISIBILITY` | ❌ No | auto-detected | `public` or `local` (shows share warning when local) |
-| `UNSPLASH_ACCESS_KEY` | ❌ No | — | Unsplash API key for recipe image search |
+- `.env.backend`: MySQL connection string, AI provider keys, and private runtime configuration.
+- `.env.frontend`: public browser configuration only (currently the initial language).
+
+See [Configuration and Docker Deployment](docs/CONFIGURATION.md) for the complete variable reference and security rules.
 
 ### 3. Run in development mode
 
-Starts both the Express server and Vite dev server with Hot Module Replacement (HMR):
+Run the primary .NET backend and the Vite frontend in separate terminals:
 
 ```bash
-npm run dev
+dotnet run --project backend/VitalityNutri.Api/VitalityNutri.Api.csproj
+npm --prefix frontend run dev
 ```
 
 The app is available at: **http://localhost:5027**
@@ -148,25 +143,23 @@ The app is available at: **http://localhost:5027**
 
 ## 🐳 Docker Deployment
 
-Multi-stage Docker build for a lightweight production image.
+Docker Compose builds two independent production images: React/Nginx for the frontend and ASP.NET Core for the backend. Nginx serves the SPA and proxies relative `/api/*` calls to the private backend service.
 
-### Build:
+### Run:
 ```bash
-docker build -t vitalitynutri .
+docker compose config --quiet
+docker compose up --build -d
 ```
 
-### Run with docker-compose (recommended):
+### Check:
 ```bash
-docker compose up -d
-```
-
-### Run manually:
-```bash
-docker run -d -p 5027:5027 --env GEMINI_API_KEY="your_api_key" -v vitality_data:/app/data vitalitynutri
+docker compose ps
+docker compose logs -f backend
+docker compose logs -f frontend
 ```
 
 > [!TIP]
-> Use a volume (`-v vitality_data:/app/data`) to persist the SQLite database and uploaded PDFs across container restarts and updates.
+> The frontend is available on `5027` and the API directly on `5026`. Browser `/api/*` calls still use the frontend proxy, avoiding CORS. The backend connects to your existing MySQL server through `host.docker.internal`.
 
 ---
 
@@ -221,14 +214,14 @@ Dictionary of known ingredients with categories for smart grocery list grouping.
 
 | Script | Description |
 |--------|-------------|
-| `npm run dev` | Start dev server with HMR |
-| `npm run build` | Build frontend + bundle backend |
-| `npm run start` | Run production server (`dist/server.cjs`) |
-| `npm run clean` | Remove `dist/` build artifacts |
-| `npm run lint` | TypeScript type-check (`tsc --noEmit`) |
-| `npm test` | Run Vitest test suite |
-| `npm run test:watch` | Run tests in watch mode |
-| `npm run test:e2e` | Run Playwright e2e tests |
+| `npm --prefix frontend run dev` | Start Vite with HMR on port 5027 |
+| `npm --prefix frontend run build` | Build the React application |
+| `npm --prefix frontend run preview` | Preview the production frontend |
+| `npm --prefix frontend run lint` | TypeScript type-check |
+| `npm --prefix frontend test` | Run Vitest tests |
+| `npm --prefix frontend run test:e2e` | Run Playwright E2E tests |
+| `dotnet build backend/VitalityNutri.slnx` | Build all backend projects |
+| `dotnet test backend/VitalityNutri.slnx` | Run backend tests |
 
 ---
 

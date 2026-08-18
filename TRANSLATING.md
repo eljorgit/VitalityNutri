@@ -2,8 +2,8 @@
 
 ## File Locations
 
-- Spanish: `src/i18n/es.json`
-- English: `src/i18n/en.json`
+- Spanish: `frontend/src/i18n/es.json`
+- English: `frontend/src/i18n/en.json`
 
 ## Key Structure
 

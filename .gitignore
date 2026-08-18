@@ -5,8 +5,21 @@ coverage/
 .DS_Store
 *.log
 .env*
-!.env.example
+!.env.backend.example
+!.env.frontend.example
+backend/VitalityNutri.Api/Properties/launchSettings.json
+!backend/VitalityNutri.Api/Properties/launchSettings.example.json
 data/
 test-results/
 nul
+
+# .NET & Visual Studio
+[bB]in/
+[oO]bj/
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
 

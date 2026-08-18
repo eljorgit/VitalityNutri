@@ -4,11 +4,15 @@ node_modules/
 # Build artifacts (regenerated inside Docker)
 dist/
 build/
+**/bin/
+**/obj/
+test-results/
+coverage/
 
-# Local environment files (secrets are injected via CI/CD)
-.env
-.env.local
-.env.*.local
+# Local environment files (secrets are injected at runtime by Compose/CI)
+.env*
+!.env.backend.example
+!.env.frontend.example
 
 # SQLite database and uploaded files
 data/
@@ -23,7 +27,4 @@ data/
 .vscode/
 .idea/
 
-# Docker itself
-Dockerfile
-.dockerignore
-docker-compose*.yml
+# Docker definitions are not copied by project-specific COPY instructions.

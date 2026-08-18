@@ -12,8 +12,9 @@ Brief description of the changes.
 
 ## Testing
 
-- [ ] `npm run lint`
-- [ ] `npm run typecheck`
+- [ ] `npm --prefix frontend run lint`
+- [ ] `npm --prefix frontend test`
+- [ ] `dotnet test backend/VitalityNutri.slnx`
 
 ## Checklist
 
