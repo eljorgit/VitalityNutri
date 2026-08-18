@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using VitalityNutri.Application.Abstractions.Persistence;
 using VitalityNutri.Application.Recipes;
 
@@ -6,7 +7,7 @@ namespace VitalityNutri.Application.Uploads;
 
 internal static class PlanRecipeSync
 {
-    public static async Task SyncAsync(
+    public static async Task<string> SyncAsync(
         string planJson,
         string metadataJson,
         IRecipeRepository recipes,
@@ -16,7 +17,7 @@ internal static class PlanRecipeSync
         var projectedRecipes = ExtractRecipes(planJson, sourcePlanId);
         if (projectedRecipes.Count == 0)
         {
-            return;
+            return planJson;
         }
 
         var existingRecipes = await recipes.GetAllAsync(cancellationToken);
@@ -24,15 +25,67 @@ internal static class PlanRecipeSync
             .GroupBy(recipe => recipe.RecipeName, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
 
+        var nameToId = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+
         foreach (var projected in projectedRecipes)
         {
             if (existingByName.TryGetValue(projected.RecipeName, out var existing))
             {
                 await recipes.UpdateAsync(existing.Id, projected with { IsFavorite = existing.IsFavorite }, cancellationToken);
+                nameToId[projected.RecipeName] = existing.Id;
                 continue;
             }
 
-            await recipes.AddAsync(RecipeMappings.ToEntity(projected), cancellationToken);
+            var newId = await recipes.AddAsync(RecipeMappings.ToEntity(projected), cancellationToken);
+            nameToId[projected.RecipeName] = newId;
+        }
+
+        return InjectRecipeIds(planJson, nameToId);
+    }
+
+    private static string InjectRecipeIds(string planJson, IReadOnlyDictionary<string, long> nameToId)
+    {
+        try
+        {
+            var root = JsonNode.Parse(planJson) as JsonObject;
+            if (root?["days"] is not JsonObject days)
+            {
+                return planJson;
+            }
+
+            foreach (var dayProp in days)
+            {
+                if (dayProp.Value is not JsonObject dayObj)
+                {
+                    continue;
+                }
+
+                foreach (var mealProp in dayObj)
+                {
+                    if (mealProp.Value is not JsonObject mealObj)
+                    {
+                        continue;
+                    }
+
+                    var targetObj = mealObj;
+                    if (mealObj["recipe"] is JsonObject nestedObj && nestedObj["recipeName"] is not null)
+                    {
+                        targetObj = nestedObj;
+                    }
+
+                    if (targetObj["recipeName"]?.GetValue<string>() is string recipeName &&
+                        nameToId.TryGetValue(recipeName.Trim(), out var recipeId))
+                    {
+                        targetObj["id"] = recipeId;
+                    }
+                }
+            }
+
+            return root.ToJsonString();
+        }
+        catch
+        {
+            return planJson;
         }
     }
 

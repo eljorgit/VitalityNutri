@@ -11,10 +11,15 @@ public sealed record UploadPlanCommand(string FileName, string FileData, string 
 
 internal sealed class UploadPlanCommandValidator : AbstractValidator<UploadPlanCommand>
 {
+    private const long MaxFileSizeBytes = 15 * 1024 * 1024; // 15MB
+
     public UploadPlanCommandValidator()
     {
         RuleFor(x => x.FileName).NotEmpty().MaximumLength(512);
-        RuleFor(x => x.FileData).NotEmpty();
+        RuleFor(x => x.FileData)
+            .NotEmpty()
+            .Must(data => string.IsNullOrWhiteSpace(data) || (long)data.Length * 3 / 4 <= MaxFileSizeBytes)
+            .WithMessage("File size cannot exceed 15MB.");
     }
 }
 
@@ -63,11 +68,19 @@ internal sealed class UploadPlanCommandHandler(
                 DateTimeOffset.UtcNow,
                 cancellationToken);
 
-            await PlanRecipeSync.SyncAsync(saved.PlanJson, saved.MetadataJson, recipes, cancellationToken);
+            var enrichedPlanJson = await PlanRecipeSync.SyncAsync(saved.PlanJson, saved.MetadataJson, recipes, cancellationToken);
+            if (enrichedPlanJson != saved.PlanJson)
+            {
+                var planId = TryReadPlanIdFromMetadata(saved.MetadataJson);
+                if (planId.HasValue)
+                {
+                    await plans.UpdatePlanJsonAsync(planId.Value, enrichedPlanJson, cancellationToken);
+                }
+            }
 
             return new UploadPlanResult(
                 true,
-                JsonSerializer.Deserialize<JsonElement>(saved.PlanJson),
+                JsonSerializer.Deserialize<JsonElement>(enrichedPlanJson),
                 JsonSerializer.Deserialize<JsonElement>(saved.MetadataJson));
         }
         catch
@@ -106,5 +119,36 @@ internal sealed class UploadPlanCommandHandler(
         }
 
         return true;
+    }
+
+    private static long? TryReadPlanIdFromMetadata(string metadataJson)
+    {
+        if (string.IsNullOrWhiteSpace(metadataJson))
+        {
+            return null;
+        }
+
+        try
+        {
+            using var doc = JsonDocument.Parse(metadataJson);
+            if (doc.RootElement.TryGetProperty("id", out var idElement))
+            {
+                if (idElement.ValueKind == JsonValueKind.Number && idElement.TryGetInt64(out var id))
+                {
+                    return id;
+                }
+
+                if (idElement.ValueKind == JsonValueKind.String && long.TryParse(idElement.GetString(), out var parsedId))
+                {
+                    return parsedId;
+                }
+            }
+        }
+        catch
+        {
+            // Ignore
+        }
+
+        return null;
     }
 }

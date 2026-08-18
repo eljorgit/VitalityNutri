@@ -121,6 +121,9 @@ public sealed class UploadPlanRecipeSyncTests
 
         public Task<SavedPlanEnvelope> ReprocessActivePlanAsync(string planJson, string fileHash, DateTimeOffset processedAtUtc, CancellationToken cancellationToken) =>
             Task.FromResult(new SavedPlanEnvelope(planJson, metadataJson));
+
+        public Task UpdatePlanJsonAsync(long planId, string planJson, CancellationToken cancellationToken) =>
+            Task.CompletedTask;
     }
 
     private sealed class PlanExtraction(string planJson) : IPlanExtractionService

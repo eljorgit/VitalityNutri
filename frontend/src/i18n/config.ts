@@ -15,6 +15,7 @@ declare global {
       language?: string;
       siteVisibility?: "public" | "local";
       apiUrl?: string;
+      maxUploadSizeMb?: number;
     };
   }
 }

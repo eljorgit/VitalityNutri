@@ -37,7 +37,7 @@ Technical specification document and roadmap for developing the AI-powered diet 
 | **3. AI Engine** | Recipe deduplication module prior to DB storage | ✅ Completed | Medium |
 | **3. AI Engine** | Recipe AI processing (`POST /api/recipes/process-ai`) with deterministic fallback | ✅ Completed | High |
 | **3. AI Engine** | Recipe image support (`GET /api/recipes/image-search`, `POST /api/recipes/report-broken-image`) + Unsplash/local lookup | ✅ Completed | High |
-| **3. AI Engine** | Nutritional info in recipe JSON (calories, protein, carbs, fat per serving) + UI display | ⬜ Pending | Medium |
+| **3. AI Engine** | Nutritional info in recipe JSON (calories, protein, carbs, fat per serving) + UI display | ✅ Completed | Medium |
 | **4. Chat (Optional)** | `/api/chat` endpoint with *In-Context Prompting* (diet summary in system prompt) | ⬜ Pending | Low |
 | **4. Chat (Optional)** | Chat cost controls: message count cap, token limits, sliding window memory | ⬜ Pending | Low |
 | **4. Chat (Optional)** | Feature flag to enable/disable chat in backend configuration | ⬜ Pending | Low |
@@ -46,6 +46,7 @@ Technical specification document and roadmap for developing the AI-powered diet 
 | **5. SaaS v2.0 Auth** | Multi-factor authentication (TOTP) & email verification (SMTP) | ⬜ Pending | Medium |
 | **6. Frontend UI** | React 19 + Tailwind UI (Dashboard, Calendar, Grocery List, Recetario, Recipe Form, Batch Cooking) | ✅ Completed | High |
 | **6. Frontend UI** | Runtime UI language selector (`i18next` with `en` / `es` support) | ✅ Completed | High |
+| **6. Frontend UI** | Global `Accept-Language` header propagation (`apiFetch`) & backend language resolver helper | ⬜ Pending | Medium |
 | **6. Frontend UI** | Separate Nginx (`5027`) + ASP.NET API (`5026`) containers with reverse proxy | ✅ Completed | High |
 | **6. Frontend UI** | Offline PWA mode (Service Worker caching for meal plan and recipes) | ⬜ Pending | Low |
 | **7. Testing & QA** | .NET Unit and Integration Tests (63 passing tests in `VitalityNutri.Tests`) | ✅ Completed | High |
@@ -237,6 +238,18 @@ Handles single recipe improvements, conversions, and generation:
 - **Current State:** 2 prompt files per feature (`prompt-en.md` and `prompt-es.md`).
 - **Target State:** 1 base English template (`prompt.md`) per feature. Language-specific instructions are appended at runtime via `{LANGUAGE}` interpolation in `Application/Abstractions/Processing`.
 
+### 4. Centralized Language Resolution & Header Strategy
+To ensure consistent localization across all AI and non-AI endpoints without requiring redundant payload parameters:
+- **Frontend Layer**:
+  - Centralize all API calls through `apiFetch` (`frontend/src/utils/api.ts`).
+  - Automatically attach the `Accept-Language` HTTP header based on the active `i18next.language` on all requests.
+- **Backend Layer**:
+  - Implement a dedicated `ICurrentLanguageProvider` / `LanguageContext` helper (registered in DI via `IHttpContextAccessor`) to resolve the request language in order of priority:
+    1. Explicit request payload parameter (`request.Lang`), if provided.
+    2. HTTP `Accept-Language` header (`Request.Headers.AcceptLanguage`).
+    3. Fallback default language (`"es"`).
+  - Eliminates repetitive controller-level header parsing and ensures all MediatR commands and AI prompt templates use the appropriate language directive seamlessly.
+
 ---
 
 ## 🗄️ 4. Database Design & State Management
@@ -384,3 +397,6 @@ npm --prefix frontend run test:e2e
    - Ensure GitHub Actions workflow runs `dotnet test` and frontend tests on all pull requests.
 4. **Operational Credential Validation**:
    - Perform end-to-end smoke tests against real Groq and Gemini endpoints using BYOK keys.
+5. **Centralized Language Provider & Header Propagation**:
+   - Wrap frontend API requests with automatic `Accept-Language` header injection (`apiFetch`).
+   - Register `ICurrentLanguageProvider` in ASP.NET Core DI to streamline language resolution across commands and controllers.

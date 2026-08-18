@@ -88,4 +88,16 @@ internal sealed class UploadedPlanRepository(VitalityNutriDbContext dbContext) :
 
         return new SavedPlanEnvelope(planJson, metadataJson);
     }
+
+    public async Task UpdatePlanJsonAsync(long planId, string planJson, CancellationToken cancellationToken)
+    {
+        var plan = await dbContext.MealPlans.FindAsync([planId], cancellationToken);
+        if (plan is null)
+        {
+            return;
+        }
+
+        dbContext.Entry(plan).Property(x => x.PlanJson).CurrentValue = planJson;
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
 }

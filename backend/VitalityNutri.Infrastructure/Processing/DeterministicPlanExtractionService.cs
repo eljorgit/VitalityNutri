@@ -14,6 +14,7 @@ namespace VitalityNutri.Infrastructure.Processing;
 internal sealed class DeterministicPlanExtractionService(
     ApiConfiguration apiConfiguration,
     IHttpClientFactory httpClientFactory,
+    IRecipeImageLookupService imageLookupService,
     ILogger<DeterministicPlanExtractionService> logger)
     : IPlanExtractionService
 {
@@ -58,7 +59,8 @@ internal sealed class DeterministicPlanExtractionService(
 
         if (!string.IsNullOrWhiteSpace(aiPlanJson))
         {
-            return NormalizePlanJson(aiPlanJson);
+            var normalized = NormalizePlanJson(aiPlanJson);
+            return await EnrichPlanImagesAsync(normalized, cancellationToken);
         }
 
         logger.LogWarning("[PlanExtraction] All AI fallbacks failed. Returning deterministic empty-week plan.");
@@ -504,4 +506,47 @@ internal sealed class DeterministicPlanExtractionService(
         snack = (object?)null,
         dinner = (object?)null,
     };
+
+    private async Task<string> EnrichPlanImagesAsync(string planJson, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var root = JsonNode.Parse(planJson) as JsonObject;
+            if (root is null || root["days"] is not JsonObject days)
+            {
+                return planJson;
+            }
+
+            foreach (var day in Days)
+            {
+                if (days[day] is not JsonObject dayObject)
+                {
+                    continue;
+                }
+
+                foreach (var meal in Meals)
+                {
+                    if (dayObject[meal] is not JsonObject recipeObject)
+                    {
+                        continue;
+                    }
+
+                    var currentImage = recipeObject["image"]?.ToString();
+                    if (string.IsNullOrWhiteSpace(currentImage))
+                    {
+                        var recipeName = recipeObject["recipeName"]?.ToString() ?? string.Empty;
+                        var resolvedImage = await imageLookupService.ResolveContextualImageAsync(recipeName, meal, cancellationToken);
+                        recipeObject["image"] = resolvedImage;
+                    }
+                }
+            }
+
+            return root.ToJsonString();
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "[PlanExtraction] Error enriching recipe images in plan JSON. Returning original JSON.");
+            return planJson;
+        }
+    }
 }

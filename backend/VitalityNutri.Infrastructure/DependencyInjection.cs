@@ -44,6 +44,7 @@ public static class DependencyInjection
         services.AddScoped<IPlanExtractionService, DeterministicPlanExtractionService>();
         services.AddScoped<IRecipeAiProcessingService, DeterministicRecipeAiProcessingService>();
         services.AddScoped<IRecipeImageLookupService, DeterministicRecipeImageLookupService>();
+        services.AddScoped<IBatchCookingAiService, DeterministicBatchCookingAiService>();
 
         return services;
     }

@@ -31,11 +31,15 @@ internal sealed class ReprocessPlanCommandHandler(
         var hash = await fileStorage.ComputeFileHashAsync(file.FilePath, cancellationToken);
         var planJson = await extraction.ExtractPlanJsonAsync(file.FilePath, request.Language, cancellationToken);
         var saved = await plans.ReprocessActivePlanAsync(planJson, hash, DateTimeOffset.UtcNow, cancellationToken);
-        await PlanRecipeSync.SyncAsync(saved.PlanJson, saved.MetadataJson, recipes, cancellationToken);
+        var enrichedPlanJson = await PlanRecipeSync.SyncAsync(saved.PlanJson, saved.MetadataJson, recipes, cancellationToken);
+        if (enrichedPlanJson != saved.PlanJson)
+        {
+            await plans.UpdatePlanJsonAsync(active.Id, enrichedPlanJson, cancellationToken);
+        }
 
         return new UploadPlanResult(
             true,
-            JsonSerializer.Deserialize<JsonElement>(saved.PlanJson),
+            JsonSerializer.Deserialize<JsonElement>(enrichedPlanJson),
             JsonSerializer.Deserialize<JsonElement>(saved.MetadataJson));
     }
 }

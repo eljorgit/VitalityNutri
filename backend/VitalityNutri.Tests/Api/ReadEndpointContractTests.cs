@@ -7,6 +7,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using System.Text.Json;
+using VitalityNutri.Api.Controllers.Uploads;
 using VitalityNutri.Application.Abstractions.Persistence;
 using VitalityNutri.Application.Abstractions.Processing;
 using VitalityNutri.Application.Recipes;
@@ -270,6 +271,17 @@ public sealed class ReadEndpointContractTests(ApiFactory factory) : IClassFixtur
     }
 
     [Fact]
+    public async Task Upload_FileExceeding15MB_Returns400()
+    {
+        // 16MB base64 string
+        var oversizedBase64 = new string('A', 22 * 1024 * 1024);
+        var response = await client.PostAsJsonAsync("/api/upload", new { fileName = "huge.pdf", fileData = oversizedBase64 });
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var error = await response.Content.ReadFromJsonAsync<UploadErrorResponse>();
+        Assert.Equal("El archivo supera el tamaño máximo permitido de 15MB.", error?.Error);
+    }
+
+    [Fact]
     public async Task Upload_DuplicateHash_ReturnsDuplicateEnvelope()
     {
         var response = await client.PostAsJsonAsync("/api/upload", new
@@ -307,6 +319,30 @@ public sealed class ReadEndpointContractTests(ApiFactory factory) : IClassFixtur
     {
         var response = await client.PostAsJsonAsync("/api/reprocess", new { lang = "es" });
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var error = await response.Content.ReadFromJsonAsync<UploadErrorResponse>();
+        Assert.Equal("No hay ningún archivo guardado para reprocesar en el plan activo.", error?.Error);
+    }
+
+    [Fact]
+    public async Task Reprocess_WithEmptyBody_Returns400BusinessErrorInsteadOfModelValidationError()
+    {
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/reprocess")
+        {
+            Content = new StringContent(string.Empty, System.Text.Encoding.UTF8, "application/json")
+        };
+        var response = await client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var error = await response.Content.ReadFromJsonAsync<UploadErrorResponse>();
+        Assert.Equal("No hay ningún archivo guardado para reprocesar en el plan activo.", error?.Error);
+    }
+
+    [Fact]
+    public async Task Reprocess_WithNullBody_Returns400BusinessError()
+    {
+        var response = await client.PostAsync("/api/reprocess", null);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var error = await response.Content.ReadFromJsonAsync<UploadErrorResponse>();
+        Assert.Equal("No hay ningún archivo guardado para reprocesar en el plan activo.", error?.Error);
     }
 
     private sealed record RecipeCreatedContract(bool Success, long Id);
@@ -418,6 +454,9 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
 
         public Task<SavedPlanEnvelope> ReprocessActivePlanAsync(string planJson, string fileHash, DateTimeOffset processedAtUtc, CancellationToken cancellationToken) =>
             Task.FromResult(new SavedPlanEnvelope(planJson, "{}"));
+
+        public Task UpdatePlanJsonAsync(long planId, string planJson, CancellationToken cancellationToken) =>
+            Task.CompletedTask;
     }
 
     private sealed class UploadFileStorage : IUploadFileStorage

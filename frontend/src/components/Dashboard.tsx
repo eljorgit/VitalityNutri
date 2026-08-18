@@ -341,9 +341,16 @@ export default function Dashboard({
     }
   };
 
+  const maxUploadSizeMb = (typeof window !== "undefined" && window.__VITALITYNUTRI_CONFIG__?.maxUploadSizeMb) || 15;
+  const maxFileSizeBytes = maxUploadSizeMb * 1024 * 1024;
+
   const processFile = (file: File) => {
-    if (file.type !== "application/pdf") {
+    if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
       setErrorMsg(t("dashboard.pdf_format_error"));
+      return;
+    }
+    if (file.size > maxFileSizeBytes) {
+      setErrorMsg(t("dashboard.file_size_error", { maxMb: maxUploadSizeMb }));
       return;
     }
     setErrorMsg(null);
@@ -592,7 +599,7 @@ export default function Dashboard({
                   ) : (
                     <>
                       <p className="text-sm font-semibold text-gray-700 dark:text-zinc-300">{t("dashboard.no_file")}</p>
-                      <p className="text-xs text-gray-400 dark:text-zinc-500">{t("dashboard.supported_formats")}</p>
+                      <p className="text-xs text-gray-400 dark:text-zinc-500">{t("dashboard.supported_formats", { maxMb: maxUploadSizeMb })}</p>
                     </>
                   )}
                 </div>

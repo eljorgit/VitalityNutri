@@ -4,6 +4,7 @@ set -eu
 language="${FRONTEND_LANGUAGE:-en}"
 site_visibility="${FRONTEND_SITE_VISIBILITY:-local}"
 api_url="${FRONTEND_API_URL:-}"
+max_upload_size_mb="${FRONTEND_MAX_UPLOAD_SIZE_MB:-15}"
 
 case "$language" in
   en|es) ;;
@@ -25,6 +26,7 @@ cat > /usr/share/nginx/html/config.js <<EOF
 window.__VITALITYNUTRI_CONFIG__ = {
   language: "$language",
   siteVisibility: "$site_visibility",
-  apiUrl: "$api_url"
+  apiUrl: "$api_url",
+  maxUploadSizeMb: Number("$max_upload_size_mb") || 15
 };
 EOF

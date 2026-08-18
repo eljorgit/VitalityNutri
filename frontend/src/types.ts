@@ -22,11 +22,24 @@ export interface CategorizedSteps {
   general?: string[];
 }
 
+export interface ExtraNutrient {
+  name: string;
+  amount: number | string;
+  unit?: string;
+  percentDdr?: number | string;
+}
+
 export interface RecipeNutrition {
-  calories: number; // kcal per serving
-  protein: number; // grams per serving
-  carbs: number; // grams per serving
-  fat: number; // grams per serving
+  calories?: number;      // kcal per serving
+  protein?: number;       // grams per serving
+  carbs?: number;         // grams per serving
+  sugars?: number;        // grams per serving
+  fat?: number;           // grams per serving
+  saturatedFat?: number;  // grams per serving
+  fiber?: number;         // grams per serving
+  sodium?: number;        // mg per serving
+  servingWeight?: string; // e.g. "266 g"
+  extra?: ExtraNutrient[];
 }
 
 export interface Recipe {

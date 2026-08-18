@@ -6,9 +6,15 @@ public sealed class ApiConfiguration
     public DatabaseOptions Database { get; init; } = new();
     public ConnectionStringsConfiguration ConnectionStrings { get; init; } = new();
     public SecurityConfiguration Security { get; init; } = new();
+    public UploadConfiguration Upload { get; init; } = new();
     public AiConfiguration Ai { get; init; } = new();
     public ExternalServicesConfiguration ExternalServices { get; init; } = new();
     public TelemetryConfiguration Telemetry { get; init; } = new();
+}
+
+public sealed class UploadConfiguration
+{
+    public int MaxFileSizeMb { get; init; } = 15;
 }
 
 public sealed class AppConfiguration

@@ -13,7 +13,8 @@ internal sealed class UploadFileStorage : IUploadFileStorage
     {
         Directory.CreateDirectory(UploadsDirectory);
 
-        var bytes = Convert.FromBase64String(base64Content);
+        var rawBase64 = base64Content.Contains(',') ? base64Content[(base64Content.IndexOf(',') + 1)..] : base64Content;
+        var bytes = Convert.FromBase64String(rawBase64);
         var hash = Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
 
         var sanitized = SanitizeFileName(Path.GetFileName(fileName));

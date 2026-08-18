@@ -32,7 +32,7 @@ public sealed class BatchCookingController(ISender sender) : ControllerBase
             return BadRequest(new BatchCookingErrorResponse("Faltan los parámetros de la cocina."));
         }
 
-        var result = await sender.Send(new GenerateBatchCookingCommand(request.Params, request.ForceRegenerate), cancellationToken);
+        var result = await sender.Send(new GenerateBatchCookingCommand(request.Params, request.ForceRegenerate, request.Lang ?? "es"), cancellationToken);
         return result is null
             ? BadRequest(new BatchCookingErrorResponse("No hay ningún plan activo cargado."))
             : Ok(result);

@@ -5,7 +5,7 @@ import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
   const rootDir = import.meta.dirname;
-  const backendUrl = process.env.VITE_BACKEND_URL || 'https://localhost:5026';
+  const backendUrl = process.env.VITE_BACKEND_URL || 'http://localhost:5026';
 
   return {
     plugins: [react(), tailwindcss()],

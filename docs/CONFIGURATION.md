@@ -54,6 +54,7 @@ Loaded only by the `backend` container through Docker Compose. Set `ASPNETCORE_E
 | `ApiConfiguration__Ai__Providers__Gemini__TimeoutSeconds` | No | `300` | Gemini request timeout. Increase for large PDF extraction requests. |
 | `ApiConfiguration__Ai__Providers__Groq__ApiKey` | Conditional | Empty | Groq credential. |
 | `ApiConfiguration__ExternalServices__Unsplash__AccessKey` | No | Empty | Unsplash credential. |
+| `ApiConfiguration__Upload__MaxFileSizeMb` | No | `15` | Maximum PDF file size in MB accepted by the backend validator. |
 
 Double underscores map environment variables to nested .NET configuration sections.
 
@@ -84,8 +85,17 @@ Loaded only by the `frontend` container. Every value is public because it is ren
 | --- | --- | --- | --- |
 | `FRONTEND_LANGUAGE` | No | `en` | Initial interface language (`en` or `es`). |
 | `FRONTEND_SITE_VISIBILITY` | No | `local` | `public` enables share links without the local-access warning; `local` keeps the warning. |
+| `FRONTEND_MAX_UPLOAD_SIZE_MB` | No | `15` | Max PDF upload size displayed in the UI and checked on file selection. |
+| `NGINX_CLIENT_MAX_BODY_SIZE` | No | `25M` | Nginx reverse proxy payload size limit (accommodates base64 overhead). |
 
 Never put API keys, passwords, tokens, or database URLs in this file.
+
+### 📦 Customizing Maximum PDF Upload Size
+
+To change the maximum allowed file size (for example, to 30 MB):
+1. In `.env.backend`: set `ApiConfiguration__Upload__MaxFileSizeMb=30`.
+2. In `.env.frontend`: set `FRONTEND_MAX_UPLOAD_SIZE_MB=30` and `NGINX_CLIENT_MAX_BODY_SIZE=50M` (allowing for base64 JSON payload overhead).
+3. Restart containers: `docker compose up -d` or `npm run docker:restart`.
 
 ## Docker Compose
 

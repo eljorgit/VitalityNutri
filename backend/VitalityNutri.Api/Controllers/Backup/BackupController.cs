@@ -16,7 +16,7 @@ public sealed class BackupController(ISender sender) : ControllerBase
         Ok(await sender.Send(new ExportBackupQuery(), token));
 
     /// <summary>Imports a previously exported backup payload.</summary>
-    [HttpPost("import")]
+    [HttpPost("import"), RequestSizeLimit(50 * 1024 * 1024)]
     public async Task<ActionResult<BackupWriteResponse>> Import([FromBody] JsonElement payload, CancellationToken token)
     {
         if (payload.ValueKind != JsonValueKind.Object ||

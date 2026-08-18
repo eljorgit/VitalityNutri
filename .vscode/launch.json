@@ -1,14 +1,69 @@
 {
   "version": "0.2.0",
+  "compounds": [
+    {
+      "name": "Web + API (Default)",
+      "configurations": [
+        "API Backend",
+        "Web Client"
+      ],
+      "stopAll": true
+    }
+  ],
   "configurations": [
     {
-      "name": "Frontend + Chrome Debug",
+      "name": "Web Only",
       "type": "node-terminal",
       "request": "launch",
       "command": "npm --prefix frontend run dev",
       "serverReadyAction": {
-        "pattern": "Local:\s+http://localhost:([0-9]+)",
-        "uriFormat": "http://localhost:%s",
+        "pattern": "Local:\\s+(http://localhost:[0-9]+)",
+        "uriFormat": "%s",
+        "action": "debugWithChrome",
+        "webRoot": "${workspaceFolder}/frontend"
+      }
+    },
+    {
+      "name": "API Only",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "Build: Backend (.NET 10)",
+      "program": "${workspaceFolder}/backend/VitalityNutri.Api/bin/Debug/net10.0/VitalityNutri.Api.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/backend/VitalityNutri.Api",
+      "stopAtEntry": false,
+      "serverReadyAction": {
+        "action": "debugWithChrome",
+        "pattern": "\\bNow listening on:\\s+(https?://\\S+)",
+        "uriFormat": "%s/scalar/v1"
+      },
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ASPNETCORE_URLS": "http://localhost:5026"
+      }
+    },
+    {
+      "name": "API Backend",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "Build: Backend (.NET 10)",
+      "program": "${workspaceFolder}/backend/VitalityNutri.Api/bin/Debug/net10.0/VitalityNutri.Api.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/backend/VitalityNutri.Api",
+      "stopAtEntry": false,
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ASPNETCORE_URLS": "http://localhost:5026"
+      }
+    },
+    {
+      "name": "Web Client",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npm --prefix frontend run dev",
+      "serverReadyAction": {
+        "pattern": "Local:\\s+(http://localhost:[0-9]+)",
+        "uriFormat": "%s",
         "action": "debugWithChrome",
         "webRoot": "${workspaceFolder}/frontend"
       }

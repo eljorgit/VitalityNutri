@@ -12,6 +12,14 @@
     "build:backend": "dotnet build backend/VitalityNutri.slnx",
     "test:backend": "dotnet test backend/VitalityNutri.slnx",
     "test": "npm --prefix frontend run test && dotnet test backend/VitalityNutri.slnx",
-    "build": "npm --prefix frontend run build && dotnet build backend/VitalityNutri.slnx -c Release"
+    "build": "npm --prefix frontend run build && dotnet build backend/VitalityNutri.slnx -c Release",
+    "docker:build": "node scripts/docker.mjs build",
+    "docker:build:backend": "node scripts/docker.mjs build:backend",
+    "docker:build:frontend": "node scripts/docker.mjs build:frontend",
+    "docker:up": "node scripts/docker.mjs up",
+    "docker:down": "node scripts/docker.mjs down",
+    "docker:logs": "node scripts/docker.mjs logs",
+    "docker:restart": "node scripts/docker.mjs restart",
+    "docker:rebuild": "node scripts/docker.mjs rebuild"
   }
 }

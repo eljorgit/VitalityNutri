@@ -5,14 +5,16 @@ using VitalityNutri.Application.Uploads;
 using VitalityNutri.Application.Uploads.UploadPlan;
 using VitalityNutri.Application.Uploads.ReprocessPlan;
 
+using VitalityNutri.Infrastructure.Configuration;
+
 namespace VitalityNutri.Api.Controllers.Uploads;
 
 /// <summary>Handles plan upload and reprocessing endpoints.</summary>
 [ApiController, Route("api"), EnableRateLimiting("upload")]
-public sealed class UploadsController(ISender sender) : ControllerBase
+public sealed class UploadsController(ISender sender, ApiConfiguration? apiConfiguration = null) : ControllerBase
 {
     /// <summary>Uploads and processes a PDF plan payload.</summary>
-    [HttpPost("upload")]
+    [HttpPost("upload"), RequestSizeLimit(100 * 1024 * 1024)]
     public async Task<ActionResult<object>> Upload(UploadRequest request, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.FileName) || string.IsNullOrWhiteSpace(request.FileData))
@@ -23,6 +25,13 @@ public sealed class UploadsController(ISender sender) : ControllerBase
         if (!string.Equals(Path.GetExtension(request.FileName), ".pdf", StringComparison.OrdinalIgnoreCase))
         {
             return BadRequest(new UploadErrorResponse("Por el momento, solo se soportan planes de alimentación en formato PDF."));
+        }
+
+        var maxMb = apiConfiguration?.Upload.MaxFileSizeMb ?? 15;
+        var maxSizeBytes = (long)maxMb * 1024 * 1024;
+        if ((long)request.FileData.Length * 3 / 4 > maxSizeBytes)
+        {
+            return BadRequest(new UploadErrorResponse($"El archivo supera el tamaño máximo permitido de {maxMb}MB."));
         }
 
         UploadPlanResult result;
@@ -58,11 +67,16 @@ public sealed class UploadsController(ISender sender) : ControllerBase
 
     /// <summary>Reprocesses the active plan using its stored source file.</summary>
     [HttpPost("reprocess")]
-    public async Task<ActionResult<object>> Reprocess(ReprocessRequest request, CancellationToken cancellationToken)
+    public async Task<ActionResult<object>> Reprocess([FromBody(EmptyBodyBehavior = Microsoft.AspNetCore.Mvc.ModelBinding.EmptyBodyBehavior.Allow)] ReprocessRequest? request = null, CancellationToken cancellationToken = default)
     {
         try
         {
-            var result = await sender.Send(new ReprocessPlanCommand(request.Lang ?? "es"), cancellationToken);
+            var headerLang = Request.Headers.AcceptLanguage.FirstOrDefault()?.Split(',')[0].Split(';')[0].Trim();
+            var lang = !string.IsNullOrWhiteSpace(request?.Lang)
+                ? request.Lang
+                : (!string.IsNullOrWhiteSpace(headerLang) ? headerLang : "es");
+
+            var result = await sender.Send(new ReprocessPlanCommand(lang), cancellationToken);
             if (result is null)
             {
                 return BadRequest(new UploadErrorResponse("No hay ningún archivo guardado para reprocesar en el plan activo."));

@@ -6,6 +6,7 @@ public interface IUploadedPlanRepository
     Task<ActiveStoredPlan?> GetActiveAsync(CancellationToken cancellationToken);
     Task<SavedPlanEnvelope> SaveUploadedPlanAsync(string originalFileName, string savedFileName, string fileHash, string planJson, DateTimeOffset processedAtUtc, CancellationToken cancellationToken);
     Task<SavedPlanEnvelope> ReprocessActivePlanAsync(string planJson, string fileHash, DateTimeOffset processedAtUtc, CancellationToken cancellationToken);
+    Task UpdatePlanJsonAsync(long planId, string planJson, CancellationToken cancellationToken);
 }
 
 public sealed record DuplicatePlanRecord(long Id, string FileName, bool IsActive);

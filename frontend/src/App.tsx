@@ -406,40 +406,57 @@ export default function App() {
     navigate(`/recipe/${day}/${meal}${query}`);
   };
 
-  // Fetch the current globally stored plan from the Express backend on mount
+  // Fetch the current globally stored plan from the backend on mount
   const fetchGlobalPlan = async () => {
     setIsLoading(true);
     setErrorMsg(null);
-    try {
-      const res = await fetch("/api/plan");
-      if (!res.ok) {
-        throw new Error(t("error.download_plan_error"));
-      }
-      const data = await res.json();
-      setPlan(data.plan);
-      setMetadata(data.metadata);
+    const maxAttempts = 5;
+    let attempts = 0;
 
-      // Si hay un plan cargado por defecto al entrar en la web, vamos directamente al calendario
-      const currentPath = window.location.pathname;
-      if (data.plan && (currentPath === "/" || currentPath.startsWith("/dashboard"))) {
-        navigate("/calendar");
-      }
-
-      // Descargar estado de recetas completadas
+    while (attempts < maxAttempts) {
+      attempts++;
       try {
-        const completedRes = await fetch("/api/completed-recipes");
-        if (completedRes.ok) {
-          const completedData = await completedRes.json();
-          setCompletedRecipes(completedData.completedRecipes || {});
+        const res = await fetch("/api/plan");
+        if (!res.ok) {
+          if ((res.status === 502 || res.status === 503 || res.status === 504) && attempts < maxAttempts) {
+            await new Promise((resolve) => setTimeout(resolve, 800));
+            continue;
+          }
+          throw new Error(t("error.download_plan_error"));
         }
-      } catch (err) {
-        console.error("Error al descargar recetas completadas:", err);
+        const data = await res.json();
+        setPlan(data.plan);
+        setMetadata(data.metadata);
+
+        // Si hay un plan cargado por defecto al entrar en la web, vamos directamente al calendario
+        const currentPath = window.location.pathname;
+        if (data.plan && (currentPath === "/" || currentPath.startsWith("/dashboard"))) {
+          navigate("/calendar");
+        }
+
+        // Descargar estado de recetas completadas
+        try {
+          const completedRes = await fetch("/api/completed-recipes");
+          if (completedRes.ok) {
+            const completedData = await completedRes.json();
+            setCompletedRecipes(completedData.completedRecipes || {});
+          }
+        } catch (err) {
+          console.error("Error al descargar recetas completadas:", err);
+        }
+
+        setIsLoading(false);
+        return;
+      } catch (err: any) {
+        if (attempts < maxAttempts) {
+          await new Promise((resolve) => setTimeout(resolve, 800));
+          continue;
+        }
+        console.error(err);
+        setErrorMsg(t("error.no_db_access_msg"));
+        setIsLoading(false);
+        return;
       }
-    } catch (err: any) {
-      console.error(err);
-      setErrorMsg(t("error.no_db_access_msg"));
-    } finally {
-      setIsLoading(false);
     }
   };
 

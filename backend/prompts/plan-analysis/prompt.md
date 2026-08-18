@@ -9,7 +9,7 @@ The document consists of two main blocks:
 
 # CRITICAL MAPPING OBJECTIVE (MAPPING ENGINE)
 Your top priority is to act as a logical mapping engine. For each meal slot in the weekly menu, you must find and integrate its corresponding recipe located in the "RECIPES" section of the document.
-* **If the dish has an explicit recipe:** Meticulously extract all its ingredients, preparation steps, times, tips, and calories from the recipe section, classifying them by type.
+* **If the dish has an explicit recipe:** Meticulously extract all its ingredients, preparation steps, times, tips, calories, and nutritional data from the recipe section, classifying them by type.
 * **If the dish is a simple food or basic assembly (e.g., "1 cup of tea", "1 large banana", "Turkey toast"):** Do not leave it as null. Build a simplified recipe object based on the weekly agenda information.
 * **If the meal is not scheduled or is empty:** Strictly set the value of that slot to `null`.
 
@@ -22,6 +22,27 @@ You must separate ingredients and preparation steps according to the dish type w
 3. **Single Dishes:** If a Lunch or Dinner consists of a single unified main dish without dessert or divisions, also use the `general` key.
 4. **Recipe Title (recipeName):** The meal title (`recipeName`) can combine the first and second courses (e.g., 'Cream of vegetables and Baked Chicken'), but must **never** include the dessert in the title (e.g., do not use 'Baked Chicken and apple' if the apple is the dessert).
 5. **Recipe Images (image):** Always write an empty string in this field. The backend will automatically assign the image URL.
+
+---
+
+# STRICT NUTRITIONAL INFORMATION EXTRACTION RULES (nutrition)
+When the recipe includes a nutritional table (e.g., labeled "INFORMACIÓN NUTRICIONAL" / "NUTRITION INFORMATION"), extract its data into the `nutrition` object:
+1. **Prioritize "POR PORCIÓN" (Per Serving / Portion):** Always extract values from the "POR PORCIÓN" / "PER SERVING" column if available. If the table header specifies the serving weight in parentheses (e.g., "POR PORCIÓN (266 g)"), extract that weight string into `servingWeight` (e.g., `"266 g"`).
+2. **Standard Core Metrics (extract as pure numbers):**
+   - `calories`: Total energy in kcal (e.g. from "ENERGÍA" or "CALORÍAS"). Also populate top-level `calories`.
+   - `protein`: Protein in grams (from "PROTEÍNA").
+   - `carbs`: Carbohydrates in grams (from "H. CARBONO" or "HIDRATOS DE CARBONO").
+   - `sugars`: Sugars in grams (from "AZÚCARES"). If dashed (`—`) or not provided, omit this key.
+   - `fat`: Total fat in grams (from "GRASA" or "GRASAS TOTALES").
+   - `saturatedFat`: Saturated fat in grams (from "GRASAS SATURADAS"). If dashed (`—`), omit.
+   - `fiber`: Dietary fiber in grams (from "FIBRA ALIMENTARIA" or "FIBRA"). If dashed (`—`), omit.
+   - `sodium`: Sodium in milligrams (mg) (from "SODIO"). If dashed (`—`), omit.
+3. **Extensible Extra Nutrients (`extra` array):**
+   - For any additional vitamins, minerals, cholesterol, potassium, or micronutrients listed in the table, add an item to the `extra` list with `{ "name": "...", "amount": number_or_string, "unit": "mg/g/mcg", "percentDdr": number_or_string }`.
+4. **Sanitize Data:**
+   - Strip all unit symbols (`kcal`, `g`, `mg`, `%`, `—`) from standard numeric fields so they are pure integers or decimals.
+5. **Omission Rule:**
+   - If the dish does not have a nutritional table in the PDF and macros cannot be reliably determined, OMIT the `nutrition` field entirely (do not invent numbers).
 
 ---
 
@@ -92,6 +113,26 @@ interface CategorizedSteps {
   general?: string[];
 }
 
+interface ExtraNutrient {
+  name: string;
+  amount: number | string;
+  unit?: string;
+  percentDdr?: number | string;
+}
+
+interface RecipeNutrition {
+  calories?: number;      // kcal per serving (Energía)
+  protein?: number;       // grams per serving (Proteína)
+  carbs?: number;         // grams per serving (Hidratos de carbono)
+  sugars?: number;        // grams per serving (Azúcares)
+  fat?: number;           // grams per serving (Grasa total)
+  saturatedFat?: number;  // grams per serving (Grasas saturadas)
+  fiber?: number;         // grams per serving (Fibra alimentaria)
+  sodium?: number;        // mg per serving (Sodio)
+  servingWeight?: string; // e.g. "266 g"
+  extra?: ExtraNutrient[];
+}
+
 interface Recipe {
   recipeName: string;
   calories: number;
@@ -101,6 +142,7 @@ interface Recipe {
   ingredients: CategorizedIngredients;
   steps: CategorizedSteps;
   tips: string;
+  nutrition?: RecipeNutrition;
 }
 
 interface MealPlan {

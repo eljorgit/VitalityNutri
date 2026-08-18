@@ -45,6 +45,9 @@ public sealed class PromptTemplateTests
         Assert.Contains("CategorizedIngredients", content);
         Assert.Contains("CategorizedSteps", content);
         Assert.Contains("Ingredient", content);
+        Assert.Contains("RecipeNutrition", content);
+        Assert.Contains("ExtraNutrient", content);
+        Assert.Contains("INFORMACIÓN NUTRICIONAL", content);
         Assert.Contains("vegetables", content);
         Assert.Contains("meats, eggs and tofu", content);
         Assert.Contains("DELIVERY RESTRICTIONS", content);

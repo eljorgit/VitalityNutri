@@ -104,6 +104,14 @@ try
     {
         limiterOptions.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
+        if (builder.Environment.IsEnvironment("Testing"))
+        {
+            limiterOptions.AddPolicy("upload", _ => RateLimitPartition.GetNoLimiter("test"));
+            limiterOptions.AddPolicy("batch-cooking", _ => RateLimitPartition.GetNoLimiter("test"));
+            limiterOptions.AddPolicy("general-write", _ => RateLimitPartition.GetNoLimiter("test"));
+            return;
+        }
+
         limiterOptions.AddPolicy("upload", httpContext =>
             RateLimitPartition.GetFixedWindowLimiter(
                 httpContext.Connection.RemoteIpAddress?.ToString() ?? "anonymous",

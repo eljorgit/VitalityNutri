@@ -161,6 +161,13 @@ docker compose logs -f frontend
 > [!TIP]
 > The frontend is available on `5027` and the API directly on `5026`. Browser `/api/*` calls still use the frontend proxy, avoiding CORS. The backend connects to your existing MySQL server through `host.docker.internal`.
 
+### 📦 Customizing Maximum PDF Upload Size
+
+By default, the system allows PDF plans up to **15 MB**. To customize this limit (e.g. for 30 MB plans):
+1. In `.env.backend`: set `ApiConfiguration__Upload__MaxFileSizeMb=30`.
+2. In `.env.frontend`: set `FRONTEND_MAX_UPLOAD_SIZE_MB=30` and `NGINX_CLIENT_MAX_BODY_SIZE=50M`.
+3. Restart containers: `docker compose up -d` (or `npm run docker:restart`).
+
 ---
 
 ## 📊 Database Design (SQLite Schema)

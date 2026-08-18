@@ -20,4 +20,6 @@ RUN chmod +x /docker-entrypoint.d/40-vitalitynutri-config.sh
 
 ENV BACKEND_UPSTREAM=http://backend:80
 ENV FRONTEND_LANGUAGE=en
+ENV FRONTEND_MAX_UPLOAD_SIZE_MB=15
+ENV NGINX_CLIENT_MAX_BODY_SIZE=25M
 EXPOSE 80

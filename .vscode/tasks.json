@@ -1,0 +1,106 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Build: Full Stack (Frontend + Backend)",
+      "type": "npm",
+      "script": "build",
+      "group": "build",
+      "problemMatcher": ["$msCompile", "$tsc"]
+    },
+    {
+      "label": "Build: Backend (.NET 10)",
+      "type": "npm",
+      "script": "build:backend",
+      "group": "build",
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "Build: Frontend (Vite)",
+      "type": "npm",
+      "script": "build:frontend",
+      "group": "build",
+      "problemMatcher": ["$tsc"]
+    },
+    {
+      "label": "Docker: Build All Images",
+      "type": "npm",
+      "script": "docker:build",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Docker: Build Backend Image",
+      "type": "npm",
+      "script": "docker:build:backend",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Docker: Build Frontend Image",
+      "type": "npm",
+      "script": "docker:build:frontend",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Docker: Rebuild Clean & Start",
+      "type": "npm",
+      "script": "docker:rebuild",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Docker: Start Containers (Up)",
+      "type": "npm",
+      "script": "docker:up",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Docker: Stop Containers (Down)",
+      "type": "npm",
+      "script": "docker:down",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Docker: View Logs",
+      "type": "npm",
+      "script": "docker:logs",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Docker: Restart Containers",
+      "type": "npm",
+      "script": "docker:restart",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Test: All (Backend + Frontend)",
+      "type": "npm",
+      "script": "test",
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Test: Backend (.NET 10)",
+      "type": "npm",
+      "script": "test:backend",
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "Test: Frontend (Vitest)",
+      "type": "npm",
+      "script": "test:frontend",
+      "group": "test",
+      "problemMatcher": []
+    }
+  ]
+}
