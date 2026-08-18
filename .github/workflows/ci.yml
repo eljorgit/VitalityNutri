@@ -16,8 +16,8 @@ concurrency:
 
 
 jobs:
-  lint:
-    name: Lint (type-check)
+  lint-frontend:
+    name: "Frontend: Lint (Type-Check)"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -26,13 +26,15 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-      - run: npm ci
+      - name: Install Dependencies
+        run: npm ci
         working-directory: frontend
-      - run: npm run lint
+      - name: Type-Check (Lint)
+        run: npm run lint
         working-directory: frontend
 
-  test:
-    name: Tests
+  test-frontend:
+    name: "Frontend: Unit Tests & Coverage"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -41,86 +43,35 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-      - run: npm ci
+      - name: Install Dependencies
+        run: npm ci
         working-directory: frontend
-      - run: npm test -- --coverage
+      - name: Run Unit Tests with Coverage
+        run: npm test -- --coverage
         working-directory: frontend
-      - name: Upload coverage report
+      - name: Upload Coverage Report
         uses: actions/upload-artifact@v4
         with:
           name: coverage
           path: frontend/coverage/
 
-  backend:
-    name: Backend Build & Tests
+  backend-test:
+    name: "Backend: Build & Tests (.NET 10)"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
-      - run: dotnet restore backend/VitalityNutri.slnx
-      - run: dotnet build backend/VitalityNutri.slnx --configuration Release --no-restore
-      - run: dotnet test backend/VitalityNutri.slnx --configuration Release --no-build
+      - name: Restore NuGet Packages
+        run: dotnet restore backend/VitalityNutri.slnx
+      - name: Build Solution (Release)
+        run: dotnet build backend/VitalityNutri.slnx --configuration Release --no-restore
+      - name: Execute Tests
+        run: dotnet test backend/VitalityNutri.slnx --configuration Release --no-build
 
-  codeql:
-    name: CodeQL
-    runs-on: ubuntu-latest
-    permissions:
-      actions: read
-      contents: read
-      security-events: write
-    steps:
-      - uses: actions/checkout@v4
-      - name: Check repo visibility
-        id: check-visibility
-        run: echo "public=${{ github.repository_visibility == 'public' }}" >> $GITHUB_OUTPUT
-      - name: Initialize CodeQL
-        if: steps.check-visibility.outputs.public == 'true'
-        uses: github/codeql-action/init@v4
-        with:
-          languages: csharp, javascript-typescript
-          queries: +security-extended
-      - name: Autobuild
-        if: steps.check-visibility.outputs.public == 'true'
-        uses: github/codeql-action/autobuild@v4
-      - name: Perform CodeQL Analysis
-        if: steps.check-visibility.outputs.public == 'true'
-        uses: github/codeql-action/analyze@v4
-
-  snyk:
-    name: Snyk Security Scan
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: 10.0.x
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - name: Check SNYK_TOKEN
-        id: check-snyk
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        run: echo "available=$([ -n "$SNYK_TOKEN" ] && echo true || echo false)" >> $GITHUB_OUTPUT
-      - name: Run Snyk test
-        if: steps.check-snyk.outputs.available == 'true'
-        uses: snyk/actions@v1.0.0
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        with:
-          args: --all-projects --severity-threshold=high
-      - name: Run Snyk monitor
-        if: github.event_name == 'push' && steps.check-snyk.outputs.available == 'true'
-        uses: snyk/actions@v1.0.0
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        with:
-          command: monitor
-
-  e2e:
-    name: E2E Tests
+  e2e-frontend:
+    name: "Frontend: E2E Tests (Playwright)"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -129,18 +80,19 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-      - run: npm ci
+      - name: Install Dependencies
+        run: npm ci
         working-directory: frontend
-      - name: Install Playwright browsers
+      - name: Install Playwright Browsers
         run: npx playwright install --with-deps
         working-directory: frontend
-      - name: Run e2e tests
+      - name: Run E2E Tests
         run: npm run test:e2e
         working-directory: frontend
 
   sonar:
-    name: SonarQube Analysis
-    needs: test
+    name: "Quality: SonarQube Analysis"
+    needs: [lint-frontend, test-frontend, backend-test, e2e-frontend]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -151,16 +103,25 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-      - run: npm ci
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Install Frontend Dependencies
+        run: npm ci
         working-directory: frontend
-      - run: npm run build
+      - name: Build Frontend
+        run: npm run build
         working-directory: frontend
-      - name: Download coverage report
+      - name: Restore & Build Backend
+        run: |
+          dotnet restore backend/VitalityNutri.slnx
+          dotnet build backend/VitalityNutri.slnx --configuration Release --no-restore
+      - name: Download Frontend Coverage Report
         uses: actions/download-artifact@v4
         with:
           name: coverage
           path: frontend/coverage/
-      - name: Check secrets
+      - name: Check Secrets
         id: check-sonar
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -180,10 +141,73 @@ jobs:
           SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL || secrets.SONAR_HOST_URL }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
+  codeql:
+    name: "Security: CodeQL Analysis"
+    needs: [lint-frontend, test-frontend, backend-test]
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check Repo Visibility
+        id: check-visibility
+        run: echo "public=${{ github.repository_visibility == 'public' }}" >> $GITHUB_OUTPUT
+      - name: Initialize CodeQL
+        if: steps.check-visibility.outputs.public == 'true'
+        uses: github/codeql-action/init@v4
+        with:
+          languages: csharp, javascript-typescript
+          queries: +security-extended
+      - name: Autobuild
+        if: steps.check-visibility.outputs.public == 'true'
+        uses: github/codeql-action/autobuild@v4
+      - name: Perform CodeQL Analysis
+        if: steps.check-visibility.outputs.public == 'true'
+        uses: github/codeql-action/analyze@v4
+
+  snyk:
+    name: "Security: Snyk Scan"
+    needs: [lint-frontend, test-frontend, backend-test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Restore Backend NuGet Packages
+        run: dotnet restore backend/VitalityNutri.slnx
+      - name: Install Frontend Dependencies
+        run: npm ci
+        working-directory: frontend
+      - name: Check SNYK_TOKEN
+        id: check-snyk
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: echo "available=$([ -n "$SNYK_TOKEN" ] && echo true || echo false)" >> $GITHUB_OUTPUT
+      - name: Run Snyk Test (All Projects)
+        if: steps.check-snyk.outputs.available == 'true'
+        uses: snyk/actions@v1.0.0
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --all-projects --severity-threshold=high
+      - name: Run Snyk Monitor
+        if: github.event_name == 'push' && steps.check-snyk.outputs.available == 'true'
+        uses: snyk/actions@v1.0.0
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          command: monitor
+
   build:
-    name: Build
+    name: "Build: Frontend & Backend Artifacts"
     if: github.ref_type == 'tag'
-    needs: [lint, test, backend, codeql, snyk, e2e, sonar]
+    needs: [sonar, codeql, snyk]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -195,14 +219,19 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
-      - run: npm ci
+      - name: Install Frontend Dependencies
+        run: npm ci
         working-directory: frontend
-      - run: npm run build
+      - name: Build Frontend Production Bundle
+        run: npm run build
         working-directory: frontend
-      - run: dotnet build backend/VitalityNutri.slnx --configuration Release
+      - name: Restore Backend
+        run: dotnet restore backend/VitalityNutri.slnx
+      - name: Build Backend Solution (Release)
+        run: dotnet build backend/VitalityNutri.slnx --configuration Release --no-restore
 
   docker:
-    name: Build & Push Docker Image
+    name: "Publish: Docker Images to GHCR"
     if: github.ref_type == 'tag'
     needs: build
     runs-on: ubuntu-latest
@@ -256,7 +285,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=vitalitynutri
 
   deploy:
-    name: Deploy
+    name: "Deploy: Production via SSH"
     if: github.ref_type == 'tag'
     needs: docker
     runs-on: ubuntu-latest
@@ -265,7 +294,7 @@ jobs:
       packages: read
     steps:
       - uses: actions/checkout@v4
-      - name: Check secrets
+      - name: Check Secrets
         id: check-deploy
         env:
           SSH_HOST: ${{ secrets.SSH_HOST }}
