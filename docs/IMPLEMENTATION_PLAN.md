@@ -23,7 +23,7 @@ Technical specification document and roadmap for developing the AI-powered diet 
 | **1. Setup & DB** | Backup export/import (`/api/backup/export`, `/api/backup/import`) | ✅ Completed | High |
 | **1. Setup & DB** | Batch cooking state + endpoints (`GET/POST/reset`) | ✅ Completed | High |
 | **1. Setup & DB** | Upload/reprocess endpoints (`/api/upload`, `/api/reprocess`) with duplicate-hash parity and source file storage | ✅ Completed | High |
-| **1. Setup & DB** | Provision operational credentials for AI smoke tests (SaaS: OmniRoute tenant/key; OSS: Groq/Gemini BYOK) | ⬜ Pending | High |
+| **1. Setup & DB** | Provision operational credentials for AI smoke tests (SaaS: OmniRoute tenant/key; OSS: Groq/Gemini BYOK) | ✅ Completed | High |
 | **2. PDF Extraction** | Local plain text extraction via UglyToad.PdfPig | ✅ Completed | High |
 | **2. PDF Extraction** | Auto-detect selectable vs non-selectable PDF (text threshold $\ge 100$ chars) | ✅ Completed | High |
 | **2. PDF Extraction** | SHA-256 hash generator for document caching & duplicate prevention | ✅ Completed | High |
@@ -46,13 +46,15 @@ Technical specification document and roadmap for developing the AI-powered diet 
 | **5. SaaS v2.0 Auth** | Multi-factor authentication (TOTP) & email verification (SMTP) | ⬜ Pending | Medium |
 | **6. Frontend UI** | React 19 + Tailwind UI (Dashboard, Calendar, Grocery List, Recetario, Recipe Form, Batch Cooking) | ✅ Completed | High |
 | **6. Frontend UI** | Runtime UI language selector (`i18next` with `en` / `es` support) | ✅ Completed | High |
-| **6. Frontend UI** | Global `Accept-Language` header propagation (`apiFetch`) & backend language resolver helper | ⬜ Pending | Medium |
+| **6. Frontend UI** | Settings modal (Language, Theme Mode Light/Dark/System, AI translation settings, Advanced Diagnostics) | ✅ Completed | High |
+| **6. Frontend UI** | Global `Accept-Language` header propagation (`apiFetch`) & backend language resolver helper | ✅ Completed | Medium |
+| **6. Frontend UI** | Original language tracking & live AI recipe translation via Groq `llama-3.1-8b-instant` | ✅ Completed | High |
 | **6. Frontend UI** | Separate Nginx (`5027`) + ASP.NET API (`5026`) containers with reverse proxy | ✅ Completed | High |
-| **6. Frontend UI** | Offline PWA mode (Service Worker caching for meal plan and recipes) | ⬜ Pending | Low |
-| **7. Testing & QA** | .NET Unit and Integration Tests (63 passing tests in `VitalityNutri.Tests`) | ✅ Completed | High |
-| **7. Testing & QA** | Frontend Vitest unit tests | 🟡 In Progress | High |
-| **7. Testing & QA** | Playwright E2E full user flow tests | 🟡 In Progress | High |
-| **7. Testing & QA** | CI/CD GitHub Actions workflow (test on PR + multi-container build on release tag) | 🟡 In Progress | High |
+| **6. Frontend UI** | Offline PWA mode (Service Worker caching for meal plan, recipes & grocery list) | ✅ Completed | High |
+| **7. Testing & QA** | .NET Unit and Integration Tests (95 passing tests in `VitalityNutri.Tests`) | ✅ Completed | High |
+| **7. Testing & QA** | Frontend Vitest unit tests (20 passing tests) | ✅ Completed | High |
+| **7. Testing & QA** | Playwright E2E full user flow tests (13 passing tests across 6 suites) | ✅ Completed | High |
+| **7. Testing & QA** | CI/CD GitHub Actions workflow (test on PR + multi-container build on release tag) | ✅ Completed | High |
 | **8. Security & Ops** | ASP.NET Core Rate Limiting (`upload`, `batch-cooking`, `general-write`) | ✅ Completed | High |
 | **8. Security & Ops** | HTTP Security Headers (`nosniff`, `DENY`, `strict-origin-when-cross-origin`) | ✅ Completed | High |
 | **8. Security & Ops** | Structured logging (NLog) + Sentry telemetry + App Insights | ✅ Completed | High |
@@ -234,9 +236,10 @@ Handles single recipe improvements, conversions, and generation:
 - Calls OmniRoute or Groq/Gemini with structured JSON response formatting.
 - Falls back to deterministic recipe generator on API exhaustion or network error.
 
-### 3. Prompt Consolidation Strategy (Pending Roadmap Item)
-- **Current State:** 2 prompt files per feature (`prompt-en.md` and `prompt-es.md`).
-- **Target State:** 1 base English template (`prompt.md`) per feature. Language-specific instructions are appended at runtime via `{LANGUAGE}` interpolation in `Application/Abstractions/Processing`.
+### 3. Prompt Consolidation Architecture
+- **Structure:** 1 canonical base English template (`prompt.md`) per feature in `backend/prompts/{feature}/`.
+- **Runtime Localization:** Language-specific instructions and output requirements are appended at runtime via prompt interpolations in `VitalityNutri.Infrastructure.Processing`.
+- **Automated Verification:** Verified by `PromptTemplateTests.cs` ensuring presence, non-emptiness, and structural adherence.
 
 ### 4. Centralized Language Resolution & Header Strategy
 To ensure consistent localization across all AI and non-AI endpoints without requiring redundant payload parameters:
@@ -387,16 +390,9 @@ npm --prefix frontend run test:e2e
 
 ## 📋 10. Next Milestone Action Items
 
-1. **Prompt Consolidation (Phase 3)**:
-   - Refactor `backend/prompts/` from 6 localized files to 3 base English templates with runtime language injection.
-   - Add unit tests in `VitalityNutri.Tests` to verify prompt placeholder parsing.
-2. **Nutritional Information Support (Phase 3.5 & 4.5)**:
-   - Add optional macros (`calories`, `protein`, `carbs`, `fat`) to `Recipe` domain entity and DTOs.
-   - Add UI display in `RecipeDetail.tsx` with graceful placeholder when plan lacks macro data.
-3. **CI/CD Pipeline Validation**:
-   - Ensure GitHub Actions workflow runs `dotnet test` and frontend tests on all pull requests.
-4. **Operational Credential Validation**:
-   - Perform end-to-end smoke tests against real Groq and Gemini endpoints using BYOK keys.
-5. **Centralized Language Provider & Header Propagation**:
-   - Wrap frontend API requests with automatic `Accept-Language` header injection (`apiFetch`).
-   - Register `ICurrentLanguageProvider` in ASP.NET Core DI to streamline language resolution across commands and controllers.
+1. **Conversational Diet Assistant (`/api/chat` - Phase 4 - Optional / Evaluation)**:
+   - Evaluate conversational assistant UX and scope.
+   - If approved: Implement backend MediatR command `SendDietChatMessageCommand` with in-context active plan summarization, sliding window memory (last 4 turns), session caps, and frontend assistant drawer.
+2. **SaaS v2.0 Architecture Preparation (Phase 5 - Long-Term Milestone)**:
+   - Design multi-tenant JWT authentication and per-user AES-256-GCM encrypted BYOK key vault in MySQL.
+   - Design multi-factor authentication (TOTP) and SMTP transactional email support.

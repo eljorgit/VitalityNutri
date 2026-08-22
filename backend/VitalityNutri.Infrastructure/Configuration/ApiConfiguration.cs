@@ -73,8 +73,11 @@ public sealed class PdfConfiguration
 
 public sealed class FallbackChainsConfiguration
 {
-    public string Text { get; init; } = string.Empty;
-    public string Vision { get; init; } = string.Empty;
+    public string PlanText { get; init; } = "groq:openai/gpt-oss-120b,groq:qwen/qwen3.6-27b,gemini:gemini-3.6-flash,gemini:gemini-3.7-flash,groq:openai/gpt-oss-20b";
+    public string PlanVision { get; init; } = "gemini:gemini-3.7-flash,gemini:gemini-3.6-flash,gemini:gemini-2.5-flash-lite";
+    public string BatchCooking { get; init; } = "groq:openai/gpt-oss-120b,groq:qwen/qwen3.6-27b,gemini:gemini-3.6-flash,gemini:gemini-3.7-flash,groq:openai/gpt-oss-20b";
+    public string RecipeAi { get; init; } = "gemini:gemini-3.6-flash,groq:openai/gpt-oss-120b,gemini:gemini-3.7-flash,groq:openai/gpt-oss-20b";
+    public string Translation { get; init; } = "groq:openai/gpt-oss-20b,groq:groq/compound-mini,gemini:gemini-3.6-flash,gemini:gemini-2.5-flash-lite";
 }
 
 public sealed class AiProvidersConfiguration

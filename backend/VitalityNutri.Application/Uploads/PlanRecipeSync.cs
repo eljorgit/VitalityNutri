@@ -14,7 +14,8 @@ internal static class PlanRecipeSync
         CancellationToken cancellationToken)
     {
         var sourcePlanId = TryReadPlanId(metadataJson);
-        var projectedRecipes = ExtractRecipes(planJson, sourcePlanId);
+        var originalLanguage = TryReadOriginalLanguage(metadataJson);
+        var projectedRecipes = ExtractRecipes(planJson, sourcePlanId, originalLanguage);
         if (projectedRecipes.Count == 0)
         {
             return planJson;
@@ -43,50 +44,104 @@ internal static class PlanRecipeSync
         return InjectRecipeIds(planJson, nameToId);
     }
 
+    private static string? TryReadOriginalLanguage(string metadataJson)
+    {
+        if (string.IsNullOrWhiteSpace(metadataJson))
+        {
+            return null;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(metadataJson);
+            if (document.RootElement.TryGetProperty("originalLanguage", out var langElement) &&
+                langElement.ValueKind == JsonValueKind.String)
+            {
+                return langElement.GetString();
+            }
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+
+        return null;
+    }
+
     private static string InjectRecipeIds(string planJson, IReadOnlyDictionary<string, long> nameToId)
     {
         try
         {
             var root = JsonNode.Parse(planJson) as JsonObject;
-            if (root?["days"] is not JsonObject days)
+            if (root is null)
             {
                 return planJson;
             }
 
-            foreach (var dayProp in days)
+            if (!root.TryGetPropertyValue("days", out var daysNode) || daysNode is not JsonObject days)
             {
-                if (dayProp.Value is not JsonObject dayObj)
+                return planJson;
+            }
+
+            foreach (var dayProp in days.ToArray())
+            {
+                if (dayProp.Value is not JsonObject meals)
                 {
                     continue;
                 }
 
-                foreach (var mealProp in dayObj)
+                foreach (var mealProp in meals.ToArray())
                 {
-                    if (mealProp.Value is not JsonObject mealObj)
+                    var recipeNode = ResolveRecipeNode(mealProp.Value);
+                    if (recipeNode is null)
                     {
                         continue;
                     }
 
-                    var targetObj = mealObj;
-                    if (mealObj["recipe"] is JsonObject nestedObj && nestedObj["recipeName"] is not null)
+                    if (!recipeNode.TryGetPropertyValue("recipeName", out var nameNode) || nameNode is null)
                     {
-                        targetObj = nestedObj;
+                        continue;
                     }
 
-                    if (targetObj["recipeName"]?.GetValue<string>() is string recipeName &&
-                        nameToId.TryGetValue(recipeName.Trim(), out var recipeId))
+                    var name = nameNode.ToString();
+                    if (string.IsNullOrWhiteSpace(name) || !nameToId.TryGetValue(name, out var id))
                     {
-                        targetObj["id"] = recipeId;
+                        continue;
                     }
+
+                    recipeNode["id"] = id;
                 }
             }
 
             return root.ToJsonString();
         }
-        catch
+        catch (JsonException)
         {
             return planJson;
         }
+    }
+
+    private static JsonObject? ResolveRecipeNode(JsonNode? node)
+    {
+        if (node is null)
+        {
+            return null;
+        }
+
+        if (node is JsonObject obj)
+        {
+            if (obj.ContainsKey("recipeName") || obj.ContainsKey("nombrePlato") || obj.ContainsKey("name"))
+            {
+                return obj;
+            }
+
+            if (obj.TryGetPropertyValue("recipe", out var recipeNode) && recipeNode is JsonObject recipeObj)
+            {
+                return recipeObj;
+            }
+        }
+
+        return null;
     }
 
     private static long? TryReadPlanId(string metadataJson)
@@ -117,7 +172,7 @@ internal static class PlanRecipeSync
         }
     }
 
-    private static IReadOnlyList<RecipeWriteModel> ExtractRecipes(string planJson, long? sourcePlanId)
+    private static IReadOnlyList<RecipeWriteModel> ExtractRecipes(string planJson, long? sourcePlanId, string? originalLanguage)
     {
         using var document = JsonDocument.Parse(planJson);
         if (!document.RootElement.TryGetProperty("days", out var days) || days.ValueKind != JsonValueKind.Object)
@@ -126,6 +181,7 @@ internal static class PlanRecipeSync
         }
 
         var results = new Dictionary<string, RecipeWriteModel>(StringComparer.OrdinalIgnoreCase);
+        var lang = string.IsNullOrWhiteSpace(originalLanguage) ? "es" : originalLanguage;
 
         foreach (var day in days.EnumerateObject())
         {
@@ -172,7 +228,8 @@ internal static class PlanRecipeSync
                     sourcePlanId,
                     true,
                     false,
-                    ReadString(recipeElement.Value, "season") ?? "Todas");
+                    ReadString(recipeElement.Value, "season") ?? "Todas",
+                    lang);
 
                 results[recipeName] = model;
             }

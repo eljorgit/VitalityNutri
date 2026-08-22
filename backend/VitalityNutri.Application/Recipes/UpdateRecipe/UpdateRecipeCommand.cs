@@ -15,12 +15,16 @@ internal sealed class UpdateRecipeCommandValidator : AbstractValidator<UpdateRec
     }
 }
 
-internal sealed class UpdateRecipeCommandHandler(IRecipeRepository recipes, IIngredientRepository ingredients)
+internal sealed class UpdateRecipeCommandHandler(
+    IRecipeRepository recipes,
+    IIngredientRepository ingredients,
+    IRecipeTranslationRepository translationRepository)
     : IRequestHandler<UpdateRecipeCommand>
 {
     public async Task Handle(UpdateRecipeCommand request, CancellationToken cancellationToken)
     {
         await recipes.UpdateAsync(request.Id, request.Recipe, cancellationToken);
         await ingredients.SaveManyAsync(RecipeIngredients.Extract(request.Recipe.Ingredients), cancellationToken);
+        await translationRepository.InvalidateAsync(request.Id, cancellationToken);
     }
 }

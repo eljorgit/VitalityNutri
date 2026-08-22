@@ -1,5 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Localization;
+using VitalityNutri.Application.Resources;
 using VitalityNutri.Application.Search.AddSearchHistory;
 using VitalityNutri.Application.Search.ClearSearchHistory;
 using VitalityNutri.Application.Search.DeleteSearchHistory;
@@ -10,8 +12,9 @@ namespace VitalityNutri.Api.Controllers.Search;
 
 /// <summary>Provides cross-plan search pool and click-history endpoints.</summary>
 /// <param name="sender">Application request dispatcher.</param>
+/// <param name="localizer">Localized messages accessor.</param>
 [ApiController, Route("api")]
-public sealed class SearchController(ISender sender) : ControllerBase
+public sealed class SearchController(ISender sender, IStringLocalizer<Messages> localizer) : ControllerBase
 {
     /// <summary>Returns the lightweight recipe pool from plans and recipe book.</summary>
     [HttpGet("all-recipes")]
@@ -30,7 +33,7 @@ public sealed class SearchController(ISender sender) : ControllerBase
         if (request.PlanId == 0 || string.IsNullOrWhiteSpace(request.Day) ||
             string.IsNullOrWhiteSpace(request.Meal) || string.IsNullOrWhiteSpace(request.RecipeName))
         {
-            return BadRequest(new SearchErrorResponse("Faltan campos obligatorios."));
+            return BadRequest(new SearchErrorResponse(localizer[Messages.SearchMissingFields]));
         }
 
         await sender.Send(new AddSearchHistoryCommand(
@@ -59,7 +62,7 @@ public sealed class SearchController(ISender sender) : ControllerBase
     {
         if (!long.TryParse(id, out var searchId))
         {
-            return BadRequest(new SearchErrorResponse("ID no válido."));
+            return BadRequest(new SearchErrorResponse(localizer[Messages.SearchInvalidId]));
         }
 
         await sender.Send(new DeleteSearchHistoryCommand(searchId), token);

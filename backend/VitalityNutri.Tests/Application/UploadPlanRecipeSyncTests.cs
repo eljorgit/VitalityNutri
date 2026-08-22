@@ -84,7 +84,8 @@ public sealed class UploadPlanRecipeSyncTests
             }
             """);
 
-        var handler = new ReprocessPlanCommandHandler(uploadedPlans, fileStorage, extraction, recipes);
+        var localizer = new TestLocalizer<VitalityNutri.Application.Resources.Messages>();
+        var handler = new ReprocessPlanCommandHandler(uploadedPlans, fileStorage, extraction, recipes, localizer);
         var result = await handler.Handle(new ReprocessPlanCommand("es"), CancellationToken.None);
 
         Assert.NotNull(result);
@@ -116,10 +117,10 @@ public sealed class UploadPlanRecipeSyncTests
         public Task<ActiveStoredPlan?> GetActiveAsync(CancellationToken cancellationToken) =>
             Task.FromResult(activePlan);
 
-        public Task<SavedPlanEnvelope> SaveUploadedPlanAsync(string originalFileName, string savedFileName, string fileHash, string planJson, DateTimeOffset processedAtUtc, CancellationToken cancellationToken) =>
+        public Task<SavedPlanEnvelope> SaveUploadedPlanAsync(string originalFileName, string savedFileName, string fileHash, string planJson, DateTimeOffset processedAtUtc, string originalLanguage, CancellationToken cancellationToken) =>
             Task.FromResult(new SavedPlanEnvelope(planJson, metadataJson));
 
-        public Task<SavedPlanEnvelope> ReprocessActivePlanAsync(string planJson, string fileHash, DateTimeOffset processedAtUtc, CancellationToken cancellationToken) =>
+        public Task<SavedPlanEnvelope> ReprocessActivePlanAsync(string planJson, string fileHash, DateTimeOffset processedAtUtc, string originalLanguage, CancellationToken cancellationToken) =>
             Task.FromResult(new SavedPlanEnvelope(planJson, metadataJson));
 
         public Task UpdatePlanJsonAsync(long planId, string planJson, CancellationToken cancellationToken) =>

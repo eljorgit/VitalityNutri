@@ -5,6 +5,9 @@ using VitalityNutri.Application.Uploads;
 using VitalityNutri.Application.Abstractions.Persistence;
 using VitalityNutri.Application.Abstractions.Processing;
 
+using Microsoft.Extensions.Localization;
+using VitalityNutri.Application.Resources;
+
 namespace VitalityNutri.Application.Uploads.UploadPlan;
 
 public sealed record UploadPlanCommand(string FileName, string FileData, string Language, bool ForceReprocess) : IRequest<UploadPlanResult>;
@@ -13,13 +16,13 @@ internal sealed class UploadPlanCommandValidator : AbstractValidator<UploadPlanC
 {
     private const long MaxFileSizeBytes = 15 * 1024 * 1024; // 15MB
 
-    public UploadPlanCommandValidator()
+    public UploadPlanCommandValidator(IStringLocalizer<Messages> localizer)
     {
         RuleFor(x => x.FileName).NotEmpty().MaximumLength(512);
         RuleFor(x => x.FileData)
             .NotEmpty()
             .Must(data => string.IsNullOrWhiteSpace(data) || (long)data.Length * 3 / 4 <= MaxFileSizeBytes)
-            .WithMessage("File size cannot exceed 15MB.");
+            .WithMessage(_ => localizer[Messages.UploadsFileSizeExceeded, 15]);
     }
 }
 
@@ -66,6 +69,7 @@ internal sealed class UploadPlanCommandHandler(
                 uploaded.FileHash,
                 planJson,
                 DateTimeOffset.UtcNow,
+                request.Language,
                 cancellationToken);
 
             var enrichedPlanJson = await PlanRecipeSync.SyncAsync(saved.PlanJson, saved.MetadataJson, recipes, cancellationToken);

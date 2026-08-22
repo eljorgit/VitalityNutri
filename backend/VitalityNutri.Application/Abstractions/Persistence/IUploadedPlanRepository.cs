@@ -4,8 +4,8 @@ public interface IUploadedPlanRepository
 {
     Task<DuplicatePlanRecord?> FindByHashAsync(string hash, CancellationToken cancellationToken);
     Task<ActiveStoredPlan?> GetActiveAsync(CancellationToken cancellationToken);
-    Task<SavedPlanEnvelope> SaveUploadedPlanAsync(string originalFileName, string savedFileName, string fileHash, string planJson, DateTimeOffset processedAtUtc, CancellationToken cancellationToken);
-    Task<SavedPlanEnvelope> ReprocessActivePlanAsync(string planJson, string fileHash, DateTimeOffset processedAtUtc, CancellationToken cancellationToken);
+    Task<SavedPlanEnvelope> SaveUploadedPlanAsync(string originalFileName, string savedFileName, string fileHash, string planJson, DateTimeOffset processedAtUtc, string originalLanguage, CancellationToken cancellationToken);
+    Task<SavedPlanEnvelope> ReprocessActivePlanAsync(string planJson, string fileHash, DateTimeOffset processedAtUtc, string originalLanguage, CancellationToken cancellationToken);
     Task UpdatePlanJsonAsync(long planId, string planJson, CancellationToken cancellationToken);
 }
 

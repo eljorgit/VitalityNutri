@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using VitalityNutri.Application.BatchCooking;
 using VitalityNutri.Infrastructure.Configuration;
 using VitalityNutri.Infrastructure.Processing;
+using VitalityNutri.Infrastructure.Processing.Ai;
 
 namespace VitalityNutri.Tests.Infrastructure;
 
@@ -13,8 +14,8 @@ public sealed class DeterministicBatchCookingAiServiceTests
     public DeterministicBatchCookingAiServiceTests()
     {
         var config = new ApiConfiguration();
-        var httpClientFactory = new StubHttpClientFactory();
-        service = new DeterministicBatchCookingAiService(config, httpClientFactory, NullLogger<DeterministicBatchCookingAiService>.Instance);
+        var stubGateway = new StubAiGateway();
+        service = new DeterministicBatchCookingAiService(config, stubGateway, NullLogger<DeterministicBatchCookingAiService>.Instance);
     }
 
     [Fact]
@@ -63,8 +64,24 @@ public sealed class DeterministicBatchCookingAiServiceTests
         Assert.Equal("Arroz con pollo", firstAffected.GetProperty("name").GetString());
     }
 
-    private sealed class StubHttpClientFactory : IHttpClientFactory
+    private sealed class StubAiGateway : IUnifiedAiGateway
     {
-        public HttpClient CreateClient(string name) => new();
+        public Task<string?> GenerateTextAsync(string chainConfig, string prompt, string? systemPrompt = null, bool jsonMode = true, float temperature = 0.2f, CancellationToken cancellationToken = default)
+            => Task.FromResult<string?>(null);
+
+        public Task<string?> GenerateMultimodalAsync(string chainConfig, string prompt, byte[] fileBytes, string mimeType, float temperature = 0.2f, CancellationToken cancellationToken = default)
+            => Task.FromResult<string?>(null);
+
+        public async IAsyncEnumerable<string> StreamTextAsync(string chainConfig, string prompt, string? systemPrompt = null, bool jsonMode = true, float temperature = 0.2f, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            await Task.CompletedTask;
+            yield break;
+        }
+
+        public async IAsyncEnumerable<string> StreamMultimodalAsync(string chainConfig, string prompt, byte[] fileBytes, string mimeType, float temperature = 0.2f, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            await Task.CompletedTask;
+            yield break;
+        }
     }
 }

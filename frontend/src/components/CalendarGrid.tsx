@@ -1,9 +1,13 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import { MealPlan, DayType, MealType, Recipe } from "@src/types";
+import { apiFetch } from "@utils/api";
+import { Sparkles, Globe, RotateCcw } from "lucide-react";
+import { SpainFlag, UKFlag } from "./Flags";
 
 interface CalendarGridProps {
   plan: MealPlan | null;
+  metadata?: any;
   onSelectRecipe: (day: DayType, meal: MealType, recipe: Recipe) => void;
   setActiveTab: (tab: string) => void;
   completedRecipes: Record<string, boolean>;
@@ -11,8 +15,109 @@ interface CalendarGridProps {
   onToggleDayComplete: (day: DayType, meals: MealType[], targetState: boolean) => void;
 }
 
-export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, completedRecipes, onToggleComplete, onToggleDayComplete }: CalendarGridProps) {
+export default function CalendarGrid({ plan, metadata, onSelectRecipe, setActiveTab, completedRecipes, onToggleComplete, onToggleDayComplete }: CalendarGridProps) {
   const { t, i18n } = useTranslation();
+
+  // Plan Language & Translation State
+  const planOriginalLang = (metadata?.originalLanguage || (plan as any)?.originalLanguage || "es").toLowerCase();
+  const currentUiLang = (i18n.language || "en").slice(0, 2).toLowerCase();
+  const isPlanLanguageMismatch = !!plan && planOriginalLang !== currentUiLang;
+
+  const [translatedPlan, setTranslatedPlan] = React.useState<MealPlan | null>(null);
+  const [isTranslatingPlan, setIsTranslatingPlan] = React.useState<boolean>(false);
+  const [isCheckingCachedTranslation, setIsCheckingCachedTranslation] = React.useState<boolean>(isPlanLanguageMismatch);
+  const [planViewMode, setPlanViewMode] = React.useState<"original" | "translated">("original");
+
+  // Auto-load cached plan translation on mount when language mismatches
+  const lastFetchedPlanKeyRef = React.useRef<string | null>(null);
+
+  React.useEffect(() => {
+    let isMounted = true;
+
+    if (!isPlanLanguageMismatch) {
+      setTranslatedPlan(null);
+      setPlanViewMode("original");
+      setIsCheckingCachedTranslation(false);
+      lastFetchedPlanKeyRef.current = null;
+      return;
+    }
+
+    const currentKey = `${metadata?.id ?? "active"}_${currentUiLang}`;
+    if (lastFetchedPlanKeyRef.current === currentKey && translatedPlan) {
+      setIsCheckingCachedTranslation(false);
+      return;
+    }
+
+    lastFetchedPlanKeyRef.current = currentKey;
+    setIsCheckingCachedTranslation(true);
+
+    const endpoint = metadata?.id
+      ? `/api/plan/${metadata.id}/translate?targetLang=${currentUiLang}`
+      : `/api/plan/translate?targetLang=${currentUiLang}`;
+
+    apiFetch(endpoint, { method: "GET" })
+      .then(async (res) => {
+        if (res.ok && isMounted) {
+          const data = await res.json();
+          let parsedPlan = data?.plan;
+          if (typeof parsedPlan === "string") {
+            try {
+              parsedPlan = JSON.parse(parsedPlan);
+            } catch {}
+          }
+          if (parsedPlan && isMounted) {
+            setTranslatedPlan(parsedPlan);
+            setPlanViewMode("translated");
+          }
+        }
+      })
+      .catch((err) => {
+        console.debug("Auto-translation plan fetch skipped or failed:", err);
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsCheckingCachedTranslation(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [metadata?.id, metadata?.fileName, currentUiLang, isPlanLanguageMismatch, plan]);
+
+  const activeDisplayPlan = (planViewMode === "translated" && translatedPlan) ? translatedPlan : plan;
+
+  const handleTranslatePlanToggle = async () => {
+    if (planViewMode === "translated") {
+      setPlanViewMode("original");
+      return;
+    }
+
+    if (translatedPlan) {
+      setPlanViewMode("translated");
+      return;
+    }
+
+    setIsTranslatingPlan(true);
+    try {
+      const endpoint = metadata?.id
+        ? `/api/plan/${metadata.id}/translate?targetLang=${currentUiLang}`
+        : `/api/plan/translate?targetLang=${currentUiLang}`;
+      const res = await apiFetch(endpoint, { method: "POST" });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.plan) {
+          setTranslatedPlan(data.plan);
+          setPlanViewMode("translated");
+          lastFetchedPlanKeyRef.current = `${metadata?.id ?? "active"}_${currentUiLang}`;
+        }
+      }
+    } catch (err) {
+      console.error("Error translating meal plan:", err);
+    } finally {
+      setIsTranslatingPlan(false);
+    }
+  };
   const daysKeys: DayType[] = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
   const mealsKeys: MealType[] = ["breakfast", "lunch", "snack", "dinner"];
 
@@ -182,11 +287,11 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, compl
   };
 
   const getPlannedStats = () => {
-    if (!plan) return { planned: 0, total: 28, percentage: 0 };
+    if (!activeDisplayPlan) return { planned: 0, total: 28, percentage: 0 };
     let planned = 0;
     daysKeys.forEach((day) => {
       mealsKeys.forEach((meal) => {
-        if (plan.days[day] && plan.days[day][meal]) {
+        if (activeDisplayPlan.days[day] && activeDisplayPlan.days[day][meal]) {
           planned++;
         }
       });
@@ -221,12 +326,12 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, compl
   const stats = getPlannedStats();
 
   const getCompletedStats = () => {
-    if (!plan) return { completed: 0, totalPlanned: 0, percentage: 0 };
+    if (!activeDisplayPlan) return { completed: 0, totalPlanned: 0, percentage: 0 };
     let completed = 0;
     let totalPlanned = 0;
     daysKeys.forEach((day) => {
       mealsKeys.forEach((meal) => {
-        if (plan.days[day] && plan.days[day][meal]) {
+        if (activeDisplayPlan.days[day] && activeDisplayPlan.days[day][meal]) {
           totalPlanned++;
           if (completedRecipes[`${day}-${meal}`]) {
             completed++;
@@ -249,6 +354,45 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, compl
         </div>
         
         <div className="flex flex-wrap items-center gap-4 animate-fade-in no-print select-none">
+          {isPlanLanguageMismatch && !!translatedPlan && (
+            <div className="flex items-center gap-2">
+              <div className="bg-slate-200/70 dark:bg-zinc-800/80 p-1 rounded-2xl flex items-center gap-1 select-none text-xs font-black shadow-xs">
+                <button
+                  type="button"
+                  onClick={() => setPlanViewMode("original")}
+                  className={`px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer ${
+                    planViewMode === "original"
+                      ? "bg-white dark:bg-zinc-900 text-slate-900 dark:text-white shadow-sm ring-1 ring-slate-900/5 dark:ring-white/10"
+                      : "text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white"
+                  }`}
+                >
+                  {planOriginalLang === "es" ? <SpainFlag className="w-3.5 h-2.5 rounded-xs" /> : <UKFlag className="w-3.5 h-2.5 rounded-xs" />}
+                  <span>{planOriginalLang.toUpperCase()}</span>
+                  <span className="text-[9px] font-normal opacity-60">({t("recipedetail.view_original", "Original")})</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPlanViewMode("translated")}
+                  className={`px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer ${
+                    planViewMode === "translated"
+                      ? "bg-emerald-600 text-white shadow-sm"
+                      : "text-slate-600 dark:text-zinc-400 hover:text-emerald-600 dark:hover:text-emerald-300"
+                  }`}
+                >
+                  {currentUiLang === "es" ? <SpainFlag className="w-3.5 h-2.5 rounded-xs" /> : <UKFlag className="w-3.5 h-2.5 rounded-xs" />}
+                  <span>{currentUiLang.toUpperCase()}</span>
+                  <span className="text-[9px] font-normal opacity-80">({t("recipedetail.translated_label", "Traducido")})</span>
+                </button>
+              </div>
+
+              <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 shadow-xs">
+                <span className="material-symbols-outlined text-[13px]">check_circle</span>
+                <span>{t("recipedetail.translated_notice", "Traducido con IA")}</span>
+              </span>
+            </div>
+          )}
+
           <button
             type="button"
             onClick={() => setActiveTab("batch-cooking")}
@@ -270,7 +414,56 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, compl
             </span>
           </div>
         </div>
-      </div>      {plan ? (
+      </div>
+
+      {/* Plan Language Mismatch / Translation Banner */}
+      {isPlanLanguageMismatch && !translatedPlan && !isCheckingCachedTranslation && (
+        <div className="bg-gradient-to-r from-emerald-50 via-teal-50/50 to-white dark:from-emerald-950/30 dark:via-teal-950/20 dark:to-zinc-900 border border-emerald-200/60 dark:border-emerald-800/40 p-4 sm:p-5 rounded-3xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm animate-fade-in no-print">
+          <div className="flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-2xl bg-white dark:bg-zinc-800 shadow-sm flex items-center justify-center border border-emerald-100 dark:border-emerald-800/50 shrink-0">
+              <Globe className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-zinc-100">
+                  {t("recipedetail.plan_translation_banner_title", "Plan en otro idioma")}
+                </h3>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300">
+                  {planOriginalLang === "es" ? <SpainFlag className="w-3 h-3 rounded-full" /> : <UKFlag className="w-3 h-3 rounded-full" />}
+                  {planOriginalLang.toUpperCase()}
+                  <span>→</span>
+                  {currentUiLang === "es" ? <SpainFlag className="w-3 h-3 rounded-full" /> : <UKFlag className="w-3 h-3 rounded-full" />}
+                  {currentUiLang.toUpperCase()}
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5">
+                {t("recipedetail.plan_translation_needed_desc", { origLang: planOriginalLang.toUpperCase(), targetLang: currentUiLang.toUpperCase() })}
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleTranslatePlanToggle}
+            disabled={isTranslatingPlan}
+            className="w-full sm:w-auto px-4.5 py-2.5 rounded-2xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm bg-emerald-600 hover:bg-emerald-700 text-white hover:scale-[1.02] active:scale-95 shadow-emerald-600/20"
+          >
+            {isTranslatingPlan ? (
+              <>
+                <span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>
+                {t("recipedetail.plan_translating", "Traduciendo plan...")}
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-3.5 h-3.5" />
+                {t("recipedetail.plan_translate_action", "Traducir plan completo con IA")}
+              </>
+            )}
+          </button>
+        </div>
+      )}
+
+      {activeDisplayPlan ? (
         <>
           <div ref={gridScrollContainerRef} className="hidden md:block print:block bg-white dark:bg-zinc-900 rounded-3xl p-6 border border-slate-100 dark:border-zinc-800 shadow-sm overflow-x-auto print-area-container">
             <div className="min-w-[1076px] w-full grid grid-cols-7 gap-4">
@@ -294,7 +487,7 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, compl
                     </div>
 
                     {mealsKeys.map((meal) => {
-                      const recipe = plan.days[day]?.[meal];
+                      const recipe = activeDisplayPlan.days[day]?.[meal];
 
                       const mealBorders: Record<MealType, string> = {
                         breakfast: "border-l-4 border-l-amber-500 border-slate-100 dark:border-zinc-800",
@@ -433,7 +626,7 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, compl
               onTouchEnd={handleTouchEnd}
             >
               {mealsKeys.map((meal) => {
-                const recipe = plan.days[activeMobileDay]?.[meal];
+                const recipe = activeDisplayPlan.days[activeMobileDay]?.[meal];
                 
                  const mealBorders: Record<MealType, string> = {
                    breakfast: "border-l-4 border-l-amber-500 dark:border-l-amber-500",
@@ -674,7 +867,7 @@ export default function CalendarGrid({ plan, onSelectRecipe, setActiveTab, compl
 
             <div className="p-6 overflow-y-auto flex-grow space-y-6">
               {daysKeys.map((day) => {
-                const dayRecipes = mealsKeys.map(meal => ({ meal, recipe: plan.days[day]?.[meal] })).filter(item => !!item.recipe);
+                const dayRecipes = mealsKeys.map(meal => ({ meal, recipe: activeDisplayPlan.days[day]?.[meal] })).filter(item => !!item.recipe);
                 if (dayRecipes.length === 0) return null;
                 
                 const label = datesMap[day];

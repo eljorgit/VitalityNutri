@@ -176,6 +176,14 @@ namespace VitalityNutri.Migrations.Sqlite.Migrations
                         .HasColumnType("json")
                         .HasColumnName("metadata_json");
 
+                    b.Property<string>("OriginalLanguage")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("es")
+                        .HasColumnName("original_language");
+
                     b.Property<string>("PlanJson")
                         .IsRequired()
                         .HasColumnType("json")
@@ -197,6 +205,50 @@ namespace VitalityNutri.Migrations.Sqlite.Migrations
                     b.HasIndex("IsActive");
 
                     b.ToTable("plans", (string)null);
+                });
+
+            modelBuilder.Entity("VitalityNutri.Domain.Entities.MealPlanTranslation", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<bool>("IsAiTranslated")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_ai_translated");
+
+                    b.Property<long>("PlanId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("plan_id");
+
+                    b.Property<string>("PlanJson")
+                        .IsRequired()
+                        .HasColumnType("json")
+                        .HasColumnName("plan_json");
+
+                    b.Property<string>("TargetLanguage")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("target_language");
+
+                    b.Property<DateTimeOffset>("UpdatedAtUtc")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PlanId", "TargetLanguage")
+                        .IsUnique();
+
+                    b.ToTable("plan_translations", (string)null);
                 });
 
             modelBuilder.Entity("VitalityNutri.Domain.Entities.Recipe", b =>
@@ -243,6 +295,14 @@ namespace VitalityNutri.Migrations.Sqlite.Migrations
                     b.Property<string>("NutritionistTips")
                         .HasColumnType("text")
                         .HasColumnName("nutritionist_tips");
+
+                    b.Property<string>("OriginalLanguage")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("es")
+                        .HasColumnName("original_language");
 
                     b.Property<string>("RecipeName")
                         .IsRequired()
@@ -311,6 +371,70 @@ namespace VitalityNutri.Migrations.Sqlite.Migrations
                     b.ToTable("recipes", (string)null);
                 });
 
+            modelBuilder.Entity("VitalityNutri.Domain.Entities.RecipeTranslation", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("IngredientsJson")
+                        .IsRequired()
+                        .HasColumnType("json")
+                        .HasColumnName("ingredients_json");
+
+                    b.Property<bool>("IsAiTranslated")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_ai_translated");
+
+                    b.Property<string>("NutritionistTips")
+                        .HasColumnType("text")
+                        .HasColumnName("nutritionist_tips");
+
+                    b.Property<long>("RecipeId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("recipe_id");
+
+                    b.Property<string>("RecipeName")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("recipe_name");
+
+                    b.Property<string>("StepsJson")
+                        .IsRequired()
+                        .HasColumnType("json")
+                        .HasColumnName("steps_json");
+
+                    b.Property<string>("TargetLanguage")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("target_language");
+
+                    b.Property<string>("Tips")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("tips");
+
+                    b.Property<DateTimeOffset>("UpdatedAtUtc")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RecipeId", "TargetLanguage")
+                        .IsUnique();
+
+                    b.ToTable("recipe_translations", (string)null);
+                });
+
             modelBuilder.Entity("VitalityNutri.Domain.Entities.SearchHistoryItem", b =>
                 {
                     b.Property<long>("Id")
@@ -369,6 +493,24 @@ namespace VitalityNutri.Migrations.Sqlite.Migrations
                     b.HasIndex("PlanId");
 
                     b.ToTable("search_history", (string)null);
+                });
+
+            modelBuilder.Entity("VitalityNutri.Domain.Entities.MealPlanTranslation", b =>
+                {
+                    b.HasOne("VitalityNutri.Domain.Entities.MealPlan", null)
+                        .WithMany()
+                        .HasForeignKey("PlanId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("VitalityNutri.Domain.Entities.RecipeTranslation", b =>
+                {
+                    b.HasOne("VitalityNutri.Domain.Entities.Recipe", null)
+                        .WithMany()
+                        .HasForeignKey("RecipeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 #pragma warning restore 612, 618
         }

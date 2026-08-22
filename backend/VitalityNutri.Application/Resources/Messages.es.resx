@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Backup_InvalidFormat" xml:space="preserve">
+    <value>El formato de la copia de seguridad no es válido.</value>
+  </data>
+  <data name="BatchCooking_NoActivePlan" xml:space="preserve">
+    <value>No hay ningún plan activo cargado.</value>
+  </data>
+  <data name="BatchCooking_MissingParams" xml:space="preserve">
+    <value>Faltan los parámetros de la cocina.</value>
+  </data>
+  <data name="Recipes_MissingQuery" xml:space="preserve">
+    <value>Falta el parámetro 'query'.</value>
+  </data>
+  <data name="Recipes_IdRequired" xml:space="preserve">
+    <value>El ID de la receta es obligatorio.</value>
+  </data>
+  <data name="Recipes_InvalidParamsOrFileData" xml:space="preserve">
+    <value>Faltan parámetros o el sourceType/fileData no es válido.</value>
+  </data>
+  <data name="Recipes_InvalidId" xml:space="preserve">
+    <value>ID de receta no válido.</value>
+  </data>
+  <data name="Recipes_NotFound" xml:space="preserve">
+    <value>Receta no encontrada.</value>
+  </data>
+  <data name="Recipes_MissingRequiredFields" xml:space="preserve">
+    <value>Faltan campos obligatorios: nombre o ingredientes.</value>
+  </data>
+  <data name="Search_MissingFields" xml:space="preserve">
+    <value>Faltan campos obligatorios.</value>
+  </data>
+  <data name="Search_InvalidId" xml:space="preserve">
+    <value>ID no válido.</value>
+  </data>
+  <data name="Uploads_MissingFileNameOrData" xml:space="preserve">
+    <value>No se recibió el nombre del archivo o los datos base64.</value>
+  </data>
+  <data name="Uploads_OnlyPdfSupported" xml:space="preserve">
+    <value>Por el momento, solo se soportan planes de alimentación en formato PDF.</value>
+  </data>
+  <data name="Uploads_FileSizeExceeded" xml:space="preserve">
+    <value>El archivo supera el tamaño máximo permitido de {0}MB.</value>
+  </data>
+  <data name="Uploads_NoFileToReprocess" xml:space="preserve">
+    <value>No hay ningún archivo guardado para reprocesar en el plan activo.</value>
+  </data>
+  <data name="Uploads_OriginalFileNotFound" xml:space="preserve">
+    <value>No se encontró el archivo original {0} en el servidor.</value>
+  </data>
+  <data name="Common_ValidationFailed" xml:space="preserve">
+    <value>Error de validación</value>
+  </data>
+  <data name="Common_UnexpectedError" xml:space="preserve">
+    <value>Ocurrió un error inesperado</value>
+  </data>
+</root>

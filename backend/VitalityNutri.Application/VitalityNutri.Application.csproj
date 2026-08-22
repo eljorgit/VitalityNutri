@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
     <ProjectReference Include="..\VitalityNutri.Domain\VitalityNutri.Domain.csproj" />
@@ -7,6 +7,7 @@
   <ItemGroup>
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
     <PackageReference Include="MediatR" Version="12.5.0" />
+    <PackageReference Include="Microsoft.Extensions.Localization.Abstractions" Version="10.0.0-preview.*" />
   </ItemGroup>
 
   <PropertyGroup>

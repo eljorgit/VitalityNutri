@@ -1,6 +1,8 @@
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Localization;
+using VitalityNutri.Application.Resources;
 using VitalityNutri.Application.Uploads;
 using VitalityNutri.Application.Uploads.UploadPlan;
 using VitalityNutri.Application.Uploads.ReprocessPlan;
@@ -11,7 +13,10 @@ namespace VitalityNutri.Api.Controllers.Uploads;
 
 /// <summary>Handles plan upload and reprocessing endpoints.</summary>
 [ApiController, Route("api"), EnableRateLimiting("upload")]
-public sealed class UploadsController(ISender sender, ApiConfiguration? apiConfiguration = null) : ControllerBase
+public sealed class UploadsController(
+    ISender sender,
+    IStringLocalizer<Messages> localizer,
+    ApiConfiguration? apiConfiguration = null) : ControllerBase
 {
     /// <summary>Uploads and processes a PDF plan payload.</summary>
     [HttpPost("upload"), RequestSizeLimit(100 * 1024 * 1024)]
@@ -19,19 +24,19 @@ public sealed class UploadsController(ISender sender, ApiConfiguration? apiConfi
     {
         if (string.IsNullOrWhiteSpace(request.FileName) || string.IsNullOrWhiteSpace(request.FileData))
         {
-            return BadRequest(new UploadErrorResponse("No se recibió el nombre del archivo o los datos base64."));
+            return BadRequest(new UploadErrorResponse(localizer[Messages.UploadsMissingFileNameOrData]));
         }
 
         if (!string.Equals(Path.GetExtension(request.FileName), ".pdf", StringComparison.OrdinalIgnoreCase))
         {
-            return BadRequest(new UploadErrorResponse("Por el momento, solo se soportan planes de alimentación en formato PDF."));
+            return BadRequest(new UploadErrorResponse(localizer[Messages.UploadsOnlyPdfSupported]));
         }
 
         var maxMb = apiConfiguration?.Upload.MaxFileSizeMb ?? 15;
         var maxSizeBytes = (long)maxMb * 1024 * 1024;
         if ((long)request.FileData.Length * 3 / 4 > maxSizeBytes)
         {
-            return BadRequest(new UploadErrorResponse($"El archivo supera el tamaño máximo permitido de {maxMb}MB."));
+            return BadRequest(new UploadErrorResponse(localizer[Messages.UploadsFileSizeExceeded, maxMb]));
         }
 
         UploadPlanResult result;
@@ -79,7 +84,7 @@ public sealed class UploadsController(ISender sender, ApiConfiguration? apiConfi
             var result = await sender.Send(new ReprocessPlanCommand(lang), cancellationToken);
             if (result is null)
             {
-                return BadRequest(new UploadErrorResponse("No hay ningún archivo guardado para reprocesar en el plan activo."));
+                return BadRequest(new UploadErrorResponse(localizer[Messages.UploadsNoFileToReprocess]));
             }
 
             return Ok(new { success = true, plan = result.Plan, metadata = result.Metadata });

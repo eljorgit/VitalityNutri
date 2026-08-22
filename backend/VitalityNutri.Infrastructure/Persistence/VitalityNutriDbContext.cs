@@ -13,6 +13,8 @@ public sealed class VitalityNutriDbContext(DbContextOptions<VitalityNutriDbConte
     public DbSet<Recipe> Recipes => Set<Recipe>();
     public DbSet<SearchHistoryItem> SearchHistoryItems => Set<SearchHistoryItem>();
     public DbSet<BatchCookingState> BatchCookingStates => Set<BatchCookingState>();
+    public DbSet<RecipeTranslation> RecipeTranslations => Set<RecipeTranslation>();
+    public DbSet<MealPlanTranslation> MealPlanTranslations => Set<MealPlanTranslation>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -26,6 +28,7 @@ public sealed class VitalityNutriDbContext(DbContextOptions<VitalityNutriDbConte
         mealPlan.Property(plan => plan.MetadataJson).HasColumnName("metadata_json").HasColumnType("json").IsRequired();
         mealPlan.Property(plan => plan.IsActive).HasColumnName("is_active").IsRequired();
         mealPlan.Property(plan => plan.FileHash).HasColumnName("file_hash").HasMaxLength(64);
+        mealPlan.Property(plan => plan.OriginalLanguage).HasColumnName("original_language").HasMaxLength(10).HasDefaultValue("es").IsRequired();
         mealPlan.Property(plan => plan.CreatedAtUtc).HasColumnName("created_at").IsRequired();
         mealPlan.Property(plan => plan.UpdatedAtUtc).HasColumnName("updated_at").IsRequired();
         mealPlan.HasIndex(plan => plan.IsActive);
@@ -100,9 +103,46 @@ public sealed class VitalityNutriDbContext(DbContextOptions<VitalityNutriDbConte
         recipe.Property(x => x.IsAiGenerated).HasColumnName("is_ai_generated").HasDefaultValue(false).IsRequired();
         recipe.Property(x => x.IsFavorite).HasColumnName("is_favorite").HasDefaultValue(false).IsRequired();
         recipe.Property(x => x.Season).HasColumnName("season").HasMaxLength(64).HasDefaultValue("Todas").IsRequired();
+        recipe.Property(x => x.OriginalLanguage).HasColumnName("original_language").HasMaxLength(10).HasDefaultValue("es").IsRequired();
         recipe.Property(x => x.CreatedAtUtc).HasColumnName("created_at").IsRequired();
         recipe.Property(x => x.UpdatedAtUtc).HasColumnName("updated_at").IsRequired();
         recipe.HasIndex(x => x.RecipeName).IsUnique();
         recipe.HasIndex(x => x.CreatedAtUtc);
+
+        var recipeTranslation = modelBuilder.Entity<RecipeTranslation>();
+        recipeTranslation.ToTable("recipe_translations");
+        recipeTranslation.HasKey(x => x.Id);
+        recipeTranslation.Property(x => x.Id).HasColumnName("id");
+        recipeTranslation.Property(x => x.RecipeId).HasColumnName("recipe_id").IsRequired();
+        recipeTranslation.Property(x => x.TargetLanguage).HasColumnName("target_language").HasMaxLength(10).IsRequired();
+        recipeTranslation.Property(x => x.RecipeName).HasColumnName("recipe_name").HasMaxLength(512).IsRequired();
+        recipeTranslation.Property(x => x.Tips).HasColumnName("tips").HasColumnType("text").IsRequired();
+        recipeTranslation.Property(x => x.NutritionistTips).HasColumnName("nutritionist_tips").HasColumnType("text");
+        recipeTranslation.Property(x => x.IngredientsJson).HasColumnName("ingredients_json").HasColumnType("json").IsRequired();
+        recipeTranslation.Property(x => x.StepsJson).HasColumnName("steps_json").HasColumnType("json").IsRequired();
+        recipeTranslation.Property(x => x.IsAiTranslated).HasColumnName("is_ai_translated").HasDefaultValue(false).IsRequired();
+        recipeTranslation.Property(x => x.CreatedAtUtc).HasColumnName("created_at").IsRequired();
+        recipeTranslation.Property(x => x.UpdatedAtUtc).HasColumnName("updated_at").IsRequired();
+        recipeTranslation.HasOne<Recipe>()
+            .WithMany()
+            .HasForeignKey(x => x.RecipeId)
+            .OnDelete(DeleteBehavior.Cascade);
+        recipeTranslation.HasIndex(x => new { x.RecipeId, x.TargetLanguage }).IsUnique();
+
+        var planTranslation = modelBuilder.Entity<MealPlanTranslation>();
+        planTranslation.ToTable("plan_translations");
+        planTranslation.HasKey(x => x.Id);
+        planTranslation.Property(x => x.Id).HasColumnName("id");
+        planTranslation.Property(x => x.PlanId).HasColumnName("plan_id").IsRequired();
+        planTranslation.Property(x => x.TargetLanguage).HasColumnName("target_language").HasMaxLength(10).IsRequired();
+        planTranslation.Property(x => x.PlanJson).HasColumnName("plan_json").HasColumnType("json").IsRequired();
+        planTranslation.Property(x => x.IsAiTranslated).HasColumnName("is_ai_translated").HasDefaultValue(false).IsRequired();
+        planTranslation.Property(x => x.CreatedAtUtc).HasColumnName("created_at").IsRequired();
+        planTranslation.Property(x => x.UpdatedAtUtc).HasColumnName("updated_at").IsRequired();
+        planTranslation.HasOne<MealPlan>()
+            .WithMany()
+            .HasForeignKey(x => x.PlanId)
+            .OnDelete(DeleteBehavior.Cascade);
+        planTranslation.HasIndex(x => new { x.PlanId, x.TargetLanguage }).IsUnique();
     }
 }

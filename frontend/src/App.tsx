@@ -7,6 +7,8 @@ import BatchCooking from "./components/BatchCooking";
 import Recetario from "./components/Recetario";
 import RecipeForm from "./components/RecipeForm";
 import ConfirmationModal, { ConfirmationVariant } from "./components/ConfirmationModal";
+import SettingsModal, { ThemeMode } from "./components/SettingsModal";
+import SystemDiagnosticsModal from "./components/SystemDiagnosticsModal";
 import { useTranslation } from "react-i18next";
 import { getCanonicalPath, navigateTo } from "./utils/routes";
 import type { SupportedLang } from "./i18n/config";
@@ -19,7 +21,8 @@ import {
   highlightText,
 } from "./utils/searchHelpers";
 import { translateTag } from "./utils/tags";
-import { Github, ExternalLink } from "lucide-react";
+import { Github, ExternalLink, WifiOff } from "lucide-react";
+import { useOfflineStatus } from "./utils/useOfflineStatus";
 import { version } from "@/package.json";
 
 // --- Search Types ---
@@ -56,6 +59,7 @@ interface SearchHistoryItem {
 
 export default function App() {
   const { t, i18n } = useTranslation();
+  const isOffline = useOfflineStatus();
   const [activeTab, setActiveTab] = useState<string>("dashboard");
   const [showResetPlanConfirmation, setShowResetPlanConfirmation] = useState(false);
   const [appNotification, setAppNotification] = useState<{
@@ -86,23 +90,46 @@ export default function App() {
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
 
-  // Night/Dark theme state
-  const [darkMode, setDarkMode] = useState<boolean>(() => {
+  // Theme mode state (light | dark | system)
+  const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
     if (typeof window !== "undefined") {
-      return localStorage.getItem("theme") === "dark" || document.documentElement.classList.contains("dark");
+      const saved = localStorage.getItem("theme");
+      if (saved === "light" || saved === "dark" || saved === "system") {
+        return saved;
+      }
     }
-    return false;
+    return "system";
   });
 
+  const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
+  const [isDiagnosticsOpen, setIsDiagnosticsOpen] = useState<boolean>(false);
+
   useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add("dark");
-      localStorage.setItem("theme", "dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-      localStorage.setItem("theme", "light");
+    const applyTheme = () => {
+      let isDark = false;
+      if (themeMode === "dark") {
+        isDark = true;
+      } else if (themeMode === "system") {
+        isDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+      }
+
+      if (isDark) {
+        document.documentElement.classList.add("dark");
+      } else {
+        document.documentElement.classList.remove("dark");
+      }
+      localStorage.setItem("theme", themeMode);
+    };
+
+    applyTheme();
+
+    if (themeMode === "system" && window.matchMedia) {
+      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+      const handleChange = () => applyTheme();
+      mediaQuery.addEventListener("change", handleChange);
+      return () => mediaQuery.removeEventListener("change", handleChange);
     }
-  }, [darkMode]);
+  }, [themeMode]);
 
   // Scroll lock effect when mobile search is open
   useEffect(() => {
@@ -940,6 +967,12 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-zinc-950 text-slate-800 dark:text-zinc-100 antialiased font-sans transition-all duration-300">
+      {isOffline && (
+        <div data-testid="offline-banner" className="bg-amber-500 text-white text-xs font-semibold py-1.5 px-4 text-center flex items-center justify-center gap-2 shadow-inner select-none z-50">
+          <WifiOff className="w-4 h-4 shrink-0" />
+          <span>{t("general.offline_mode")}</span>
+        </div>
+      )}
       
       {/* 1. Header Navigation Bar */}
       <header className="sticky top-0 z-50 bg-white/85 dark:bg-zinc-900/85 backdrop-blur-md border-b border-gray-100 dark:border-zinc-800 shadow-sm transition-all duration-300 select-none no-print">
@@ -1084,14 +1117,28 @@ export default function App() {
 
 
 
+            {/* Settings button */}
+            <button 
+              type="button" 
+              onClick={() => setIsSettingsOpen(true)}
+              className="p-2.5 text-slate-500 hover:text-emerald-700 dark:text-zinc-400 dark:hover:text-emerald-300 hover:bg-gray-50 dark:hover:bg-zinc-800 rounded-xl transition duration-200 material-symbols-outlined select-none text-xl font-bold cursor-pointer flex items-center justify-center shadow-sm border border-transparent dark:border-zinc-800/40 bg-slate-50/40 dark:bg-zinc-900 shrink-0"
+              title={t("settings.title", "Preferences & Configuration")}
+              aria-label={t("settings.title", "Preferences & Configuration")}
+            >
+              settings
+            </button>
+
             {/* Dark/Night mode toggle */}
             <button 
               type="button" 
-              onClick={() => setDarkMode(!darkMode)}
+              onClick={() => {
+                const next: ThemeMode = themeMode === "light" ? "dark" : themeMode === "dark" ? "system" : "light";
+                setThemeMode(next);
+              }}
               className="p-2.5 text-gray-500 hover:text-emerald-700 dark:text-zinc-400 dark:hover:text-emerald-300 hover:bg-gray-50 dark:hover:bg-zinc-800 rounded-xl transition duration-200 material-symbols-outlined select-none text-xl font-bold cursor-pointer flex items-center justify-center shadow-sm border border-transparent dark:border-zinc-800/40 bg-slate-50/40 dark:bg-zinc-900 shrink-0"
-              title={t("theme.toggle")}
+              title={t("theme.toggle", "Toggle theme")}
             >
-              {darkMode ? "light_mode" : "dark_mode"}
+              {themeMode === "dark" ? "dark_mode" : themeMode === "light" ? "light_mode" : "routine"}
             </button>
           </div>
         </div>
@@ -1197,6 +1244,7 @@ export default function App() {
             {activeTab === "calendar" && (
               <CalendarGrid 
                 plan={plan} 
+                metadata={metadata}
                 onSelectRecipe={handleSelectRecipe} 
                 setActiveTab={handleSetActiveTab}
                 completedRecipes={completedRecipes}
@@ -1398,9 +1446,17 @@ export default function App() {
           </div>
         </div>
         <div className="flex flex-col sm:flex-row items-center justify-center w-full px-6 pb-8 md:pb-6 gap-1 sm:gap-3 max-w-container-max mx-auto">
-          <span className="text-[11px] text-gray-400 dark:text-zinc-600 font-medium">
-            {t("footer.version", { version })}
-            <span className="mx-1.5 opacity-40">|</span>
+          <span className="text-[11px] text-gray-400 dark:text-zinc-600 font-medium flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setIsDiagnosticsOpen(true)}
+              className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors cursor-pointer flex items-center gap-1 font-mono"
+              title={t("diagnostics.title", "System Diagnostics")}
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              {t("footer.version", { version })}
+            </button>
+            <span className="opacity-40">|</span>
             <a
               href="https://github.com/eljorgit/VitalityNutri/blob/main/LICENSE"
               target="_blank"
@@ -1558,7 +1614,7 @@ export default function App() {
           if (!recipe?.id) return;
           try {
             const res = await fetch(`/api/recipes/${recipe.id}`, { method: "DELETE" });
-            if (!res.ok) throw new Error("Error al eliminar");
+            if (!res.ok) throw new Error(t("general.error_delete"));
             setRecetarioRecipeDetail(null);
             navigate("/recipe-book");
           } catch {
@@ -1570,6 +1626,18 @@ export default function App() {
             });
           }
         }}
+      />
+
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        currentTheme={themeMode}
+        onThemeChange={setThemeMode}
+      />
+
+      <SystemDiagnosticsModal
+        isOpen={isDiagnosticsOpen}
+        onClose={() => setIsDiagnosticsOpen(false)}
       />
 
     </div>

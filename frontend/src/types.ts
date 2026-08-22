@@ -60,6 +60,7 @@ export interface Recipe {
   isAiGenerated?: boolean; // optional
   isFavorite?: boolean; // optional
   season?: string; // optional
+  originalLanguage?: string; // optional: "es", "en", etc.
   createdAt?: string; // optional
   updatedAt?: string; // optional
 }
@@ -81,4 +82,5 @@ export interface PlanMetadata {
   fileName: string;
   savedFileName?: string;
   processedAt: string;
+  originalLanguage?: string;
 }

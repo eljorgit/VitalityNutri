@@ -1,17 +1,14 @@
-using System.Net.Http.Headers;
-using System.Text;
 using System.Text.Json;
-using Google.GenAI;
-using Google.GenAI.Types;
 using Microsoft.Extensions.Logging;
 using VitalityNutri.Application.Abstractions.Processing;
 using VitalityNutri.Infrastructure.Configuration;
+using VitalityNutri.Infrastructure.Processing.Ai;
 
 namespace VitalityNutri.Infrastructure.Processing;
 
 internal sealed class DeterministicRecipeAiProcessingService(
     ApiConfiguration apiConfiguration,
-    IHttpClientFactory httpClientFactory,
+    IUnifiedAiGateway aiGateway,
     ILogger<DeterministicRecipeAiProcessingService> logger)
     : IRecipeAiProcessingService
 {
@@ -19,11 +16,42 @@ internal sealed class DeterministicRecipeAiProcessingService(
     {
         var count = Math.Clamp(input.OptionsCount, 1, 5);
 
-        // Try AI live generation if configured
+        // Try AI generation across configured fallback chain
         try
         {
             var prompt = LoadRecipePromptTemplate(input.Language, count, input.ExtraPrompt);
-            var aiJson = await TryExtractFromAiAsync(input, prompt, cancellationToken);
+            var chain = apiConfiguration.Ai.FallbackChains.RecipeAi;
+            string? aiJson = null;
+
+            if (!string.IsNullOrWhiteSpace(input.FileData))
+            {
+                var mime = input.SourceType.Equals("pdf", StringComparison.OrdinalIgnoreCase) ? "application/pdf" : "image/jpeg";
+                var raw = input.FileData.Contains(',') ? input.FileData[(input.FileData.IndexOf(',') + 1)..] : input.FileData;
+                var bytes = Convert.FromBase64String(raw);
+
+                aiJson = await aiGateway.GenerateMultimodalAsync(
+                    chainConfig: chain,
+                    prompt: prompt,
+                    fileBytes: bytes,
+                    mimeType: mime,
+                    temperature: 0.4f,
+                    cancellationToken: cancellationToken);
+            }
+            else
+            {
+                var fullPrompt = !string.IsNullOrWhiteSpace(input.TextData)
+                    ? $"{prompt}\n\nRecipe Source Content:\n{input.TextData}"
+                    : prompt;
+
+                aiJson = await aiGateway.GenerateTextAsync(
+                    chainConfig: chain,
+                    prompt: fullPrompt,
+                    systemPrompt: null,
+                    jsonMode: true,
+                    temperature: 0.4f,
+                    cancellationToken: cancellationToken);
+            }
+
             if (!string.IsNullOrWhiteSpace(aiJson))
             {
                 var parsedOptions = ParseAiResponse(aiJson);
@@ -42,198 +70,9 @@ internal sealed class DeterministicRecipeAiProcessingService(
         return GenerateDeterministicFallback(input, count);
     }
 
-    private async Task<string?> TryExtractFromAiAsync(RecipeAiInput input, string prompt, CancellationToken cancellationToken)
-    {
-        var isSaaS = apiConfiguration.App.Mode.Equals("SaaS", StringComparison.OrdinalIgnoreCase);
-
-        if (isSaaS || apiConfiguration.Ai.UseOmniRoute)
-        {
-            if (!string.IsNullOrWhiteSpace(apiConfiguration.Ai.OmniRoute.Url))
-            {
-                return await CallOmniRouteAsync(prompt, input, cancellationToken);
-            }
-        }
-
-        if (!string.IsNullOrWhiteSpace(apiConfiguration.Ai.Providers.Groq.ApiKey))
-        {
-            var groqResult = await CallGroqAsync(prompt, input, cancellationToken);
-            if (!string.IsNullOrWhiteSpace(groqResult)) return groqResult;
-        }
-
-        if (!string.IsNullOrWhiteSpace(apiConfiguration.Ai.Providers.Gemini.ApiKey))
-        {
-            return await CallGeminiAsync(prompt, input, cancellationToken);
-        }
-
-        return null;
-    }
-
-    private async Task<string?> CallOmniRouteAsync(string prompt, RecipeAiInput input, CancellationToken cancellationToken)
-    {
-        var client = httpClientFactory.CreateClient();
-        client.Timeout = TimeSpan.FromSeconds(Math.Clamp(apiConfiguration.Ai.Providers.Gemini.TimeoutSeconds, 30, 300));
-
-        var requestBody = new
-        {
-            model = apiConfiguration.Ai.Models.RecipeAi,
-            messages = new object[]
-            {
-                new { role = "system", content = prompt },
-                new { role = "user", content = BuildUserContent(input) }
-            },
-            temperature = 0.4
-        };
-
-        var request = new HttpRequestMessage(HttpMethod.Post, apiConfiguration.Ai.OmniRoute.Url)
-        {
-            Content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json")
-        };
-
-        if (!string.IsNullOrWhiteSpace(apiConfiguration.Ai.OmniRoute.ApiKey))
-        {
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiConfiguration.Ai.OmniRoute.ApiKey);
-        }
-
-        using var response = await client.SendAsync(request, cancellationToken);
-        if (!response.IsSuccessStatusCode) return null;
-
-        var json = await response.Content.ReadAsStringAsync(cancellationToken);
-        return ExtractContentFromChatCompletion(json);
-    }
-
-    private async Task<string?> CallGroqAsync(string prompt, RecipeAiInput input, CancellationToken cancellationToken)
-    {
-        var client = httpClientFactory.CreateClient();
-        client.Timeout = TimeSpan.FromSeconds(60);
-
-        var requestBody = new
-        {
-            model = "llama-3.3-70b-versatile",
-            messages = new object[]
-            {
-                new { role = "system", content = prompt },
-                new { role = "user", content = BuildUserContent(input) }
-            },
-            response_format = new { type = "json_object" },
-            temperature = 0.3
-        };
-
-        var request = new HttpRequestMessage(HttpMethod.Post, "https://api.groq.com/openai/v1/chat/completions")
-        {
-            Content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json")
-        };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiConfiguration.Ai.Providers.Groq.ApiKey);
-
-        using var response = await client.SendAsync(request, cancellationToken);
-        if (!response.IsSuccessStatusCode) return null;
-
-        var json = await response.Content.ReadAsStringAsync(cancellationToken);
-        return ExtractContentFromChatCompletion(json);
-    }
-
-    private async Task<string?> CallGeminiAsync(string prompt, RecipeAiInput input, CancellationToken cancellationToken)
-    {
-        var gemini = new Client(
-            apiKey: apiConfiguration.Ai.Providers.Gemini.ApiKey,
-            httpOptions: new HttpOptions
-            {
-                Timeout = (int)TimeSpan.FromSeconds(Math.Clamp(apiConfiguration.Ai.Providers.Gemini.TimeoutSeconds, 30, 300)).TotalMilliseconds
-            });
-
-        var parts = new List<Part> { Part.FromText(prompt) };
-
-        if (!string.IsNullOrWhiteSpace(input.TextData))
-        {
-            parts.Add(Part.FromText(input.TextData));
-        }
-
-        if (!string.IsNullOrWhiteSpace(input.FileData))
-        {
-            var mime = input.SourceType.Equals("pdf", StringComparison.OrdinalIgnoreCase) ? "application/pdf" : "image/jpeg";
-            var raw = input.FileData.Contains(',') ? input.FileData[(input.FileData.IndexOf(',') + 1)..] : input.FileData;
-            parts.Add(Part.FromBytes(Convert.FromBase64String(raw), mime));
-        }
-
-        var response = await gemini.Models.GenerateContentAsync(
-            model: "gemini-2.5-flash",
-            contents: new Content { Parts = parts },
-            config: new GenerateContentConfig
-            {
-                ResponseMimeType = "application/json",
-                Temperature = 0.4f
-            },
-            cancellationToken: cancellationToken);
-
-        return ExtractGeminiText(response);
-    }
-
-    private static string? ExtractGeminiText(GenerateContentResponse response)
-    {
-        if (response.Candidates is null || response.Candidates.Count == 0)
-        {
-            return null;
-        }
-
-        var parts = response.Candidates[0].Content?.Parts;
-        if (parts is null || parts.Count == 0)
-        {
-            return null;
-        }
-
-        return string.Concat(parts.Select(part => part.Text ?? string.Empty));
-    }
-
-    private static string BuildUserContent(RecipeAiInput input)
-    {
-        var sb = new StringBuilder();
-        if (!string.IsNullOrWhiteSpace(input.TextData))
-        {
-            sb.AppendLine(input.TextData);
-        }
-        if (!string.IsNullOrWhiteSpace(input.ExtraPrompt))
-        {
-            sb.AppendLine($"Extra instructions: {input.ExtraPrompt}");
-        }
-        return sb.Length > 0 ? sb.ToString() : "Genera variantes de la receta solicitada.";
-    }
-
-    private static string? ExtractContentFromChatCompletion(string json)
-    {
-        try
-        {
-            using var doc = JsonDocument.Parse(json);
-            if (doc.RootElement.TryGetProperty("choices", out var choices) && choices.GetArrayLength() > 0)
-            {
-                var first = choices[0];
-                if (first.TryGetProperty("message", out var msg) && msg.TryGetProperty("content", out var content))
-                {
-                    return content.GetString();
-                }
-            }
-        }
-        catch
-        {
-            // ignore
-        }
-        return null;
-    }
-
     private static IReadOnlyList<RecipeAiOption> ParseAiResponse(string json)
     {
-        var cleanJson = json.Trim();
-        if (cleanJson.StartsWith("```json", StringComparison.OrdinalIgnoreCase))
-        {
-            cleanJson = cleanJson[7..];
-        }
-        if (cleanJson.StartsWith("```", StringComparison.OrdinalIgnoreCase))
-        {
-            cleanJson = cleanJson[3..];
-        }
-        if (cleanJson.EndsWith("```", StringComparison.OrdinalIgnoreCase))
-        {
-            cleanJson = cleanJson[..^3];
-        }
-        cleanJson = cleanJson.Trim();
+        var cleanJson = UnifiedAiGateway.CleanMarkdownCodeBlock(json);
 
         using var doc = JsonDocument.Parse(cleanJson);
         if (!doc.RootElement.TryGetProperty("options", out var optionsArray) || optionsArray.ValueKind != JsonValueKind.Array)

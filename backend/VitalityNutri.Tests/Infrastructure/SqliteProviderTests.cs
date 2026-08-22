@@ -145,5 +145,24 @@ public sealed class SqliteProviderTests
         Assert.NotNull(await batchRepository.GetByPlanIdAsync(50, default));
         await batchRepository.ResetAsync(50, default);
         Assert.Null(await batchRepository.GetByPlanIdAsync(50, default));
+
+        var planTranslationRepo = new PlanTranslationRepository(db);
+        await planTranslationRepo.SaveAsync(new MealPlanTranslation(50, "en", "{\"days\":{\"monday\":{}}}", true), default);
+        var cachedPlan = await planTranslationRepo.GetAsync(50, "en", default);
+        Assert.NotNull(cachedPlan);
+        Assert.Equal("en", cachedPlan.TargetLanguage);
+        await planTranslationRepo.InvalidateAsync(50, default);
+        Assert.Null(await planTranslationRepo.GetAsync(50, "en", default));
+
+        var recipeEntity = new Recipe("Tacos", 400, "15 min", "Dinner", null, "[]", "Tips", "[]", "NutriTips", null, 2, "manual", null, false, false, "All", "es");
+        var savedRecipeId = await recipeRepository.AddAsync(recipeEntity, default);
+        var recipeTranslationRepo = new RecipeTranslationRepository(db);
+        await recipeTranslationRepo.SaveAsync(new RecipeTranslation(savedRecipeId, "en", "Tacos EN", "Tips EN", "NutriTips EN", "[]", "[]", true), default);
+        var cachedRecipe = await recipeTranslationRepo.GetAsync(savedRecipeId, "en", default);
+        Assert.NotNull(cachedRecipe);
+        Assert.Equal("Tacos EN", cachedRecipe.RecipeName);
+        Assert.Equal("NutriTips EN", cachedRecipe.NutritionistTips);
+        await recipeTranslationRepo.InvalidateAsync(savedRecipeId, default);
+        Assert.Null(await recipeTranslationRepo.GetAsync(savedRecipeId, "en", default));
     }
 }

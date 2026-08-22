@@ -1,5 +1,7 @@
+using System.Globalization;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.Localization;
 using Microsoft.AspNetCore.RateLimiting;
 using NLog;
 using NLog.Web;
@@ -38,6 +40,7 @@ try
             options.TracesSampleRate = 1.0;
             options.AutoSessionTracking = true;
             options.AddExceptionFilterForType<FluentValidation.ValidationException>();
+            options.AddExceptionFilterForType<OperationCanceledException>();
         });
     }
 
@@ -53,6 +56,9 @@ try
     }
 
     // Core API Services
+    builder.Services.AddLocalization();
+    builder.Services.AddHttpContextAccessor();
+    builder.Services.AddScoped<VitalityNutri.Application.Abstractions.Common.ICurrentLanguageProvider, HttpCurrentLanguageProvider>();
     builder.Services.AddOpenApi();
     builder.Services.AddControllers();
     builder.Services.AddProblemDetails();
@@ -148,9 +154,8 @@ try
 
     var app = builder.Build();
 
-    // Auto-apply DB migrations and seed initial demo data
+    // Auto-apply DB migrations
     await app.Services.ApplyDatabaseMigrationsAsync();
-    await app.Services.SeedDemoDataAsync();
 
     // Exception handling & Security headers
     app.UseExceptionHandler();
@@ -164,6 +169,19 @@ try
     });
 
     app.UseCors();
+    
+    var supportedCultures = new[] { new CultureInfo("en"), new CultureInfo("es") };
+    var localizationOptions = new RequestLocalizationOptions
+    {
+        DefaultRequestCulture = new RequestCulture("en"),
+        SupportedCultures = supportedCultures,
+        SupportedUICultures = supportedCultures
+    };
+    localizationOptions.RequestCultureProviders.Insert(0, new QueryStringRequestCultureProvider { QueryStringKey = "lang", UIQueryStringKey = "lang" });
+    localizationOptions.RequestCultureProviders.Insert(1, new QueryStringRequestCultureProvider { QueryStringKey = "language", UIQueryStringKey = "language" });
+    localizationOptions.RequestCultureProviders.Insert(2, new AcceptLanguageHeaderRequestCultureProvider());
+    app.UseRequestLocalization(localizationOptions);
+
     app.UseRateLimiter();
 
     // Serve React SPA static assets from wwwroot

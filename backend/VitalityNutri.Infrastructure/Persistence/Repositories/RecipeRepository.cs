@@ -37,7 +37,7 @@ internal sealed class RecipeRepository(VitalityNutriDbContext dbContext) : IReci
         recipe.Update(model.RecipeName, model.Calories, model.Time, model.Tag, model.Image,
             model.Ingredients.GetRawText(), model.Tips, model.Steps.GetRawText(),
             model.NutritionistTips, model.Nutrition?.GetRawText(), model.Servings,
-            model.Source, model.SourcePlanId, model.IsAiGenerated, model.IsFavorite, model.Season);
+            model.Source, model.SourcePlanId, model.IsAiGenerated, model.IsFavorite, model.Season, model.OriginalLanguage);
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
@@ -52,7 +52,7 @@ internal sealed class RecipeRepository(VitalityNutriDbContext dbContext) : IReci
         recipe.Update(recipe.RecipeName, recipe.Calories, recipe.Time, recipe.Tag, image,
             recipe.IngredientsJson, recipe.Tips, recipe.StepsJson,
             recipe.NutritionistTips, recipe.NutritionJson, recipe.Servings,
-            recipe.Source, recipe.SourcePlanId, recipe.IsAiGenerated, recipe.IsFavorite, recipe.Season);
+            recipe.Source, recipe.SourcePlanId, recipe.IsAiGenerated, recipe.IsFavorite, recipe.Season, recipe.OriginalLanguage);
 
         await dbContext.SaveChangesAsync(cancellationToken);
     }

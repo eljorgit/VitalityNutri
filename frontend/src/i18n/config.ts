@@ -25,14 +25,23 @@ export function isValidLang(lang: string | null): lang is SupportedLang {
 }
 
 export function getStoredLang(): SupportedLang {
+  if (typeof window !== "undefined") {
+    const saved = localStorage.getItem("vitalitynutri_language");
+    if (saved && isValidLang(saved)) return saved;
+  }
+
   const runtimeLang = typeof window !== "undefined"
     ? window.__VITALITYNUTRI_CONFIG__?.language
     : undefined;
   if (runtimeLang && isValidLang(runtimeLang)) return runtimeLang;
 
-  const envLang = import.meta.env.VITE_LANGUAGE;
-  if (envLang && isValidLang(envLang)) return envLang;
   return DEFAULT_LANG;
+}
+
+export function setStoredLang(lang: SupportedLang): void {
+  if (typeof window !== "undefined") {
+    localStorage.setItem("vitalitynutri_language", lang);
+  }
 }
 
 i18n.use(initReactI18next).init({

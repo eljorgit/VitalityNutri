@@ -1,3 +1,5 @@
+import i18n from "../i18n/config";
+
 /**
  * API client utilities for resolving API URLs and performing requests.
  * Supports both relative local paths (/api/...) and dedicated cross-origin
@@ -5,6 +7,13 @@
  */
 
 export function getApiBaseUrl(): string {
+  if (typeof window !== "undefined") {
+    const userOverride = localStorage.getItem("vitalitynutri_api_url");
+    if (userOverride && userOverride.trim()) {
+      return userOverride.trim().replace(/\/+$/, "");
+    }
+  }
+
   if (typeof window !== "undefined" && window.__VITALITYNUTRI_CONFIG__?.apiUrl) {
     return window.__VITALITYNUTRI_CONFIG__.apiUrl.replace(/\/+$/, "");
   }
@@ -30,8 +39,16 @@ export function apiUrl(path: string): string {
 }
 
 /**
- * Performs a fetch request using the resolved API endpoint.
+ * Performs a fetch request using the resolved API endpoint and attaches Accept-Language.
  */
 export async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
-  return fetch(apiUrl(path), init);
+  const headers = new Headers(init?.headers);
+  if (!headers.has("Accept-Language")) {
+    headers.set("Accept-Language", i18n.language || "en");
+  }
+
+  return fetch(apiUrl(path), {
+    ...init,
+    headers,
+  });
 }

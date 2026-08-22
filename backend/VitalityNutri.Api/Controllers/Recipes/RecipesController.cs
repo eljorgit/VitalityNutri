@@ -16,12 +16,22 @@ using VitalityNutri.Application.Recipes.ReportBrokenImage;
 using VitalityNutri.Application.Recipes.ToggleFavorite;
 using VitalityNutri.Application.Recipes.UpdateRecipe;
 
+using VitalityNutri.Application.Abstractions.Common;
+using VitalityNutri.Application.Recipes.Translate;
+using Microsoft.Extensions.Localization;
+using VitalityNutri.Application.Resources;
+
 namespace VitalityNutri.Api.Controllers.Recipes;
 
 /// <summary>Handles recipe-book CRUD operations.</summary>
 /// <param name="sender">Application request dispatcher.</param>
+/// <param name="languageProvider">Language resolution provider.</param>
+/// <param name="localizer">Localized messages accessor.</param>
 [ApiController, Route("api/recipes")]
-public sealed class RecipesController(ISender sender) : ControllerBase
+public sealed class RecipesController(
+    ISender sender,
+    ICurrentLanguageProvider languageProvider,
+    IStringLocalizer<Messages> localizer) : ControllerBase
 {
     /// <summary>Returns recipes ordered from newest to oldest.</summary>
     [HttpGet]
@@ -47,7 +57,7 @@ public sealed class RecipesController(ISender sender) : ControllerBase
     {
         if (string.IsNullOrWhiteSpace(query))
         {
-            return BadRequest(new RecipeErrorResponse("Falta el parámetro 'query'"));
+            return BadRequest(new RecipeErrorResponse(localizer[Messages.RecipesMissingQuery]));
         }
 
         var results = await sender.Send(new SearchRecipeImagesQuery(query), token);
@@ -60,7 +70,7 @@ public sealed class RecipesController(ISender sender) : ControllerBase
     {
         if (!request.RecipeId.HasValue || request.RecipeId.Value <= 0)
         {
-            return BadRequest(new RecipeErrorResponse("El ID de la receta es obligatorio."));
+            return BadRequest(new RecipeErrorResponse(localizer[Messages.RecipesIdRequired]));
         }
 
         var newImageUrl = await sender.Send(new ReportBrokenRecipeImageCommand(
@@ -80,7 +90,7 @@ public sealed class RecipesController(ISender sender) : ControllerBase
     {
         if (!IsValidSourcePayload(request))
         {
-            return BadRequest(new RecipeErrorResponse("Faltan parametros o el sourceType/fileData no es valido."));
+            return BadRequest(new RecipeErrorResponse(localizer[Messages.RecipesInvalidParamsOrFileData]));
         }
 
         var optionsCount = Math.Clamp(request.OptionsCount ?? 3, 1, 5);
@@ -99,9 +109,9 @@ public sealed class RecipesController(ISender sender) : ControllerBase
     [HttpGet("{id}")]
     public async Task<ActionResult<RecipeResult>> GetById(string id, CancellationToken token)
     {
-        if (!long.TryParse(id, out var recipeId)) return BadRequest(new RecipeErrorResponse("ID de receta no válido."));
+        if (!long.TryParse(id, out var recipeId)) return BadRequest(new RecipeErrorResponse(localizer[Messages.RecipesInvalidId]));
         var recipe = await sender.Send(new GetRecipeByIdQuery(recipeId), token);
-        return recipe is null ? NotFound(new RecipeErrorResponse("Receta no encontrada.")) : Ok(recipe);
+        return recipe is null ? NotFound(new RecipeErrorResponse(localizer[Messages.RecipesNotFound])) : Ok(recipe);
     }
 
     /// <summary>Creates a recipe.</summary>
@@ -109,7 +119,7 @@ public sealed class RecipesController(ISender sender) : ControllerBase
     public async Task<ActionResult<RecipeCreatedResponse>> Create(RecipeWriteRequest request, CancellationToken token)
     {
         if (!request.TryToModel(out var recipe))
-            return BadRequest(new RecipeErrorResponse("Faltan campos obligatorios: nombre o ingredientes."));
+            return BadRequest(new RecipeErrorResponse(localizer[Messages.RecipesMissingRequiredFields]));
         var id = await sender.Send(new CreateRecipeCommand(recipe), token);
         return Ok(new RecipeCreatedResponse(true, id));
     }
@@ -118,9 +128,9 @@ public sealed class RecipesController(ISender sender) : ControllerBase
     [HttpPut("{id}"), EnableRateLimiting("general-write")]
     public async Task<ActionResult<RecipeWriteResponse>> Update(string id, RecipeWriteRequest request, CancellationToken token)
     {
-        if (!long.TryParse(id, out var recipeId)) return BadRequest(new RecipeErrorResponse("ID de receta no válido."));
+        if (!long.TryParse(id, out var recipeId)) return BadRequest(new RecipeErrorResponse(localizer[Messages.RecipesInvalidId]));
         if (!request.TryToModel(out var recipe))
-            return BadRequest(new RecipeErrorResponse("Faltan campos obligatorios: nombre o ingredientes."));
+            return BadRequest(new RecipeErrorResponse(localizer[Messages.RecipesMissingRequiredFields]));
         await sender.Send(new UpdateRecipeCommand(recipeId, recipe), token);
         return Ok(new RecipeWriteResponse(true));
     }
@@ -129,20 +139,59 @@ public sealed class RecipesController(ISender sender) : ControllerBase
     [HttpPut("{id}/toggle-favorite"), EnableRateLimiting("general-write")]
     public async Task<ActionResult<FavoriteToggleResponse>> ToggleFavorite(string id, CancellationToken token)
     {
-        if (!long.TryParse(id, out var recipeId)) return BadRequest(new RecipeErrorResponse("ID de receta no válido."));
+        if (!long.TryParse(id, out var recipeId)) return BadRequest(new RecipeErrorResponse(localizer[Messages.RecipesInvalidId]));
         var isFavorite = await sender.Send(new ToggleFavoriteCommand(recipeId), token);
         return isFavorite.HasValue
             ? Ok(new FavoriteToggleResponse(true, isFavorite.Value))
-            : NotFound(new RecipeErrorResponse("Receta no encontrada."));
+            : NotFound(new RecipeErrorResponse(localizer[Messages.RecipesNotFound]));
     }
 
     /// <summary>Deletes a recipe.</summary>
     [HttpDelete("{id}"), EnableRateLimiting("general-write")]
     public async Task<ActionResult<RecipeWriteResponse>> Delete(string id, CancellationToken token)
     {
-        if (!long.TryParse(id, out var recipeId)) return BadRequest(new RecipeErrorResponse("ID de receta no válido."));
+        if (!long.TryParse(id, out var recipeId)) return BadRequest(new RecipeErrorResponse(localizer[Messages.RecipesInvalidId]));
         await sender.Send(new DeleteRecipeCommand(recipeId), token);
         return Ok(new RecipeWriteResponse(true));
+    }
+
+    /// <summary>Translates an arbitrary recipe payload (e.g. from an active meal plan) to the target language on demand using AI.</summary>
+    [HttpPost("translate"), EnableRateLimiting("general-write")]
+    public async Task<ActionResult<TranslateRecipeResult>> TranslatePayload([FromBody] TranslateRecipePayloadRequest request, [FromQuery] string? targetLang, CancellationToken token)
+    {
+        var lang = string.IsNullOrWhiteSpace(targetLang) ? (string.IsNullOrWhiteSpace(request.TargetLanguage) ? languageProvider.GetCurrentLanguage() : request.TargetLanguage) : targetLang;
+        var result = await sender.Send(new TranslateRecipePayloadCommand(
+            request.RecipeName ?? string.Empty,
+            request.Tips ?? string.Empty,
+            request.NutritionistTips,
+            request.Ingredients,
+            request.Steps,
+            request.SourceLanguage,
+            lang), token);
+
+        return Ok(result);
+    }
+
+    /// <summary>Gets the cached translation for a stored recipe without generating via AI.</summary>
+    [HttpGet("{id}/translate")]
+    public async Task<ActionResult<TranslateRecipeResult?>> GetTranslation(string id, [FromQuery] string? targetLang, CancellationToken token)
+    {
+        if (!long.TryParse(id, out var recipeId)) return BadRequest(new RecipeErrorResponse(localizer[Messages.RecipesInvalidId]));
+        var lang = string.IsNullOrWhiteSpace(targetLang) ? languageProvider.GetCurrentLanguage() : targetLang;
+        var result = await sender.Send(new VitalityNutri.Application.Recipes.GetRecipeTranslation.GetRecipeTranslationQuery(recipeId, lang), token);
+        return Ok(result);
+    }
+
+    /// <summary>Translates a stored recipe's title, ingredients, steps and tips to the target language on demand using AI.</summary>
+    [HttpPost("{id}/translate"), EnableRateLimiting("general-write")]
+    public async Task<ActionResult<TranslateRecipeResult>> Translate(string id, [FromQuery] string? targetLang, CancellationToken token)
+    {
+        if (!long.TryParse(id, out var recipeId)) return BadRequest(new RecipeErrorResponse(localizer[Messages.RecipesInvalidId]));
+        var lang = string.IsNullOrWhiteSpace(targetLang) ? languageProvider.GetCurrentLanguage() : targetLang;
+        var result = await sender.Send(new TranslateRecipeCommand(recipeId, lang), token);
+        return result is null
+            ? NotFound(new RecipeErrorResponse(localizer[Messages.RecipesNotFound]))
+            : Ok(result);
     }
 
     private static bool IsValidSourcePayload(ProcessRecipeAiRequest request)
@@ -155,6 +204,16 @@ public sealed class RecipesController(ISender sender) : ControllerBase
             || request.SourceType.Equals("mejora", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(request.TextData);
     }
 }
+
+/// <summary>Payload for translating an arbitrary recipe on demand.</summary>
+public sealed record TranslateRecipePayloadRequest(
+    string? RecipeName,
+    string? Tips,
+    string? NutritionistTips,
+    JsonElement Ingredients,
+    JsonElement Steps,
+    string? SourceLanguage = null,
+    string? TargetLanguage = null);
 
 /// <summary>Payload for recipe AI processing request.</summary>
 public sealed record ProcessRecipeAiRequest(string? SourceType, string? FileData, string? TextData, int? OptionsCount = 3, string? ExtraPrompt = null, string? Lang = null);

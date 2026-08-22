@@ -21,7 +21,8 @@ public sealed record RecipeWriteModel(
     long? SourcePlanId,
     bool IsAiGenerated,
     bool IsFavorite,
-    string Season);
+    string Season,
+    string OriginalLanguage = "es");
 
 public sealed record RecipeResult(
     long Id,
@@ -41,6 +42,7 @@ public sealed record RecipeResult(
     bool IsAiGenerated,
     bool IsFavorite,
     string Season,
+    string OriginalLanguage,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt);
 
@@ -64,6 +66,7 @@ internal static class RecipeMappings
         recipe.IsAiGenerated,
         recipe.IsFavorite,
         recipe.Season,
+        recipe.OriginalLanguage,
         recipe.CreatedAtUtc,
         recipe.UpdatedAtUtc);
 
@@ -83,7 +86,8 @@ internal static class RecipeMappings
         model.SourcePlanId,
         model.IsAiGenerated,
         model.IsFavorite,
-        model.Season);
+        model.Season,
+        model.OriginalLanguage);
 }
 
 internal static class RecipeIngredients

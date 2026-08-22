@@ -275,10 +275,15 @@ public sealed class ReadEndpointContractTests(ApiFactory factory) : IClassFixtur
     {
         // 16MB base64 string
         var oversizedBase64 = new string('A', 22 * 1024 * 1024);
-        var response = await client.PostAsJsonAsync("/api/upload", new { fileName = "huge.pdf", fileData = oversizedBase64 });
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        var error = await response.Content.ReadFromJsonAsync<UploadErrorResponse>();
-        Assert.Equal("El archivo supera el tamaño máximo permitido de 15MB.", error?.Error);
+        var responseEs = await client.PostAsJsonAsync("/api/upload?lang=es", new { fileName = "huge.pdf", fileData = oversizedBase64 });
+        Assert.Equal(HttpStatusCode.BadRequest, responseEs.StatusCode);
+        var errorEs = await responseEs.Content.ReadFromJsonAsync<UploadErrorResponse>();
+        Assert.Equal("El archivo supera el tamaño máximo permitido de 15MB.", errorEs?.Error);
+
+        var responseEn = await client.PostAsJsonAsync("/api/upload", new { fileName = "huge.pdf", fileData = oversizedBase64 });
+        Assert.Equal(HttpStatusCode.BadRequest, responseEn.StatusCode);
+        var errorEn = await responseEn.Content.ReadFromJsonAsync<UploadErrorResponse>();
+        Assert.Equal("The file exceeds the maximum allowed size of 15MB.", errorEn?.Error);
     }
 
     [Fact]
@@ -317,7 +322,7 @@ public sealed class ReadEndpointContractTests(ApiFactory factory) : IClassFixtur
     [Fact]
     public async Task Reprocess_WithoutActiveFile_Returns400()
     {
-        var response = await client.PostAsJsonAsync("/api/reprocess", new { lang = "es" });
+        var response = await client.PostAsJsonAsync("/api/reprocess?lang=es", new { lang = "es" });
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         var error = await response.Content.ReadFromJsonAsync<UploadErrorResponse>();
         Assert.Equal("No hay ningún archivo guardado para reprocesar en el plan activo.", error?.Error);
@@ -326,7 +331,7 @@ public sealed class ReadEndpointContractTests(ApiFactory factory) : IClassFixtur
     [Fact]
     public async Task Reprocess_WithEmptyBody_Returns400BusinessErrorInsteadOfModelValidationError()
     {
-        var request = new HttpRequestMessage(HttpMethod.Post, "/api/reprocess")
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/reprocess?lang=es")
         {
             Content = new StringContent(string.Empty, System.Text.Encoding.UTF8, "application/json")
         };
@@ -339,7 +344,7 @@ public sealed class ReadEndpointContractTests(ApiFactory factory) : IClassFixtur
     [Fact]
     public async Task Reprocess_WithNullBody_Returns400BusinessError()
     {
-        var response = await client.PostAsync("/api/reprocess", null);
+        var response = await client.PostAsync("/api/reprocess?lang=es", null);
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         var error = await response.Content.ReadFromJsonAsync<UploadErrorResponse>();
         Assert.Equal("No hay ningún archivo guardado para reprocesar en el plan activo.", error?.Error);
@@ -449,10 +454,10 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
         public Task<ActiveStoredPlan?> GetActiveAsync(CancellationToken cancellationToken) =>
             Task.FromResult<ActiveStoredPlan?>(null);
 
-        public Task<SavedPlanEnvelope> SaveUploadedPlanAsync(string originalFileName, string savedFileName, string fileHash, string planJson, DateTimeOffset processedAtUtc, CancellationToken cancellationToken) =>
-            Task.FromResult(new SavedPlanEnvelope(planJson, "{\"id\":1,\"fileName\":\"plan.pdf\",\"savedFileName\":\"stored.pdf\",\"processedAt\":\"2026-01-01T00:00:00Z\"}"));
+        public Task<SavedPlanEnvelope> SaveUploadedPlanAsync(string originalFileName, string savedFileName, string fileHash, string planJson, DateTimeOffset processedAtUtc, string originalLanguage, CancellationToken cancellationToken) =>
+            Task.FromResult(new SavedPlanEnvelope(planJson, "{\"id\":1,\"fileName\":\"plan.pdf\",\"savedFileName\":\"stored.pdf\",\"processedAt\":\"2026-01-01T00:00:00Z\",\"originalLanguage\":\"es\"}"));
 
-        public Task<SavedPlanEnvelope> ReprocessActivePlanAsync(string planJson, string fileHash, DateTimeOffset processedAtUtc, CancellationToken cancellationToken) =>
+        public Task<SavedPlanEnvelope> ReprocessActivePlanAsync(string planJson, string fileHash, DateTimeOffset processedAtUtc, string originalLanguage, CancellationToken cancellationToken) =>
             Task.FromResult(new SavedPlanEnvelope(planJson, "{}"));
 
         public Task UpdatePlanJsonAsync(long planId, string planJson, CancellationToken cancellationToken) =>

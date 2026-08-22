@@ -19,6 +19,7 @@ public sealed class Recipe
     public bool IsAiGenerated { get; private set; }
     public bool IsFavorite { get; private set; }
     public string Season { get; private set; } = "Todas";
+    public string OriginalLanguage { get; private set; } = "es";
     public DateTimeOffset CreatedAtUtc { get; private set; }
     public DateTimeOffset UpdatedAtUtc { get; private set; }
 
@@ -42,12 +43,13 @@ public sealed class Recipe
         long? sourcePlanId,
         bool isAiGenerated,
         bool isFavorite,
-        string season)
+        string season,
+        string originalLanguage = "es")
     {
         CreatedAtUtc = DateTimeOffset.UtcNow;
         Update(recipeName, calories, time, tag, image, ingredientsJson, tips, stepsJson,
             nutritionistTips, nutritionJson, servings, source, sourcePlanId,
-            isAiGenerated, isFavorite, season);
+            isAiGenerated, isFavorite, season, originalLanguage);
         CreatedAtUtc = UpdatedAtUtc;
     }
 
@@ -67,7 +69,8 @@ public sealed class Recipe
         long? sourcePlanId,
         bool isAiGenerated,
         bool isFavorite,
-        string season)
+        string season,
+        string originalLanguage = "es")
     {
         RecipeName = recipeName.Trim();
         Calories = calories;
@@ -85,6 +88,7 @@ public sealed class Recipe
         IsAiGenerated = isAiGenerated;
         IsFavorite = isFavorite;
         Season = string.IsNullOrWhiteSpace(season) ? "Todas" : season.Trim();
+        OriginalLanguage = string.IsNullOrWhiteSpace(originalLanguage) ? "es" : originalLanguage.Trim().ToLowerInvariant();
         UpdatedAtUtc = DateTimeOffset.UtcNow;
     }
 

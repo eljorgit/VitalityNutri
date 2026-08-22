@@ -1,19 +1,16 @@
-using System.Net.Http.Headers;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Google.GenAI;
-using Google.GenAI.Types;
 using Microsoft.Extensions.Logging;
 using VitalityNutri.Application.Abstractions.Processing;
 using VitalityNutri.Application.BatchCooking;
 using VitalityNutri.Infrastructure.Configuration;
+using VitalityNutri.Infrastructure.Processing.Ai;
 
 namespace VitalityNutri.Infrastructure.Processing;
 
 internal sealed class DeterministicBatchCookingAiService(
     ApiConfiguration apiConfiguration,
-    IHttpClientFactory httpClientFactory,
+    IUnifiedAiGateway aiGateway,
     ILogger<DeterministicBatchCookingAiService> logger)
     : IBatchCookingAiService
 {
@@ -31,7 +28,15 @@ internal sealed class DeterministicBatchCookingAiService(
         try
         {
             var prompt = BuildPrompt(filteredData.FilteredDaysJson, filteredData.UniqueRecipeNames, parameters, language);
-            var aiResponseText = await TryGenerateFromAiAsync(prompt, cancellationToken);
+            var chain = apiConfiguration.Ai.FallbackChains.BatchCooking;
+            var aiResponseText = await aiGateway.GenerateTextAsync(
+                chainConfig: chain,
+                prompt: prompt,
+                systemPrompt: null,
+                jsonMode: true,
+                temperature: 0.2f,
+                cancellationToken: cancellationToken);
+
             if (!string.IsNullOrWhiteSpace(aiResponseText))
             {
                 var cleanedJson = ExtractJsonFromText(aiResponseText);
@@ -127,128 +132,6 @@ internal sealed class DeterministicBatchCookingAiService(
         return "You are a professional chef expert in Batch Cooking. Generate an optimized timeline in JSON format.";
     }
 
-    private async Task<string?> TryGenerateFromAiAsync(string prompt, CancellationToken cancellationToken)
-    {
-        var isSaaS = apiConfiguration.App.Mode.Equals("SaaS", StringComparison.OrdinalIgnoreCase);
-
-        if (isSaaS || apiConfiguration.Ai.UseOmniRoute)
-        {
-            if (!string.IsNullOrWhiteSpace(apiConfiguration.Ai.OmniRoute.Url))
-            {
-                return await CallOmniRouteAsync(prompt, cancellationToken);
-            }
-        }
-
-        if (!string.IsNullOrWhiteSpace(apiConfiguration.Ai.Providers.Groq.ApiKey))
-        {
-            var groqResult = await CallGroqAsync(prompt, cancellationToken);
-            if (!string.IsNullOrWhiteSpace(groqResult)) return groqResult;
-        }
-
-        if (!string.IsNullOrWhiteSpace(apiConfiguration.Ai.Providers.Gemini.ApiKey))
-        {
-            return await CallGeminiAsync(prompt, cancellationToken);
-        }
-
-        return null;
-    }
-
-    private async Task<string?> CallGeminiAsync(string prompt, CancellationToken cancellationToken)
-    {
-        var gemini = new Client(
-            apiKey: apiConfiguration.Ai.Providers.Gemini.ApiKey,
-            httpOptions: new HttpOptions
-            {
-                Timeout = (int)TimeSpan.FromSeconds(Math.Clamp(apiConfiguration.Ai.Providers.Gemini.TimeoutSeconds, 30, 300)).TotalMilliseconds
-            });
-
-        var response = await gemini.Models.GenerateContentAsync(
-            model: "gemini-2.5-flash",
-            contents: new Content { Parts = [Part.FromText(prompt)] },
-            config: new GenerateContentConfig
-            {
-                ResponseMimeType = "application/json",
-                Temperature = 0.2f
-            },
-            cancellationToken: cancellationToken);
-
-        if (response.Candidates is null || response.Candidates.Count == 0) return null;
-        var parts = response.Candidates[0].Content?.Parts;
-        if (parts is null || parts.Count == 0) return null;
-        return string.Join(string.Empty, parts.Where(p => !string.IsNullOrWhiteSpace(p.Text)).Select(p => p.Text));
-    }
-
-    private async Task<string?> CallGroqAsync(string prompt, CancellationToken cancellationToken)
-    {
-        var client = httpClientFactory.CreateClient();
-        client.Timeout = TimeSpan.FromSeconds(60);
-
-        var requestBody = new
-        {
-            model = "llama-3.3-70b-versatile",
-            messages = new object[]
-            {
-                new { role = "user", content = prompt }
-            },
-            response_format = new { type = "json_object" },
-            temperature = 0.2
-        };
-
-        var request = new HttpRequestMessage(HttpMethod.Post, "https://api.groq.com/openai/v1/chat/completions")
-        {
-            Content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json")
-        };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiConfiguration.Ai.Providers.Groq.ApiKey);
-
-        using var response = await client.SendAsync(request, cancellationToken);
-        if (!response.IsSuccessStatusCode) return null;
-
-        var json = await response.Content.ReadAsStringAsync(cancellationToken);
-        using var doc = JsonDocument.Parse(json);
-        return doc.RootElement
-            .GetProperty("choices")[0]
-            .GetProperty("message")
-            .GetProperty("content")
-            .GetString();
-    }
-
-    private async Task<string?> CallOmniRouteAsync(string prompt, CancellationToken cancellationToken)
-    {
-        var client = httpClientFactory.CreateClient();
-        client.Timeout = TimeSpan.FromSeconds(Math.Clamp(apiConfiguration.Ai.Providers.Gemini.TimeoutSeconds, 30, 300));
-
-        var requestBody = new
-        {
-            model = apiConfiguration.Ai.Models.BatchCooking,
-            messages = new object[]
-            {
-                new { role = "user", content = prompt }
-            },
-            temperature = 0.2
-        };
-
-        var request = new HttpRequestMessage(HttpMethod.Post, apiConfiguration.Ai.OmniRoute.Url)
-        {
-            Content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json")
-        };
-
-        if (!string.IsNullOrWhiteSpace(apiConfiguration.Ai.OmniRoute.ApiKey))
-        {
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiConfiguration.Ai.OmniRoute.ApiKey);
-        }
-
-        using var response = await client.SendAsync(request, cancellationToken);
-        if (!response.IsSuccessStatusCode) return null;
-
-        var json = await response.Content.ReadAsStringAsync(cancellationToken);
-        using var doc = JsonDocument.Parse(json);
-        return doc.RootElement
-            .GetProperty("choices")[0]
-            .GetProperty("message")
-            .GetProperty("content")
-            .GetString();
-    }
-
     private static void EnrichRecipesAffected(JsonObject guide, IReadOnlyDictionary<string, long?> nameToId)
     {
         if (guide["steps"] is not JsonArray steps) return;
@@ -290,17 +173,8 @@ internal sealed class DeterministicBatchCookingAiService(
         }
     }
 
-    private static string ExtractJsonFromText(string text)
-    {
-        var trimmed = text.Trim();
-        if (trimmed.StartsWith("```"))
-        {
-            var lines = trimmed.Split('\n');
-            var innerLines = lines.Skip(1).TakeWhile(line => !line.Trim().StartsWith("```"));
-            return string.Join('\n', innerLines).Trim();
-        }
-        return trimmed;
-    }
+    private static string ExtractJsonFromText(string text) =>
+        UnifiedAiGateway.CleanMarkdownCodeBlock(text);
 
     private static JsonElement GenerateDeterministicFallback(FilteredPlanData filteredData, BatchCookingParams parameters)
     {

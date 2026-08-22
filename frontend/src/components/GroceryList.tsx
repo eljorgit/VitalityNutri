@@ -1432,7 +1432,7 @@ export default function GroceryList({ plan, completedRecipes }: GroceryListProps
                     className="flex items-center justify-center gap-1.5 py-2.5 bg-[#229ED9]/10 hover:bg-[#229ED9]/20 dark:bg-[#229ED9]/15 dark:hover:bg-[#229ED9]/25 text-[#0e7ab8] dark:text-[#5bbfef] rounded-xl transition duration-200 font-bold text-xs border border-[#229ED9]/20 cursor-pointer active:scale-[0.98]"
                   >
                     <svg className="w-[15px] h-[15px] fill-current" viewBox="0 0 24 24">
-                      <path d="M11.994 0C5.369 0 0 5.369 0 11.994S5.369 24 11.994 24 24 18.631 24 12.006C24 5.369 18.631 0 11.994 0zm5.935 8.17l-2.006 9.457c-.145.658-.537.818-1.086.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.06 14.549l-2.95-.924c-.641-.203-.654-.641.136-.95l11.533-4.448c.536-.194 1.004.131.16 4.194-.84 3.944z"/>
+                      <path d="M12 0C5.37 0 0 5.37 0 12s5.37 12 12 12 12-5.37 12-12S18.63 0 12 0zm5.56 8.16l-1.95 9.18c-.15.66-.54.82-1.09.51l-2.98-2.2-1.44 1.38c-.16.16-.29.29-.6.29l.21-3.05 5.56-5.02c.24-.21-.05-.33-.37-.12l-6.87 4.33-2.95-.92c-.64-.2-.65-.64.13-.95l11.53-4.45c.54-.2 1.01.13.85 1.02z"/>
                     </svg>
                     <span>{t("grocery.share_telegram")}</span>
                   </button>

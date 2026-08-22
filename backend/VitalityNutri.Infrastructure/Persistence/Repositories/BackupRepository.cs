@@ -87,6 +87,7 @@ internal sealed class BackupRepository(VitalityNutriDbContext dbContext) : IBack
                 entry.Property(x => x.Id).CurrentValue = ReadLong(row, "id", 0);
                 entry.Property(x => x.IsActive).CurrentValue = ReadBoolean(row, "is_active");
                 entry.Property(x => x.FileHash).CurrentValue = ReadNullableString(row, "file_hash");
+                entry.Property(x => x.OriginalLanguage).CurrentValue = ReadString(row, "original_language", "es");
                 var createdAt = ReadDateTimeOffset(row, "created_at", DateTimeOffset.UtcNow);
                 entry.Property(x => x.CreatedAtUtc).CurrentValue = createdAt;
                 entry.Property(x => x.UpdatedAtUtc).CurrentValue = ReadDateTimeOffset(row, "updated_at", createdAt);

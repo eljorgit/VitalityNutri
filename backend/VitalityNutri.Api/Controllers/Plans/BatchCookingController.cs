@@ -1,17 +1,20 @@
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Localization;
 using VitalityNutri.Application.BatchCooking;
 using VitalityNutri.Application.BatchCooking.GenerateBatchCooking;
 using VitalityNutri.Application.BatchCooking.GetBatchCooking;
 using VitalityNutri.Application.BatchCooking.ResetBatchCooking;
+using VitalityNutri.Application.Resources;
 
 namespace VitalityNutri.Api.Controllers.Plans;
 
 /// <summary>Handles batch-cooking read, generation, and reset operations.</summary>
 /// <param name="sender">Application request dispatcher.</param>
+/// <param name="localizer">Localized messages accessor.</param>
 [ApiController, Route("api/plan/batch-cooking"), EnableRateLimiting("batch-cooking")]
-public sealed class BatchCookingController(ISender sender) : ControllerBase
+public sealed class BatchCookingController(ISender sender, IStringLocalizer<Messages> localizer) : ControllerBase
 {
     /// <summary>Returns the cached batch-cooking guide for the active plan.</summary>
     [HttpGet]
@@ -19,7 +22,7 @@ public sealed class BatchCookingController(ISender sender) : ControllerBase
     {
         var result = await sender.Send(new GetBatchCookingQuery(), cancellationToken);
         return result is null
-            ? BadRequest(new BatchCookingErrorResponse("No hay ningún plan activo cargado."))
+            ? BadRequest(new BatchCookingErrorResponse(localizer[Messages.BatchCookingNoActivePlan]))
             : Ok(result);
     }
 
@@ -29,12 +32,12 @@ public sealed class BatchCookingController(ISender sender) : ControllerBase
     {
         if (request.Params is null)
         {
-            return BadRequest(new BatchCookingErrorResponse("Faltan los parámetros de la cocina."));
+            return BadRequest(new BatchCookingErrorResponse(localizer[Messages.BatchCookingMissingParams]));
         }
 
         var result = await sender.Send(new GenerateBatchCookingCommand(request.Params, request.ForceRegenerate, request.Lang ?? "es"), cancellationToken);
         return result is null
-            ? BadRequest(new BatchCookingErrorResponse("No hay ningún plan activo cargado."))
+            ? BadRequest(new BatchCookingErrorResponse(localizer[Messages.BatchCookingNoActivePlan]))
             : Ok(result);
     }
 
@@ -45,7 +48,7 @@ public sealed class BatchCookingController(ISender sender) : ControllerBase
         var success = await sender.Send(new ResetBatchCookingCommand(), cancellationToken);
         return success
             ? Ok(new BatchCookingWriteResponse(true))
-            : BadRequest(new BatchCookingErrorResponse("No hay ningún plan activo cargado."));
+            : BadRequest(new BatchCookingErrorResponse(localizer[Messages.BatchCookingNoActivePlan]));
     }
 }
 

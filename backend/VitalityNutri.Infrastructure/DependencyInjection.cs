@@ -6,6 +6,7 @@ using VitalityNutri.Infrastructure.Configuration;
 using VitalityNutri.Infrastructure.Persistence;
 using VitalityNutri.Infrastructure.Persistence.Repositories;
 using VitalityNutri.Infrastructure.Processing;
+using VitalityNutri.Infrastructure.Processing.Ai;
 
 namespace VitalityNutri.Infrastructure;
 
@@ -40,11 +41,15 @@ public static class DependencyInjection
         services.AddScoped<IBackupRepository, BackupRepository>();
         services.AddScoped<IBatchCookingRepository, BatchCookingRepository>();
         services.AddScoped<IUploadedPlanRepository, UploadedPlanRepository>();
+        services.AddScoped<IRecipeTranslationRepository, RecipeTranslationRepository>();
+        services.AddScoped<IPlanTranslationRepository, PlanTranslationRepository>();
         services.AddScoped<IUploadFileStorage, UploadFileStorage>();
+        services.AddScoped<IUnifiedAiGateway, UnifiedAiGateway>();
         services.AddScoped<IPlanExtractionService, DeterministicPlanExtractionService>();
         services.AddScoped<IRecipeAiProcessingService, DeterministicRecipeAiProcessingService>();
         services.AddScoped<IRecipeImageLookupService, DeterministicRecipeImageLookupService>();
         services.AddScoped<IBatchCookingAiService, DeterministicBatchCookingAiService>();
+        services.AddScoped<ITextTranslationService, DeterministicTranslationService>();
 
         return services;
     }

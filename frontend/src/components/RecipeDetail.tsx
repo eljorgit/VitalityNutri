@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { DayType, MealType, Recipe, MealPlan, PlanMetadata } from "@src/types";
 import ConfirmationModal from "./ConfirmationModal";
@@ -6,6 +6,9 @@ import ImagePlaceholder from "./ImagePlaceholder";
 import { getSiteVisibility } from "@utils/siteVisibility";
 import { translateTag } from "@utils/tags";
 import { logger } from "@utils/logger";
+import { apiFetch } from "@utils/api";
+import { Sparkles, Globe, RotateCcw } from "lucide-react";
+import { SpainFlag, UKFlag } from "./Flags";
 
 const formatAmountAndUnit = (amount: number, unit: string) => {
   let normalizedUnit = unit.trim().toLowerCase();
@@ -93,6 +96,130 @@ export default function RecipeDetail({
   const [showAllRecipesDropdown, setShowAllRecipesDropdown] = useState<boolean>(false);
   const [imageUrl, setImageUrl] = useState<string>(recipe.image || "");
   const [imageError, setImageError] = useState<boolean>(false);
+
+  // Language & Translation State
+  const recipeOriginalLang = (recipe.originalLanguage || "es").toLowerCase();
+  const currentUiLang = (i18n.language || "en").slice(0, 2).toLowerCase();
+  const isLanguageMismatch = recipeOriginalLang !== currentUiLang;
+
+  const [translatedData, setTranslatedData] = useState<{
+    recipeName?: string;
+    tips?: string;
+    nutritionistTips?: string;
+    ingredients?: any;
+    steps?: any;
+  } | null>(null);
+  const [isTranslating, setIsTranslating] = useState<boolean>(false);
+  const [viewMode, setViewMode] = useState<"original" | "translated">("original");
+
+  // Auto-load cached translation when language mismatches
+  const lastFetchedRecipeKeyRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    if (!isLanguageMismatch) {
+      setTranslatedData(null);
+      setViewMode("original");
+      lastFetchedRecipeKeyRef.current = null;
+      return;
+    }
+
+    const targetRecipeId = resolvedFavId.current || recipe.id;
+    if (!targetRecipeId) return;
+
+    const currentKey = `${targetRecipeId}_${currentUiLang}`;
+    if (lastFetchedRecipeKeyRef.current === currentKey) {
+      return;
+    }
+
+    lastFetchedRecipeKeyRef.current = currentKey;
+
+    apiFetch(`/api/recipes/${targetRecipeId}/translate?targetLang=${currentUiLang}`, { method: "GET" })
+      .then(async (res) => {
+        if (res.ok && isMounted) {
+          const data = await res.json();
+          if (data && data.recipeName && isMounted) {
+            setTranslatedData({
+              recipeName: data.recipeName,
+              tips: data.tips,
+              nutritionistTips: data.nutritionistTips,
+              ingredients: data.ingredients,
+              steps: data.steps,
+            });
+            setViewMode("translated");
+          }
+        }
+      })
+      .catch((err) => {
+        console.debug("Auto-translation fetch skipped or failed:", err);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [recipe.id, recipe.recipeName, currentUiLang, isLanguageMismatch]);
+
+  const activeRecipe = (viewMode === "translated" && translatedData)
+    ? {
+        ...recipe,
+        recipeName: translatedData.recipeName ?? recipe.recipeName,
+        tips: translatedData.tips ?? recipe.tips,
+        nutritionistTips: translatedData.nutritionistTips ?? recipe.nutritionistTips,
+        ingredients: translatedData.ingredients ?? recipe.ingredients,
+        steps: translatedData.steps ?? recipe.steps,
+      }
+    : recipe;
+
+  const handleTranslateToggle = async () => {
+    if (viewMode === "translated") {
+      setViewMode("original");
+      return;
+    }
+
+    if (translatedData) {
+      setViewMode("translated");
+      return;
+    }
+
+    setIsTranslating(true);
+    try {
+      const targetRecipeId = resolvedFavId.current || recipe.id;
+      const res = targetRecipeId
+        ? await apiFetch(`/api/recipes/${targetRecipeId}/translate?targetLang=${currentUiLang}`, {
+            method: "POST"
+          })
+        : await apiFetch(`/api/recipes/translate?targetLang=${currentUiLang}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              recipeName: recipe.recipeName,
+              tips: recipe.tips,
+              nutritionistTips: recipe.nutritionistTips,
+              ingredients: recipe.ingredients,
+              steps: recipe.steps,
+              sourceLanguage: recipeOriginalLang,
+              targetLanguage: currentUiLang
+            })
+          });
+
+      if (res.ok) {
+        const data = await res.json();
+        setTranslatedData({
+          recipeName: data.recipeName,
+          tips: data.tips,
+          nutritionistTips: data.nutritionistTips,
+          ingredients: data.ingredients,
+          steps: data.steps,
+        });
+        setViewMode("translated");
+      }
+    } catch (err) {
+      console.error("Translation error:", err);
+    } finally {
+      setIsTranslating(false);
+    }
+  };
 
   const handleImageError = async () => {
     if (imageError) return;
@@ -572,8 +699,10 @@ export default function RecipeDetail({
       text += t("recipedetail.share_no_steps") + "\n\n";
     }
 
-    if (recipe.tips) {
-      text += t("recipedetail.share_tip", { tips: recipe.tips }) + "\n\n";
+    if (activeRecipe.nutritionistTips) {
+      text += t("recipedetail.share_tip", { tips: activeRecipe.nutritionistTips }) + "\n\n";
+    } else if (activeRecipe.tips) {
+      text += t("recipedetail.share_tip", { tips: activeRecipe.tips }) + "\n\n";
     }
 
     text += t("recipedetail.share_web_link", { url: recipeUrl }) + "\n\n";
@@ -877,16 +1006,16 @@ export default function RecipeDetail({
     }
   };
 
-  const isIngredientsArray = Array.isArray(recipe.ingredients);
+  const isIngredientsArray = Array.isArray(activeRecipe.ingredients);
 
   // Normalize ingredients to: { item: Ingredient; categoryKey: string }[]
   const normalizedIngredients: { item: any; categoryKey: string }[] = [];
   if (isIngredientsArray) {
-    (recipe.ingredients as any[] || []).forEach(ing => {
+    (activeRecipe.ingredients as any[] || []).forEach(ing => {
       normalizedIngredients.push({ item: ing, categoryKey: "general" });
     });
   } else {
-    const cats = recipe.ingredients as any;
+    const cats = activeRecipe.ingredients as any;
     ["primerPlato", "segundoPlato", "postre", "general"].forEach(catKey => {
       if (cats && Array.isArray(cats[catKey])) {
         cats[catKey].forEach((ing: any) => {
@@ -899,8 +1028,8 @@ export default function RecipeDetail({
   // Active categories for ingredients (keys that have non-empty arrays)
   const activeIngCategories = isIngredientsArray
     ? []
-    : Object.keys(recipe.ingredients || {}).filter(key => {
-      const arr = (recipe.ingredients as any)[key];
+    : Object.keys(activeRecipe.ingredients || {}).filter(key => {
+      const arr = (activeRecipe.ingredients as any)[key];
       return Array.isArray(arr) && arr.length > 0;
     });
 
@@ -910,28 +1039,28 @@ export default function RecipeDetail({
     : normalizedIngredients.filter(ing => ing.categoryKey === selectedIngCategory);
 
   // Normalize steps
-  const isStepsArray = Array.isArray(recipe.steps);
+  const isStepsArray = Array.isArray(activeRecipe.steps);
   const hasSteps = (() => {
-    if (!recipe.steps) return false;
-    if (isStepsArray) return (recipe.steps as any[]).length > 0;
+    if (!activeRecipe.steps) return false;
+    if (isStepsArray) return (activeRecipe.steps as any[]).length > 0;
     // It's CategorizedSteps
-    return Object.values(recipe.steps).some(arr => Array.isArray(arr) && arr.length > 0);
+    return Object.values(activeRecipe.steps).some(arr => Array.isArray(arr) && arr.length > 0);
   })();
 
   const recipeStepsSource = (() => {
-    if (recipe.steps) {
+    if (activeRecipe.steps) {
       if (isStepsArray) {
-        if ((recipe.steps as string[]).length > 0) {
-          return { general: recipe.steps as string[] };
+        if ((activeRecipe.steps as string[]).length > 0) {
+          return { general: activeRecipe.steps as string[] };
         }
       } else {
-        return recipe.steps as any;
+        return activeRecipe.steps as any;
       }
     }
-    const flatIngs = Array.isArray(recipe.ingredients)
-      ? (recipe.ingredients as any[])
-      : (Object.values(recipe.ingredients || {}).flat().filter(Boolean) as any[]);
-    return { general: getRecipeStepsFallback(recipe.recipeName, flatIngs) };
+    const flatIngs = Array.isArray(activeRecipe.ingredients)
+      ? (activeRecipe.ingredients as any[])
+      : (Object.values(activeRecipe.ingredients || {}).flat().filter(Boolean) as any[]);
+    return { general: getRecipeStepsFallback(activeRecipe.recipeName, flatIngs) };
   })();
 
   // Normalize steps to: { text: string; categoryKey: string }[]
@@ -1064,6 +1193,88 @@ export default function RecipeDetail({
     );
   };
 
+  const renderTranslationPanel = () => {
+    if (!isLanguageMismatch) return null;
+
+    const isAvailable = !!translatedData;
+
+    return (
+      <div className="bg-gradient-to-br from-indigo-50/80 via-slate-50/60 to-blue-50/50 dark:from-indigo-950/40 dark:via-zinc-900 dark:to-blue-950/20 p-4.5 rounded-2xl border border-indigo-200/80 dark:border-indigo-800/60 shadow-xs text-left space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xs font-black text-indigo-950 dark:text-indigo-200 flex items-center gap-1.5 uppercase tracking-wider select-none">
+            <Globe className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+            {t("recipedetail.translation_panel_title", "Language Translation")}
+          </h2>
+          {isAvailable && (
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 flex items-center gap-1 shadow-xs">
+              <span className="material-symbols-outlined text-[13px]">check_circle</span>
+              <span>{t("recipedetail.translated_notice", "Traducido")}</span>
+            </span>
+          )}
+        </div>
+
+        {/* Smart Segmented Language Pill Selector */}
+        <div className="bg-slate-200/70 dark:bg-zinc-800/80 p-1 rounded-xl flex items-center gap-1 select-none">
+          {/* Original Language Option */}
+          <button
+            type="button"
+            onClick={() => setViewMode("original")}
+            className={`flex-1 py-2 px-3 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              viewMode === "original"
+                ? "bg-white dark:bg-zinc-900 text-slate-900 dark:text-white shadow-sm ring-1 ring-slate-900/5 dark:ring-white/10"
+                : "text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white"
+            }`}
+          >
+            {recipeOriginalLang === "es" ? <SpainFlag className="w-3.5 h-2.5 rounded-xs" /> : <UKFlag className="w-3.5 h-2.5 rounded-xs" />}
+            <span>{recipeOriginalLang === "es" ? "Español" : "English"}</span>
+            <span className="text-[9px] font-normal opacity-60">({t("recipedetail.view_original", "Original")})</span>
+          </button>
+
+          {/* Target / Translated Language Option */}
+          <button
+            type="button"
+            onClick={handleTranslateToggle}
+            disabled={isTranslating}
+            className={`flex-1 py-2 px-3 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              viewMode === "translated"
+                ? "bg-indigo-600 text-white shadow-sm"
+                : isAvailable
+                  ? "text-slate-600 dark:text-zinc-400 hover:text-indigo-600 dark:hover:text-indigo-300"
+                  : "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100"
+            }`}
+          >
+            {isTranslating ? (
+              <>
+                <span className="material-symbols-outlined text-[14px] animate-spin">progress_activity</span>
+                <span>{t("recipedetail.translating", "Traduciendo...")}</span>
+              </>
+            ) : isAvailable ? (
+              <>
+                {currentUiLang === "es" ? <SpainFlag className="w-3.5 h-2.5 rounded-xs" /> : <UKFlag className="w-3.5 h-2.5 rounded-xs" />}
+                <span>{currentUiLang === "es" ? "Español" : "English"}</span>
+                <span className="text-[9px] font-normal opacity-80">({t("recipedetail.translated_label", "Traducido")})</span>
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-3.5 h-3.5 text-indigo-500 animate-pulse" />
+                <span>{t("recipedetail.translate_to", "Traducir a {{lang}}", { lang: currentUiLang === "es" ? "Español" : "English" })}</span>
+              </>
+            )}
+          </button>
+        </div>
+
+        <p className="text-[10.5px] text-slate-500 dark:text-zinc-400 leading-relaxed">
+          {viewMode === "translated"
+            ? t("recipedetail.translation_active_desc", "Mostrando la versión traducida al idioma de tu aplicación.")
+            : t("recipedetail.translation_needed_desc", "Esta receta fue redactada originalmente en {{origLang}}.", {
+                origLang: recipeOriginalLang === "es" ? "Español" : "English",
+                targetLang: currentUiLang === "es" ? "Español" : "English"
+              })}
+        </p>
+      </div>
+    );
+  };
+
   const renderSidebarContent = (showOnly?: 'adjust' | 'share') => {
     const showAdjust = !showOnly || showOnly === 'adjust';
     const showShare = !showOnly || showOnly === 'share';
@@ -1080,6 +1291,9 @@ export default function RecipeDetail({
             isPlanActive ? renderCompletionPanel() : renderHistoricalWarning()
           )
         )}
+
+        {/* Live AI Translation Panel (ONLY when language mismatches) */}
+        {isLanguageMismatch && showAdjust && !showOnly && renderTranslationPanel()}
 
         {/* Raciones Ajustables */}
         <div 
@@ -1273,7 +1487,7 @@ export default function RecipeDetail({
               className="flex items-center justify-center gap-1.5 py-2.5 bg-[#229ED9]/10 hover:bg-[#229ED9]/20 dark:bg-[#229ED9]/15 dark:hover:bg-[#229ED9]/25 text-[#0e7ab8] dark:text-[#5bbfef] rounded-xl transition duration-200 font-bold text-xs border border-[#229ED9]/20 shadow-sm cursor-pointer active:scale-[0.98]"
             >
               <svg className="w-[15px] h-[15px] fill-current" viewBox="0 0 24 24">
-                <path d="M11.994 0C5.369 0 0 5.369 0 11.994S5.369 24 11.994 24 24 18.631 24 12.006C24 5.369 18.631 0 11.994 0zm5.935 8.17l-2.006 9.457c-.145.658-.537.818-1.086.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.06 14.549l-2.95-.924c-.641-.203-.654-.641.136-.95l11.533-4.448c.536-.194 1.004.131.16 4.194-.84 3.944z"/>
+                <path d="M12 0C5.37 0 0 5.37 0 12s5.37 12 12 12 12-5.37 12-12S18.63 0 12 0zm5.56 8.16l-1.95 9.18c-.15.66-.54.82-1.09.51l-2.98-2.2-1.44 1.38c-.16.16-.29.29-.6.29l.21-3.05 5.56-5.02c.24-.21-.05-.33-.37-.12l-6.87 4.33-2.95-.92c-.64-.2-.65-.64.13-.95l11.53-4.45c.54-.2 1.01.13.85 1.02z"/>
               </svg>
               <span>{t("recipedetail.share_telegram")}</span>
             </button>
@@ -1627,16 +1841,62 @@ export default function RecipeDetail({
           )}
         </div>
         <div className="w-full md:w-7/12 p-6 md:p-8 flex flex-col justify-center bg-white dark:bg-zinc-900">
-          <span className="inline-flex items-center gap-1 text-[10px] font-bold tracking-widest bg-emerald-50 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-400 px-3 py-1 rounded-full w-max mb-3 uppercase">
-            {translateTag(recipe.tag, t)}
-          </span>
+          <div className="flex flex-wrap items-center gap-2 mb-3">
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold tracking-widest bg-emerald-50 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-400 px-3 py-1 rounded-full w-max uppercase">
+              {translateTag(activeRecipe.tag, t)}
+            </span>
+
+            {isLanguageMismatch && (
+              <div className="inline-flex items-center bg-slate-100 dark:bg-zinc-800 p-0.5 rounded-full border border-slate-200/70 dark:border-zinc-700/70 text-[10px] font-extrabold select-none shadow-2xs">
+                <button
+                  type="button"
+                  onClick={() => setViewMode("original")}
+                  className={`px-2 py-0.5 rounded-full transition-all flex items-center gap-1 cursor-pointer ${
+                    viewMode === "original"
+                      ? "bg-white dark:bg-zinc-900 text-slate-900 dark:text-white shadow-xs font-black"
+                      : "text-slate-500 dark:text-zinc-400 hover:text-slate-800 dark:hover:text-zinc-200"
+                  }`}
+                  title={t("recipedetail.view_original", "Original")}
+                >
+                  {recipeOriginalLang === "es" ? <SpainFlag className="w-3 h-2 rounded-xs" /> : <UKFlag className="w-3 h-2 rounded-xs" />}
+                  <span>{recipeOriginalLang.toUpperCase()}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleTranslateToggle}
+                  disabled={isTranslating}
+                  className={`px-2 py-0.5 rounded-full transition-all flex items-center gap-1 cursor-pointer ${
+                    viewMode === "translated"
+                      ? "bg-indigo-600 text-white shadow-xs font-black"
+                      : "text-slate-500 dark:text-zinc-400 hover:text-indigo-600 dark:hover:text-indigo-300"
+                  }`}
+                  title={translatedData ? t("recipedetail.translated_notice", "Traducido") : t("recipedetail.translate_ai", "Traducir con IA")}
+                >
+                  {isTranslating ? (
+                    <span className="material-symbols-outlined text-[10px] animate-spin">progress_activity</span>
+                  ) : translatedData ? (
+                    <>
+                      {currentUiLang === "es" ? <SpainFlag className="w-3 h-2 rounded-xs" /> : <UKFlag className="w-3 h-2 rounded-xs" />}
+                      <span>{currentUiLang.toUpperCase()}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-2.5 h-2.5 text-indigo-500" />
+                      <span>{currentUiLang.toUpperCase()}</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
+
           <h1 className="text-2xl md:text-3.5xl font-extrabold text-slate-900 dark:text-white leading-tight mb-4 select-all">
-            {recipe.recipeName}
+            {activeRecipe.recipeName}
           </h1>
           <div className="flex flex-wrap gap-4 select-none">
             <div className="flex items-center gap-1.5 text-sm text-slate-500 dark:text-zinc-400">
               <span className="material-symbols-outlined text-emerald-600">schedule</span>
-              <span className="font-semibold">{recipe.time || t("recipedetail.default_time")}</span>
+              <span className="font-semibold">{activeRecipe.time || t("recipedetail.default_time")}</span>
             </div>
             <div className="flex items-center gap-1.5 text-sm text-slate-500 dark:text-zinc-400 font-bold">
               <span className="material-symbols-outlined text-emerald-600">fitness_center</span>
@@ -1966,18 +2226,35 @@ export default function RecipeDetail({
               </div>
             )}
 
-            {/* Nutrition tip card box */}
-            {recipe.tips && (
+            {/* Nutritionist tip card box */}
+            {activeRecipe.nutritionistTips && (
               <div className="mt-8 p-4 bg-emerald-50/50 dark:bg-emerald-950/20 rounded-2xl border border-emerald-100/45 dark:border-emerald-900/40 flex gap-3">
                 <span className="material-symbols-outlined text-emerald-600 dark:text-emerald-400 select-none shrink-0">
-                  lightbulb
+                  verified
                 </span>
                 <div className="text-left select-all">
-                  <h4 className="text-xs font-bold text-emerald-800 dark:text-emerald-400 uppercase tracking-wider mb-0.5 animate-pulse">
+                  <h4 className="text-xs font-bold text-emerald-800 dark:text-emerald-400 uppercase tracking-wider mb-0.5">
                     {t("recipedetail.nutritionist_tip")}
                   </h4>
                   <p className="text-xs md:text-sm text-slate-600 dark:text-zinc-300 leading-relaxed">
-                    {recipe.tips}
+                    {activeRecipe.nutritionistTips}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Culinary tip card box */}
+            {activeRecipe.tips && (
+              <div className={`${activeRecipe.nutritionistTips ? "mt-4" : "mt-8"} p-4 bg-teal-50/50 dark:bg-teal-950/20 rounded-2xl border border-teal-100/45 dark:border-teal-900/40 flex gap-3`}>
+                <span className="material-symbols-outlined text-teal-600 dark:text-teal-400 select-none shrink-0">
+                  lightbulb
+                </span>
+                <div className="text-left select-all">
+                  <h4 className="text-xs font-bold text-teal-800 dark:text-teal-400 uppercase tracking-wider mb-0.5">
+                    {t("recipedetail.chef_tip", "Consejo Culinario")}
+                  </h4>
+                  <p className="text-xs md:text-sm text-slate-600 dark:text-zinc-300 leading-relaxed">
+                    {activeRecipe.tips}
                   </p>
                 </div>
               </div>
