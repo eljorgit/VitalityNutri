@@ -10,9 +10,11 @@ import {
   Trash2,
   Check,
   Scale,
-  Sparkles
+  Sparkles,
+  X
 } from "lucide-react";
 import { SpainFlag, UKFlag } from "./Flags";
+import { useAuth } from "../context/AuthContext";
 
 export type ThemeMode = "light" | "dark" | "system";
 
@@ -30,6 +32,7 @@ export default function SettingsModal({
   onThemeChange,
 }: SettingsModalProps) {
   const { t, i18n } = useTranslation();
+  const { isDemo } = useAuth();
   const [activeTab, setActiveTab] = useState<"language" | "defaults" | "appearance">("language");
 
   // Advanced settings state
@@ -141,14 +144,23 @@ export default function SettingsModal({
             </div>
 
             <button
-              type="button"
               onClick={onClose}
-              className="p-2 text-slate-400 hover:text-slate-600 dark:text-zinc-500 dark:hover:text-zinc-300 rounded-xl hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
-              aria-label={t("general.close", "Close")}
+              className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-zinc-200 rounded-xl hover:bg-slate-200/60 dark:hover:bg-zinc-800 transition-colors"
+              aria-label="Close settings"
             >
-              <span className="material-symbols-outlined text-[20px]">close</span>
+              <X className="w-5 h-5" />
             </button>
           </div>
+
+          {/* Demo Read-Only Banner */}
+          {isDemo && (
+            <div className="mx-6 mt-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-center gap-3 text-xs text-amber-800 dark:text-amber-300">
+              <span className="font-semibold text-[11px] px-2 py-0.5 bg-amber-200 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 rounded-lg">
+                {t("settings.demo_badge", "Demo Mode")}
+              </span>
+              <span>{t("settings.demo_banner_desc", "Settings are read-only during this demo session.")}</span>
+            </div>
+          )}
 
           {/* 3-Tab Navigation with Flag on Language Tab */}
           <div className="flex items-center gap-2 px-6 pt-3 border-b border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 shrink-0 select-none overflow-x-auto">

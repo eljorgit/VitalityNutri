@@ -59,6 +59,7 @@ try
     builder.Services.AddLocalization();
     builder.Services.AddHttpContextAccessor();
     builder.Services.AddScoped<VitalityNutri.Application.Abstractions.Common.ICurrentLanguageProvider, HttpCurrentLanguageProvider>();
+    builder.Services.AddScoped<VitalityNutri.Application.Abstractions.Common.ICurrentUserProvider, HttpCurrentUserProvider>();
     builder.Services.AddOpenApi();
     builder.Services.AddControllers();
     builder.Services.AddProblemDetails();
@@ -66,6 +67,56 @@ try
     builder.Services.AddValidatedConfiguration(builder.Configuration);
     builder.Services.AddApplication();
     builder.Services.AddInfrastructure();
+
+    // Authentication & JWT Bearer (Supports HttpOnly Cookie & Bearer Header)
+    var authConfig = apiConfig.Auth;
+    var jwtSecret = !string.IsNullOrWhiteSpace(authConfig.JwtSecret)
+        ? authConfig.JwtSecret
+        : "VitalityNutri_Dev_Default_Jwt_Secret_Salt_Key_2026_Minimum_64_Chars_Long!!";
+
+    builder.Services.AddAuthentication(options =>
+    {
+        options.DefaultAuthenticateScheme = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme;
+    })
+    .AddJwtBearer(options =>
+    {
+        options.RequireHttpsMetadata = false;
+        options.SaveToken = true;
+        options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(jwtSecret)),
+            ValidateIssuer = !string.IsNullOrWhiteSpace(authConfig.Issuer),
+            ValidIssuer = authConfig.Issuer,
+            ValidateAudience = !string.IsNullOrWhiteSpace(authConfig.Audience),
+            ValidAudience = authConfig.Audience,
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.FromMinutes(5)
+        };
+        options.Events = new Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                if (context.Request.Cookies.TryGetValue("vitality_auth_token", out var cookieToken) && !string.IsNullOrWhiteSpace(cookieToken))
+                {
+                    context.Token = cookieToken;
+                }
+                return Task.CompletedTask;
+            }
+        };
+    });
+
+    var isSaaS = string.Equals(apiConfig.App.Mode, "SaaS", StringComparison.OrdinalIgnoreCase);
+    builder.Services.AddAuthorization(options =>
+    {
+        if (isSaaS)
+        {
+            options.FallbackPolicy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()
+                .RequireAuthenticatedUser()
+                .Build();
+        }
+    });
 
     // EF Core Health Checks
     builder.Services.AddHealthChecks()
@@ -76,7 +127,7 @@ try
     {
         options.AddDefaultPolicy(policy =>
         {
-            if (builder.Environment.IsDevelopment())
+            if (builder.Environment.IsDevelopment() || builder.Environment.EnvironmentName.StartsWith("Development", StringComparison.OrdinalIgnoreCase))
             {
                 policy.SetIsOriginAllowed(_ => true)
                       .AllowAnyMethod()
@@ -169,6 +220,8 @@ try
     });
 
     app.UseCors();
+    app.UseAuthentication();
+    app.UseAuthorization();
     
     var supportedCultures = new[] { new CultureInfo("en"), new CultureInfo("es") };
     var localizationOptions = new RequestLocalizationOptions
@@ -188,13 +241,13 @@ try
     app.UseDefaultFiles();
     app.UseStaticFiles();
 
-    if (app.Environment.IsDevelopment())
+    if (app.Environment.IsDevelopment() || app.Environment.EnvironmentName.StartsWith("Development", StringComparison.OrdinalIgnoreCase))
     {
-        app.MapOpenApi();
+        app.MapOpenApi().AllowAnonymous();
         app.MapScalarApiReference(options =>
         {
             options.Title = "VitalityNutri API";
-        });
+        }).AllowAnonymous();
     }
 
     if (app.Services.GetRequiredService<ApiConfiguration>().Security.UseHttpsRedirection)
@@ -202,9 +255,9 @@ try
         app.UseHttpsRedirection();
     }
 
-    app.MapHealthChecks("/health");
+    app.MapHealthChecks("/health").AllowAnonymous();
     app.MapControllers();
-    app.MapFallbackToFile("index.html");
+    app.MapFallbackToFile("index.html").AllowAnonymous();
 
     await app.RunAsync();
 }

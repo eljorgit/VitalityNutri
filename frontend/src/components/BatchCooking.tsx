@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { PlanMetadata, MealPlan, Recipe, DayType, MealType } from "@src/types";
+import { useAuth } from "../context/AuthContext";
 
 interface BatchCookingProps {
   plan: MealPlan | null;
@@ -44,6 +45,7 @@ interface KitchenParams {
 
 export default function BatchCooking({ plan, metadata, onSelectRecipe }: BatchCookingProps) {
   const { t } = useTranslation();
+  const { isDemo } = useAuth();
   const findRecipeDayMeal = (recipeId: number): { day: DayType; meal: MealType; recipe: Recipe } | null => {
     if (!plan) return null;
     const daysKeys = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] as const;
@@ -109,9 +111,17 @@ export default function BatchCooking({ plan, metadata, onSelectRecipe }: BatchCo
           const data = await response.json();
           if (data.guide) {
             setGuide(data.guide);
-            if (data.params) {
-              setParams(data.params);
-              setGeneratedParams(data.params);
+            if (data.params && typeof data.params === "object") {
+              const safeParams: KitchenParams = {
+                burnersCount: Number(data.params.burnersCount) || 4,
+                hasOven: Boolean(data.params.hasOven),
+                hasMicrowave: Boolean(data.params.hasMicrowave),
+                hasAirfryer: Boolean(data.params.hasAirfryer),
+                hasRobot: Boolean(data.params.hasRobot),
+                customTools: typeof data.params.customTools === "string" ? data.params.customTools : ""
+              };
+              setParams(safeParams);
+              setGeneratedParams(safeParams);
             }
             const savedChecks = localStorage.getItem(`batch-cooking-checked-${metadata.id}`);
             if (savedChecks) {
@@ -250,16 +260,16 @@ export default function BatchCooking({ plan, metadata, onSelectRecipe }: BatchCo
     }
   };
 
-  const paramsMatch = generatedParams 
+  const paramsMatch = generatedParams
     ? params.burnersCount === generatedParams.burnersCount &&
       params.hasOven === generatedParams.hasOven &&
       params.hasMicrowave === generatedParams.hasMicrowave &&
       params.hasAirfryer === generatedParams.hasAirfryer &&
       params.hasRobot === generatedParams.hasRobot &&
-      params.customTools.trim() === generatedParams.customTools.trim()
+      (params.customTools || "").trim() === (generatedParams.customTools || "").trim()
     : true;
 
-  const totalSteps = guide?.steps.length || 0;
+  const totalSteps = Array.isArray(guide?.steps) ? guide.steps.length : 0;
   const completedSteps = Object.values(checkedSteps).filter(Boolean).length;
   const completionPercent = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
 
@@ -282,18 +292,20 @@ export default function BatchCooking({ plan, metadata, onSelectRecipe }: BatchCo
 
         {guide && (
           <div className="flex items-center gap-2.5">
-            <button
-              type="button"
-              onClick={() => setShowSettingsPanel(!showSettingsPanel)}
-              className={`py-2 px-4 rounded-xl text-xs font-bold transition duration-200 border cursor-pointer flex items-center gap-1.5 shadow-sm ${
-                showSettingsPanel 
-                  ? "bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-200 border-slate-200 dark:border-zinc-700"
-                  : "bg-white dark:bg-zinc-900 text-slate-700 dark:text-zinc-300 border-slate-200/60 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-800"
-              }`}
-            >
-              <span className="material-symbols-outlined text-[16px]">settings_accessibility</span>
-              {t("batchcooking.kitchen_settings_btn")}
-            </button>
+            {!isDemo && (
+              <button
+                type="button"
+                onClick={() => setShowSettingsPanel(!showSettingsPanel)}
+                className={`py-2 px-4 rounded-xl text-xs font-bold transition duration-200 border cursor-pointer flex items-center gap-1.5 shadow-sm ${
+                  showSettingsPanel 
+                    ? "bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-200 border-slate-200 dark:border-zinc-700"
+                    : "bg-white dark:bg-zinc-900 text-slate-700 dark:text-zinc-300 border-slate-200/60 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-800"
+                }`}
+              >
+                <span className="material-symbols-outlined text-[16px]">settings_accessibility</span>
+                {t("batchcooking.kitchen_settings_btn")}
+              </button>
+            )}
             <button
               type="button"
               onClick={() => window.print()}
@@ -483,7 +495,7 @@ export default function BatchCooking({ plan, metadata, onSelectRecipe }: BatchCo
                 </div>
 
                 <div className="relative border-l-2 border-slate-150 dark:border-zinc-800/70 ml-4 pl-6 md:pl-8 space-y-8 select-text">
-                  {guide.steps.map((step) => {
+                  {Array.isArray(guide.steps) && guide.steps.map((step) => {
                     const isCompleted = !!checkedSteps[step.stepNumber];
                     return (
                       <div key={step.stepNumber} className={`relative transition-all duration-200 text-left ${isCompleted ? "opacity-65" : ""}`}>
@@ -522,7 +534,7 @@ export default function BatchCooking({ plan, metadata, onSelectRecipe }: BatchCo
                                 <span className="material-symbols-outlined text-[12px]">timer</span>
                                 {step.duration}
                               </span>
-                              {step.utensils.map(u => (
+                              {(step.utensils || []).map(u => (
                                 <span key={u} className="bg-slate-100/60 dark:bg-zinc-800/40 text-slate-500 dark:text-zinc-450 text-[10px] font-semibold px-2.5 py-0.5 rounded-lg">{u}</span>
                               ))}
                             </div>
@@ -670,7 +682,7 @@ export default function BatchCooking({ plan, metadata, onSelectRecipe }: BatchCo
               </div>
             </div>
 
-            {guide && (
+            {guide && !isDemo && (
               <div className="bg-white dark:bg-zinc-900 rounded-3xl p-5 border border-slate-200/60 dark:border-zinc-800/80 shadow-sm flex flex-col gap-3 text-left">
                 <span className="text-[10px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-widest block">
                   {t("batchcooking.guide_actions")}

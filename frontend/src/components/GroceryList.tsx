@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { MealPlan, Ingredient, DayType, MealType } from "@src/types";
 import ConfirmationModal, { ConfirmationVariant } from "./ConfirmationModal";
 import { getSiteVisibility } from "@utils/siteVisibility";
+import { useAuth } from "../context/AuthContext";
 
 const formatAmountAndUnit = (amount: number, unit: string) => {
   let normalizedUnit = unit.trim().toLowerCase();
@@ -117,25 +118,39 @@ export default function GroceryList({ plan, completedRecipes }: GroceryListProps
   const [globalMultiplier, setGlobalMultiplier] = useState<number>(1);
   const [dayMultipliers, setDayMultipliers] = useState<Record<string, number>>({});
   const [mealMultipliers, setMealMultipliers] = useState<Record<string, number>>({});
+  const { isDemo } = useAuth();
   const [excludedMeals, setExcludedMeals] = useState<string[]>([]);
 
   const handleSaveListToDB = async () => {
+    const payload = {
+      checkedItems,
+      listType,
+      selectedSingleDay,
+      selected3DaysStart,
+      excludedMeals,
+      multipliers: {
+        global: globalMultiplier,
+        days: dayMultipliers,
+        meals: mealMultipliers
+      }
+    };
+
+    if (isDemo) {
+      sessionStorage.setItem("demo_grocery_state", JSON.stringify(payload));
+      showNotification(
+        t("grocery.save_success_title"),
+        "Lista guardada en sesión de evaluación",
+        "check_circle",
+        "success"
+      );
+      return;
+    }
+
     try {
       const response = await fetch("/api/grocery-list", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          checkedItems,
-          listType,
-          selectedSingleDay,
-          selected3DaysStart,
-          excludedMeals,
-          multipliers: {
-            global: globalMultiplier,
-            days: dayMultipliers,
-            meals: mealMultipliers
-          }
-        })
+        body: JSON.stringify(payload)
       });
       if (response.ok) {
         showNotification(
@@ -159,6 +174,26 @@ export default function GroceryList({ plan, completedRecipes }: GroceryListProps
   };
 
   const handleLoadListFromDB = async () => {
+    if (isDemo) {
+      const cached = sessionStorage.getItem("demo_grocery_state");
+      if (cached) {
+        try {
+          const state = JSON.parse(cached);
+          if (state.checkedItems) setCheckedItems(state.checkedItems);
+          if (state.listType) setListType(state.listType);
+          if (state.selectedSingleDay) setSelectedSingleDay(state.selectedSingleDay);
+          if (state.selected3DaysStart) setSelected3DaysStart(state.selected3DaysStart);
+          if (state.excludedMeals) setExcludedMeals(state.excludedMeals);
+          if (state.multipliers) {
+            if (state.multipliers.global) setGlobalMultiplier(state.multipliers.global);
+            if (state.multipliers.days) setDayMultipliers(state.multipliers.days);
+            if (state.multipliers.meals) setMealMultipliers(state.multipliers.meals);
+          }
+          return;
+        } catch {}
+      }
+    }
+
     try {
       const response = await fetch("/api/grocery-list");
       if (!response.ok) throw new Error();

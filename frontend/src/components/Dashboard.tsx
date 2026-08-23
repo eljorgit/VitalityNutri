@@ -4,6 +4,7 @@ import { PlanMetadata, MealPlan } from "@src/types";
 import ConfirmationModal from "./ConfirmationModal";
 import DuplicatePlanModal from "./DuplicatePlanModal";
 import { logger } from "@utils/logger";
+import { useAuth } from "../context/AuthContext";
 
 interface DashboardProps {
   metadata: PlanMetadata | null;
@@ -19,6 +20,7 @@ export default function Dashboard({
   onResetPlan 
 }: DashboardProps) {
   const { t, i18n } = useTranslation();
+  const { isDemo } = useAuth();
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -334,6 +336,7 @@ export default function Dashboard({
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (isDemo) return;
     if (e.type === "dragenter" || e.type === "dragover") {
       setDragActive(true);
     } else if (e.type === "dragleave") {
@@ -345,6 +348,7 @@ export default function Dashboard({
   const maxFileSizeBytes = maxUploadSizeMb * 1024 * 1024;
 
   const processFile = (file: File) => {
+    if (isDemo) return;
     if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
       setErrorMsg(t("dashboard.pdf_format_error"));
       return;
@@ -361,23 +365,31 @@ export default function Dashboard({
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
+    if (isDemo) return;
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       processFile(e.dataTransfer.files[0]);
     }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (isDemo) return;
     if (e.target.files && e.target.files[0]) {
       processFile(e.target.files[0]);
     }
   };
 
   const handleSelectClick = () => {
+    if (isDemo) return;
     fileInputRef.current?.click();
   };
 
+
   const handleUploadAndProcess = async (forceParam: any = false) => {
     if (!selectedFile) return;
+    if (isDemo) {
+      setErrorMsg(t("dashboard.demo_upload_disabled", "En el modo de demostración la subida y procesamiento con IA está en modo solo lectura."));
+      return;
+    }
     const force = forceParam === true;
     setIsProcessing(true);
     setProgress(0);
@@ -509,56 +521,74 @@ export default function Dashboard({
               </div>
             </div>
 
-            <div 
-              id="drop-zone"
-              onDragEnter={handleDrag}
-              onDragOver={handleDrag}
-              onDragLeave={handleDrag}
-              onDrop={handleDrop}
-              onClick={handleSelectClick}
-              className={`relative border-2 border-dashed rounded-2xl p-8 md:p-16 min-h-[400px] flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-300 group ${
-                dragActive 
-                  ? "border-emerald-600 bg-emerald-50/50 dark:bg-emerald-950/20" 
-                  : "border-emerald-200 dark:border-zinc-800 bg-[#f6f9ff]/50 dark:bg-zinc-950/20 hover:border-emerald-600 hover:bg-[#f6f9ff] dark:hover:bg-zinc-950/40"
-              }`}
-            >
-              <input 
-                ref={fileInputRef}
-                type="file"
-                accept=".pdf"
-                className="hidden"
-                onChange={handleFileChange}
-              />
-
-              <div className="mb-4 p-4 bg-white dark:bg-zinc-800 rounded-full shadow-sm border border-emerald-50 dark:border-zinc-700/50 group-hover:scale-110 transition-transform duration-300">
-                <span className="material-symbols-outlined text-4xl text-emerald-600 dark:text-emerald-400" style={{ fontVariationSettings: "'FILL' 0" }}>
-                  picture_as_pdf
-                </span>
+            {isDemo ? (
+              <div className="relative border-2 border-dashed border-amber-200 dark:border-amber-900/40 bg-amber-50/50 dark:bg-amber-950/20 rounded-2xl p-8 min-h-[300px] flex flex-col items-center justify-center text-center select-none">
+                <div className="mb-4 p-4 bg-white dark:bg-zinc-800 rounded-full shadow-sm border border-amber-200 dark:border-amber-900/50 text-amber-600 dark:text-amber-400">
+                  <span className="material-symbols-outlined text-4xl">lock</span>
+                </div>
+                <h3 className="text-lg font-extrabold text-slate-900 dark:text-white mb-1">
+                  {t("dashboard.demo_upload_disabled_title", "Modo Demostración Activo")}
+                </h3>
+                <p className="text-xs text-slate-600 dark:text-zinc-400 max-w-md leading-relaxed">
+                  {t("dashboard.demo_upload_disabled_desc", "La subida de planes PDF y la generación con IA están deshabilitadas en la sesión de prueba de solo lectura. Explora las recetas y la planificación interactuando con la dieta precargada de 7 días.")}
+                </p>
+                <div className="mt-6 px-4 py-2 rounded-full bg-amber-100/80 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-xs font-bold flex items-center gap-1.5 border border-amber-200/80 dark:border-amber-900/40">
+                  <span className="material-symbols-outlined text-[15px]">info</span>
+                  {t("dashboard.demo_mode_badge", "Sesión de prueba (Solo Lectura)")}
+                </div>
               </div>
-
-              {selectedFile ? (
-                <div>
-                  <p className="text-lg font-semibold text-gray-900 dark:text-white">{selectedFile.name}</p>
-                  <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400 mt-1">{t("dashboard.file_ready")}</p>
-                </div>
-              ) : (
-                <div>
-                  <p className="text-lg font-semibold text-gray-900 dark:text-white mb-1">{t("dashboard.drag_drop_text")}</p>
-                  <p className="text-sm text-gray-400 dark:text-zinc-500 font-medium">{t("dashboard.click_to_browse")}</p>
-                </div>
-              )}
-
-              <button 
-                type="button"
-                className="mt-6 px-6 py-2.5 bg-[#0f5238] hover:bg-[#116c4a] text-white font-medium text-sm rounded-full transition-all duration-200 shadow-sm hover:shadow active:scale-95 cursor-pointer"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleSelectClick();
-                }}
+            ) : (
+              <div 
+                id="drop-zone"
+                onDragEnter={handleDrag}
+                onDragOver={handleDrag}
+                onDrop={handleDrop}
+                onClick={handleSelectClick}
+                className={`relative border-2 border-dashed rounded-2xl p-8 md:p-16 min-h-[360px] flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-300 group ${
+                  dragActive 
+                    ? "border-emerald-600 bg-emerald-50/50 dark:bg-emerald-950/20" 
+                    : "border-emerald-200 dark:border-zinc-800 bg-[#f6f9ff]/50 dark:bg-zinc-950/20 hover:border-emerald-600 hover:bg-[#f6f9ff] dark:hover:bg-zinc-950/40"
+                }`}
               >
-                {t("dashboard.select_file_btn")}
-              </button>
-            </div>
+                <input 
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf"
+                  className="hidden"
+                  onChange={handleFileChange}
+                />
+
+                <div className="mb-4 p-4 bg-white dark:bg-zinc-800 rounded-full shadow-sm border border-emerald-50 dark:border-zinc-700/50 group-hover:scale-110 transition-transform duration-300">
+                  <span className="material-symbols-outlined text-4xl text-emerald-600 dark:text-emerald-400" style={{ fontVariationSettings: "'FILL' 0" }}>
+                    picture_as_pdf
+                  </span>
+                </div>
+
+                {selectedFile ? (
+                  <div>
+                    <p className="text-lg font-semibold text-gray-900 dark:text-white">{selectedFile.name}</p>
+                    <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400 mt-1">{t("dashboard.file_ready")}</p>
+                  </div>
+                ) : (
+                  <div>
+                    <p className="text-lg font-semibold text-gray-900 dark:text-white mb-1">{t("dashboard.drag_drop_text")}</p>
+                    <p className="text-sm text-gray-400 dark:text-zinc-500 font-medium">{t("dashboard.click_to_browse")}</p>
+                  </div>
+                )}
+
+                <button 
+                  type="button"
+                  className="mt-6 px-6 py-2.5 bg-[#0f5238] hover:bg-[#116c4a] text-white font-medium text-sm rounded-full transition-all duration-200 shadow-sm hover:shadow active:scale-95 cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleSelectClick();
+                  }}
+                >
+                  {t("dashboard.select_file_btn")}
+                </button>
+              </div>
+            )}
+
 
             {errorMsg && (
               <div className="mt-4 p-4 bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-950/40 rounded-xl text-sm text-red-700 dark:text-red-400 flex flex-col gap-2">
@@ -744,49 +774,66 @@ export default function Dashboard({
                     <p className="text-sm font-semibold text-gray-900 dark:text-white truncate max-w-[200px]" title={metadata.fileName}>
                       {metadata.fileName}
                     </p>
-                    <p className="text-[10px] text-gray-400 dark:text-zinc-500">
-                      {t("dashboard.active_plan_sync", {
-                        date: new Date(metadata.processedAt).toLocaleDateString(i18n.language),
-                        time: new Date(metadata.processedAt).toLocaleTimeString(i18n.language, { hour: '2-digit', minute: '2-digit' })
-                      })}
-                    </p>
+                    {isDemo ? (
+                      <p className="text-[10px] text-gray-400 dark:text-zinc-500 truncate max-w-[200px]" title={metadata.title || metadata.fileName}>
+                        {metadata.title || metadata.week || metadata.dietType || metadata.generatedBy}
+                      </p>
+                    ) : (
+                      metadata.processedAt && !Number.isNaN(new Date(metadata.processedAt).getTime()) && (
+                        <p className="text-[10px] text-gray-400 dark:text-zinc-500">
+                          {t("dashboard.active_plan_sync", {
+                            date: new Date(metadata.processedAt).toLocaleDateString(i18n.language),
+                            time: new Date(metadata.processedAt).toLocaleTimeString(i18n.language, { hour: '2-digit', minute: '2-digit' })
+                          })}
+                        </p>
+                      )
+                    )}
                   </div>
                 </div>
                 <div className="flex flex-col gap-2">
-                  <div className="grid grid-cols-2 gap-3">
-                    <button 
-                      type="button"
-                      onClick={() => setActiveTab("calendar")}
-                      className="py-2.5 px-4 bg-emerald-50 dark:bg-emerald-950/30 text-[#0f5238] dark:text-emerald-400 font-bold text-xs rounded-xl hover:bg-emerald-100 dark:hover:bg-emerald-950 transition-colors cursor-pointer flex items-center justify-center gap-1"
-                    >
-                      <span className="material-symbols-outlined text-[14px]">calendar_month</span> {t("dashboard.view_calendar_btn")}
-                    </button>
-                    <button 
-                      type="button"
-                      onClick={onResetPlan}
-                      className="py-2.5 px-4 bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 font-bold text-xs rounded-xl hover:bg-red-100 dark:hover:bg-red-950 transition-colors cursor-pointer flex items-center justify-center gap-1"
-                    >
-                      <span className="material-symbols-outlined text-[14px]">delete</span> {t("dashboard.delete_plan_title")}
-                    </button>
-                  </div>
-                  {metadata.savedFileName && (
-                    <button 
-                      type="button"
-                      onClick={requestReprocessConfirmation}
-                      className="w-full py-2.5 px-4 bg-amber-50 dark:bg-amber-950/30 hover:bg-amber-100 dark:hover:bg-amber-900/40 text-amber-800 dark:text-amber-300 font-bold text-xs rounded-xl border border-amber-200 dark:border-amber-900/50 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
-                    >
-                      <span className="material-symbols-outlined text-[16px]">refresh</span>
-                      {t("dashboard.reprocess_btn")}
-                    </button>
+                  {isDemo ? (
+                    <div className="p-3 bg-gray-50 dark:bg-zinc-800/40 rounded-xl border border-gray-200 dark:border-zinc-700/50 text-xs text-gray-500 dark:text-zinc-400 text-center font-medium flex items-center justify-center gap-1.5 select-none">
+                      <span className="material-symbols-outlined text-[16px] text-amber-500">lock</span>
+                      {t("dashboard.demo_active_plan_disabled", "La gestión del plan activo no está disponible en modo demostración.")}
+                    </div>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-2 gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab("calendar")}
+                          className="py-2.5 px-4 bg-emerald-50 dark:bg-emerald-950/30 text-[#0f5238] dark:text-emerald-400 font-bold text-xs rounded-xl hover:bg-emerald-100 dark:hover:bg-emerald-950 transition-colors cursor-pointer flex items-center justify-center gap-1"
+                        >
+                          <span className="material-symbols-outlined text-[14px]">calendar_month</span> {t("dashboard.view_calendar_btn")}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={onResetPlan}
+                          className="py-2.5 px-4 bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 font-bold text-xs rounded-xl hover:bg-red-100 dark:hover:bg-red-950 transition-colors cursor-pointer flex items-center justify-center gap-1"
+                        >
+                          <span className="material-symbols-outlined text-[14px]">delete</span> {t("dashboard.delete_plan_title")}
+                        </button>
+                      </div>
+                      {metadata.savedFileName && (
+                        <button
+                          type="button"
+                          onClick={requestReprocessConfirmation}
+                          className="w-full py-2.5 px-4 bg-amber-50 dark:bg-amber-950/30 hover:bg-amber-100 dark:hover:bg-amber-900/40 text-amber-800 dark:text-amber-300 font-bold text-xs rounded-xl border border-amber-200 dark:border-amber-900/50 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                        >
+                          <span className="material-symbols-outlined text-[16px]">refresh</span>
+                          {t("dashboard.reprocess_btn")}
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setShowHistoryModal(true)}
+                        className="w-full py-2.5 px-4 bg-[#f1f5f9] dark:bg-zinc-800 hover:bg-[#e2e8f0] dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-300 font-bold text-xs rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5 border border-[#e2e8f0] dark:border-zinc-700/60"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">history</span>
+                        {t("dashboard.history_title_btn")}
+                      </button>
+                    </>
                   )}
-                  <button 
-                    type="button"
-                    onClick={() => setShowHistoryModal(true)}
-                    className="w-full py-2.5 px-4 bg-[#f1f5f9] dark:bg-zinc-800 hover:bg-[#e2e8f0] dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-300 font-bold text-xs rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5 border border-[#e2e8f0] dark:border-zinc-700/60"
-                  >
-                    <span className="material-symbols-outlined text-[16px]">history</span>
-                    {t("dashboard.history_title_btn")}
-                  </button>
                 </div>
               </div>
             )}
@@ -816,71 +863,196 @@ export default function Dashboard({
                 {t("dashboard.backup_section_desc")}
               </p>
               <div className="flex flex-col gap-2">
-                {history.length > 0 ? (
-                  <button
-                    type="button"
-                    onClick={handleExportBackup}
-                    className="w-full py-2.5 px-4 bg-emerald-50 dark:bg-emerald-950/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-[#0f5238] dark:text-emerald-400 font-bold text-xs rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5 border border-emerald-100 dark:border-emerald-900/40"
-                  >
-                    <span className="material-symbols-outlined text-[16px]">download</span>
-                    {t("dashboard.export_btn")}
-                  </button>
+                {isDemo ? (
+                  <div className="p-3 bg-gray-50 dark:bg-zinc-800/40 rounded-xl border border-gray-200 dark:border-zinc-700/50 text-xs text-gray-500 dark:text-zinc-400 text-center font-medium flex items-center justify-center gap-1.5 select-none">
+                    <span className="material-symbols-outlined text-[16px] text-amber-500">lock</span>
+                    {t("dashboard.demo_backup_disabled", "Exportar e importar copias de seguridad no está disponible en modo demostración.")}
+                  </div>
                 ) : (
-                  <button
-                    type="button"
-                    disabled
-                    className="w-full py-2.5 px-4 bg-gray-50 dark:bg-zinc-800/20 text-gray-400 dark:text-zinc-500 font-bold text-xs rounded-xl border border-gray-200 dark:border-zinc-800/50 flex items-center justify-center gap-1.5 cursor-not-allowed select-none"
-                    title={t("dashboard.export_disabled_tooltip")}
-                  >
-                    <span className="material-symbols-outlined text-[16px]">download</span>
-                    {t("dashboard.export_disabled")}
-                  </button>
+                  <>
+                    {history.length > 0 ? (
+                      <button
+                        type="button"
+                        onClick={handleExportBackup}
+                        className="w-full py-2.5 px-4 bg-emerald-50 dark:bg-emerald-950/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-[#0f5238] dark:text-emerald-400 font-bold text-xs rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5 border border-emerald-100 dark:border-emerald-900/40"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">download</span>
+                        {t("dashboard.export_btn")}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled
+                        className="w-full py-2.5 px-4 bg-gray-50 dark:bg-zinc-800/20 text-gray-400 dark:text-zinc-500 font-bold text-xs rounded-xl border border-gray-200 dark:border-zinc-800/50 flex items-center justify-center gap-1.5 cursor-not-allowed select-none"
+                        title={t("dashboard.export_disabled_tooltip")}
+                      >
+                        <span className="material-symbols-outlined text-[16px]">download</span>
+                        {t("dashboard.export_disabled")}
+                      </button>
+                    )}
+                    <label className="w-full py-2.5 px-4 bg-[#f1f5f9] dark:bg-zinc-800 hover:bg-[#e2e8f0] dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-300 font-bold text-xs rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5 border border-[#e2e8f0] dark:border-zinc-700/60 text-center">
+                      <span className="material-symbols-outlined text-[16px]">upload</span>
+                      {t("dashboard.import_btn")}
+                      <input
+                        type="file"
+                        accept=".json"
+                        className="hidden"
+                        onChange={handleImportBackup}
+                      />
+                    </label>
+                  </>
                 )}
-                <label className="w-full py-2.5 px-4 bg-[#f1f5f9] dark:bg-zinc-800 hover:bg-[#e2e8f0] dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-300 font-bold text-xs rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5 border border-[#e2e8f0] dark:border-zinc-700/60 text-center">
-                  <span className="material-symbols-outlined text-[16px]">upload</span>
-                  {t("dashboard.import_btn")}
-                  <input
-                    type="file"
-                    accept=".json"
-                    className="hidden"
-                    onChange={handleImportBackup}
-                  />
-                </label>
               </div>
+
             </div>
           </div>
         </div>
       </section>
 
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-[0_4px_24px_rgba(0,0,0,0.02)] transition-transform duration-200 hover:-translate-y-0.5">
-          <div className="w-12 h-12 bg-emerald-50 dark:bg-zinc-800 text-[#0f5238] dark:text-emerald-400 rounded-xl flex items-center justify-center mb-4">
-            <span className="material-symbols-outlined text-2xl">calendar_month</span>
+      {/* Quick Navigation & Action Shortcuts */}
+      <section className="bg-gradient-to-r from-emerald-600 to-teal-700 dark:from-emerald-900/80 dark:to-teal-900/80 rounded-3xl p-6 md:p-8 text-white shadow-md">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+          <div>
+            <span className="text-xs uppercase font-extrabold tracking-wider bg-white/20 px-3 py-1 rounded-full text-white inline-block mb-2">
+              {t("dashboard.quick_nav_badge", "Exploración Rápida")}
+            </span>
+            <h2 className="text-xl md:text-2xl font-black tracking-tight">
+              {t("dashboard.quick_nav_title", "¿Qué quieres consultar hoy?")}
+            </h2>
+            <p className="text-xs md:text-sm text-emerald-100 dark:text-emerald-200 mt-1 max-w-xl">
+              {t("dashboard.quick_nav_desc", "Accede de inmediato a las áreas clave de tu planificación semanal, recetas y optimización de cocina.")}
+            </p>
           </div>
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1.5 font-sans tracking-tight">{t("dashboard.feature_dynamic_calendar")}</h3>
-          <p className="text-sm text-[#404943] dark:text-zinc-300 leading-relaxed">
-            {t("dashboard.feature_dynamic_calendar_desc")}
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 w-full md:w-auto">
+            <button
+              type="button"
+              onClick={() => setActiveTab("calendar")}
+              className="px-4 py-3 bg-white/10 hover:bg-white/20 border border-white/20 rounded-2xl text-xs font-bold transition-all text-center flex flex-col items-center gap-1.5 cursor-pointer active:scale-95 shadow-xs backdrop-blur-sm"
+            >
+              <span className="material-symbols-outlined text-[20px]">calendar_month</span>
+              <span>{t("nav.calendar", "Calendario")}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("batch-cooking")}
+              className="px-4 py-3 bg-white/10 hover:bg-white/20 border border-white/20 rounded-2xl text-xs font-bold transition-all text-center flex flex-col items-center gap-1.5 cursor-pointer active:scale-95 shadow-xs backdrop-blur-sm"
+            >
+              <span className="material-symbols-outlined text-[20px]">outdoor_grill</span>
+              <span>{t("nav.batch-cooking", "Batch Cooking")}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("recetario")}
+              className="px-4 py-3 bg-white/10 hover:bg-white/20 border border-white/20 rounded-2xl text-xs font-bold transition-all text-center flex flex-col items-center gap-1.5 cursor-pointer active:scale-95 shadow-xs backdrop-blur-sm"
+            >
+              <span className="material-symbols-outlined text-[20px]">menu_book</span>
+              <span>{t("nav.recipe-book", "Recetario")}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("grocery")}
+              className="px-4 py-3 bg-white/10 hover:bg-white/20 border border-white/20 rounded-2xl text-xs font-bold transition-all text-center flex flex-col items-center gap-1.5 cursor-pointer active:scale-95 shadow-xs backdrop-blur-sm"
+            >
+              <span className="material-symbols-outlined text-[20px]">shopping_cart</span>
+              <span>{t("nav.grocery", "Lista Compra")}</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* Capabilities & Platform Features Grid */}
+      <section className="space-y-6">
+        <div className="text-left">
+          <span className="text-xs uppercase font-extrabold tracking-wider text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-3 py-1 rounded-full inline-block mb-2">
+            {t("dashboard.capabilities_badge", "Capacidades de la Plataforma")}
+          </span>
+          <h2 className="text-2xl md:text-3xl font-black text-gray-900 dark:text-white tracking-tight">
+            {t("dashboard.capabilities_title", "Todo lo que VitalityNutri puede hacer por ti")}
+          </h2>
+          <p className="text-xs md:text-sm text-gray-500 dark:text-zinc-400 mt-1 max-w-2xl">
+            {t("dashboard.capabilities_subtitle", "Diseñado para transformar pautas nutricionales complejas en hábitos sostenibles, organizados y sin estrés en la cocina.")}
           </p>
         </div>
 
-        <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-[0_4px_24px_rgba(0,0,0,0.02)] transition-transform duration-200 hover:-translate-y-0.5">
-          <div className="w-12 h-12 bg-emerald-50 dark:bg-zinc-800 text-[#0f5238] dark:text-emerald-400 rounded-xl flex items-center justify-center mb-4">
-            <span className="material-symbols-outlined text-2xl">shopping_basket</span>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 text-left">
+          {/* Card 1: AI Nutrition Extraction */}
+          <div className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-gray-100 dark:border-zinc-800 shadow-[0_4px_24px_rgba(0,0,0,0.02)] transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
+            <div className="w-12 h-12 bg-emerald-50 dark:bg-zinc-800 text-[#0f5238] dark:text-emerald-400 rounded-2xl flex items-center justify-center mb-4">
+              <span className="material-symbols-outlined text-2xl">auto_awesome</span>
+            </div>
+            <h3 className="text-base font-bold text-gray-900 dark:text-white mb-2 font-sans tracking-tight">
+              {t("dashboard.cap_ai_title", "Extracción Inteligente de Dietas")}
+            </h3>
+            <p className="text-xs text-[#404943] dark:text-zinc-400 leading-relaxed">
+              {t("dashboard.cap_ai_desc", "Convierte pautas nutricionales en PDF o texto en planes de 7 días con desglose exacto de ingredientes, pasos de preparación y calorías.")}
+            </p>
           </div>
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1.5 font-sans tracking-tight">{t("dashboard.feature_weekly_food")}</h3>
-          <p className="text-sm text-[#404943] dark:text-zinc-300 leading-relaxed">
-            {t("dashboard.feature_weekly_food_desc")}
-          </p>
-        </div>
 
-        <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-[0_4px_24px_rgba(0,0,0,0.02)] transition-transform duration-200 hover:-translate-y-0.5">
-          <div className="w-12 h-12 bg-emerald-50 dark:bg-zinc-800 text-[#0f5238] dark:text-emerald-400 rounded-xl flex items-center justify-center mb-4">
-            <span className="material-symbols-outlined text-2xl">insights</span>
+          {/* Card 2: Interactive Calendar */}
+          <div className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-gray-100 dark:border-zinc-800 shadow-[0_4px_24px_rgba(0,0,0,0.02)] transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
+            <div className="w-12 h-12 bg-emerald-50 dark:bg-zinc-800 text-[#0f5238] dark:text-emerald-400 rounded-2xl flex items-center justify-center mb-4">
+              <span className="material-symbols-outlined text-2xl">calendar_month</span>
+            </div>
+            <h3 className="text-base font-bold text-gray-900 dark:text-white mb-2 font-sans tracking-tight">
+              {t("dashboard.cap_calendar_title", "Planificador Semanal Interactivo")}
+            </h3>
+            <p className="text-xs text-[#404943] dark:text-zinc-400 leading-relaxed">
+              {t("dashboard.cap_calendar_desc", "Visualiza tus 28 comidas semanales organizadas por días y tomas. Marca comidas completadas y mantén el control de tu progreso diario.")}
+            </p>
           </div>
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1.5 font-sans tracking-tight">{t("dashboard.feature_metrics")}</h3>
-          <p className="text-sm text-[#404943] dark:text-zinc-300 leading-relaxed">
-            {t("dashboard.feature_metrics_desc")}
-          </p>
+
+          {/* Card 3: Batch Cooking Optimization */}
+          <div className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-gray-100 dark:border-zinc-800 shadow-[0_4px_24px_rgba(0,0,0,0.02)] transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
+            <div className="w-12 h-12 bg-emerald-50 dark:bg-zinc-800 text-[#0f5238] dark:text-emerald-400 rounded-2xl flex items-center justify-center mb-4">
+              <span className="material-symbols-outlined text-2xl">outdoor_grill</span>
+            </div>
+            <h3 className="text-base font-bold text-gray-900 dark:text-white mb-2 font-sans tracking-tight">
+              {t("dashboard.cap_batch_title", "Estrategia Batch Cooking Optimizada")}
+            </h3>
+            <p className="text-xs text-[#404943] dark:text-zinc-400 leading-relaxed">
+              {t("dashboard.cap_batch_desc", "Genera un cronograma de preparación simultánea optimizado para tus fogones, horno, microondas y freidora de aire, ahorrando hasta un 60% de tiempo.")}
+            </p>
+          </div>
+
+          {/* Card 4: Recipe Book & Portion Scaling */}
+          <div className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-gray-100 dark:border-zinc-800 shadow-[0_4px_24px_rgba(0,0,0,0.02)] transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
+            <div className="w-12 h-12 bg-emerald-50 dark:bg-zinc-800 text-[#0f5238] dark:text-emerald-400 rounded-2xl flex items-center justify-center mb-4">
+              <span className="material-symbols-outlined text-2xl">menu_book</span>
+            </div>
+            <h3 className="text-base font-bold text-gray-900 dark:text-white mb-2 font-sans tracking-tight">
+              {t("dashboard.cap_recipes_title", "Recetario con Escalado Dinámico")}
+            </h3>
+            <p className="text-xs text-[#404943] dark:text-zinc-400 leading-relaxed">
+              {t("dashboard.cap_recipes_desc", "Ajusta comensales y porciones en cualquier momento. Los ingredientes y macronutrientes se recalculan matemáticamente al instante.")}
+            </p>
+          </div>
+
+          {/* Card 5: Smart Grocery List */}
+          <div className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-gray-100 dark:border-zinc-800 shadow-[0_4px_24px_rgba(0,0,0,0.02)] transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
+            <div className="w-12 h-12 bg-emerald-50 dark:bg-zinc-800 text-[#0f5238] dark:text-emerald-400 rounded-2xl flex items-center justify-center mb-4">
+              <span className="material-symbols-outlined text-2xl">shopping_cart</span>
+            </div>
+            <h3 className="text-base font-bold text-gray-900 dark:text-white mb-2 font-sans tracking-tight">
+              {t("dashboard.cap_grocery_title", "Lista de la Compra Consolidada")}
+            </h3>
+            <p className="text-xs text-[#404943] dark:text-zinc-400 leading-relaxed">
+              {t("dashboard.cap_grocery_desc", "Agrupa automáticamente los ingredientes de la semana por departamentos (verduras, carnes, despensa) y sincroniza lo ya cocinado.")}
+            </p>
+          </div>
+
+          {/* Card 6: Multilingual & Offline PWA */}
+          <div className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-gray-100 dark:border-zinc-800 shadow-[0_4px_24px_rgba(0,0,0,0.02)] transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
+            <div className="w-12 h-12 bg-emerald-50 dark:bg-zinc-800 text-[#0f5238] dark:text-emerald-400 rounded-2xl flex items-center justify-center mb-4">
+              <span className="material-symbols-outlined text-2xl">offline_pin</span>
+            </div>
+            <h3 className="text-base font-bold text-gray-900 dark:text-white mb-2 font-sans tracking-tight">
+              {t("dashboard.cap_pwa_title", "Bilingüe & PWA Offline-First")}
+            </h3>
+            <p className="text-xs text-[#404943] dark:text-zinc-400 leading-relaxed">
+              {t("dashboard.cap_pwa_desc", "Disfruta de traducción fluida en Español e Inglés y accede a tus recetas y lista de compras sin cobertura gracias al soporte PWA.")}
+            </p>
+          </div>
         </div>
       </section>
 
@@ -954,29 +1126,32 @@ export default function Dashboard({
                         )}
                       </div>
 
-                      <div className="flex justify-end gap-2 border-t border-gray-100/60 dark:border-zinc-800/50 pt-3 mt-0.5">
-                        {!item.isActive && (
+                      {!isDemo && (
+                        <div className="flex justify-end gap-2 border-t border-gray-100/60 dark:border-zinc-800/50 pt-3 mt-0.5">
+                          {!item.isActive && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleRestoreHistory(item.id);
+                                setShowHistoryModal(false);
+                              }}
+                              className="py-1.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-colors cursor-pointer flex items-center gap-1"
+                              title={t("dashboard.history_modal_restore_tooltip")}
+                            >
+                              <span className="material-symbols-outlined text-[14px]">restore</span> {t("dashboard.history_modal_restore")}
+                            </button>
+                          )}
                           <button
                             type="button"
-                            onClick={() => {
-                              handleRestoreHistory(item.id);
-                              setShowHistoryModal(false);
-                            }}
-                            className="py-1.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-colors cursor-pointer flex items-center gap-1"
-                            title={t("dashboard.history_modal_restore_tooltip")}
+                            onClick={() => requestDeleteHistoryConfirmation(item.id, item.fileName)}
+                            className="py-1.5 px-3 bg-red-50 dark:bg-red-950/30 text-red-750 dark:text-red-400 font-bold text-xs rounded-xl hover:bg-red-100 dark:hover:bg-red-950 transition-colors cursor-pointer flex items-center gap-1"
+                            title={t("dashboard.history_modal_delete_tooltip")}
                           >
-                            <span className="material-symbols-outlined text-[14px]">restore</span> {t("dashboard.history_modal_restore")}
+                            <span className="material-symbols-outlined text-[14px]">delete</span> {t("dashboard.history_modal_delete")}
                           </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => requestDeleteHistoryConfirmation(item.id, item.fileName)}
-                          className="py-1.5 px-3 bg-red-50 dark:bg-red-950/30 text-red-750 dark:text-red-400 font-bold text-xs rounded-xl hover:bg-red-100 dark:hover:bg-red-950 transition-colors cursor-pointer flex items-center gap-1"
-                          title={t("dashboard.history_modal_delete_tooltip")}
-                        >
-                          <span className="material-symbols-outlined text-[14px]">delete</span> {t("dashboard.history_modal_delete")}
-                        </button>
-                      </div>
+                        </div>
+                      )}
+
                     </div>
                   ))}
                 </div>

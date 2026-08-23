@@ -7,6 +7,7 @@ using VitalityNutri.Application.Uploads;
 using VitalityNutri.Application.Uploads.UploadPlan;
 using VitalityNutri.Application.Uploads.ReprocessPlan;
 
+using VitalityNutri.Application.Abstractions.Common;
 using VitalityNutri.Infrastructure.Configuration;
 
 namespace VitalityNutri.Api.Controllers.Uploads;
@@ -16,12 +17,17 @@ namespace VitalityNutri.Api.Controllers.Uploads;
 public sealed class UploadsController(
     ISender sender,
     IStringLocalizer<Messages> localizer,
+    ICurrentUserProvider currentUserProvider,
     ApiConfiguration? apiConfiguration = null) : ControllerBase
 {
     /// <summary>Uploads and processes a PDF plan payload.</summary>
     [HttpPost("upload"), RequestSizeLimit(100 * 1024 * 1024)]
     public async Task<ActionResult<object>> Upload(UploadRequest request, CancellationToken cancellationToken)
     {
+        if (currentUserProvider.IsDemo())
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new UploadErrorResponse("File uploads are disabled in demo mode."));
+        }
         if (string.IsNullOrWhiteSpace(request.FileName) || string.IsNullOrWhiteSpace(request.FileData))
         {
             return BadRequest(new UploadErrorResponse(localizer[Messages.UploadsMissingFileNameOrData]));
@@ -74,6 +80,10 @@ public sealed class UploadsController(
     [HttpPost("reprocess")]
     public async Task<ActionResult<object>> Reprocess([FromBody(EmptyBodyBehavior = Microsoft.AspNetCore.Mvc.ModelBinding.EmptyBodyBehavior.Allow)] ReprocessRequest? request = null, CancellationToken cancellationToken = default)
     {
+        if (currentUserProvider.IsDemo())
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new UploadErrorResponse("Reprocessing is disabled in demo mode."));
+        }
         try
         {
             var headerLang = Request.Headers.AcceptLanguage.FirstOrDefault()?.Split(',')[0].Split(';')[0].Trim();

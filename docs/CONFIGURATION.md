@@ -10,7 +10,7 @@ Visual Studio and `dotnet run` use the private launch profile for local debuggin
 Copy-Item backend/VitalityNutri.Api/Properties/launchSettings.example.json backend/VitalityNutri.Api/Properties/launchSettings.json
 ```
 
-Replace the `CHANGE_ME` values in `launchSettings.json`. The real file is ignored by Git; only `launchSettings.example.json` is tracked. Non-sensitive local defaults remain in `appsettings.Development.json`, while launch settings override credentials and machine-specific values through standard .NET environment variables.
+Replace the `CHANGE_ME` values in `launchSettings.json`. The real file is ignored by Git; only `launchSettings.example.json` is tracked. Specific local profiles are split between `appsettings.Development-oss.json` (local SQLite), `appsettings.Development-saas.json` (MySQL SaaS dev), and `appsettings.Release.json` (empty production defaults).
 
 Do not use `.env.backend` for direct Windows debugging. It is consumed by Docker Compose on the VPS.
 

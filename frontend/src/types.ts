@@ -83,4 +83,30 @@ export interface PlanMetadata {
   savedFileName?: string;
   processedAt: string;
   originalLanguage?: string;
+  title?: string;
+  week?: string;
+  dietType?: string;
+  daysCount?: number;
+  generatedBy?: string;
+  targetCalories?: number;
 }
+
+export interface User {
+  id: number;
+  email: string;
+  fullName: string;
+  firstName?: string;
+  surname?: string;
+  role: "User" | "Admin" | "Demo" | string;
+  authProvider: "local" | "google" | "apple" | "demo" | string;
+  isDemo: boolean;
+  createdAtUtc?: string;
+}
+
+export interface AuthResponse {
+  token: string;
+  refreshToken?: string;
+  user: User;
+  message: string;
+}
+

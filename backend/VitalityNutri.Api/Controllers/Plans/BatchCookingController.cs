@@ -8,13 +8,19 @@ using VitalityNutri.Application.BatchCooking.GetBatchCooking;
 using VitalityNutri.Application.BatchCooking.ResetBatchCooking;
 using VitalityNutri.Application.Resources;
 
+using VitalityNutri.Application.Abstractions.Common;
+
 namespace VitalityNutri.Api.Controllers.Plans;
 
 /// <summary>Handles batch-cooking read, generation, and reset operations.</summary>
 /// <param name="sender">Application request dispatcher.</param>
 /// <param name="localizer">Localized messages accessor.</param>
+/// <param name="currentUserProvider">Current user context provider.</param>
 [ApiController, Route("api/plan/batch-cooking"), EnableRateLimiting("batch-cooking")]
-public sealed class BatchCookingController(ISender sender, IStringLocalizer<Messages> localizer) : ControllerBase
+public sealed class BatchCookingController(
+    ISender sender,
+    IStringLocalizer<Messages> localizer,
+    ICurrentUserProvider currentUserProvider) : ControllerBase
 {
     /// <summary>Returns the cached batch-cooking guide for the active plan.</summary>
     [HttpGet]
@@ -30,6 +36,11 @@ public sealed class BatchCookingController(ISender sender, IStringLocalizer<Mess
     [HttpPost]
     public async Task<ActionResult<BatchCookingGenerateResult>> Generate(BatchCookingGenerateRequest request, CancellationToken cancellationToken)
     {
+        if (currentUserProvider.IsDemo())
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new BatchCookingErrorResponse("Batch cooking generation is disabled in demo mode."));
+        }
+
         if (request.Params is null)
         {
             return BadRequest(new BatchCookingErrorResponse(localizer[Messages.BatchCookingMissingParams]));
@@ -45,6 +56,11 @@ public sealed class BatchCookingController(ISender sender, IStringLocalizer<Mess
     [HttpPost("reset")]
     public async Task<ActionResult<BatchCookingWriteResponse>> Reset(CancellationToken cancellationToken)
     {
+        if (currentUserProvider.IsDemo())
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new BatchCookingErrorResponse("Batch cooking reset is disabled in demo mode."));
+        }
+
         var success = await sender.Send(new ResetBatchCookingCommand(), cancellationToken);
         return success
             ? Ok(new BatchCookingWriteResponse(true))

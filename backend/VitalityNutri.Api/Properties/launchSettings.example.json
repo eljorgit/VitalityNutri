@@ -1,21 +1,57 @@
 {
   "$schema": "https://json.schemastore.org/launchsettings.json",
   "profiles": {
-    "VitalityNutri.Api": {
+    "Development-oss": {
       "commandName": "Project",
       "dotnetRunMessages": true,
       "launchBrowser": true,
       "launchUrl": "scalar/v1",
       "applicationUrl": "http://localhost:5026",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development",
-        "ApiConfiguration__ConnectionStrings__Default": "Server=localhost;Port=3306;Database=vitalitynutri;User ID=CHANGE_ME;Password=CHANGE_ME;SslMode=Preferred;",
+        "ASPNETCORE_ENVIRONMENT": "Development-oss",
+        "ApiConfiguration__App__Mode": "Oss",
+        "ApiConfiguration__Database__Provider": "Sqlite",
+        "ApiConfiguration__Database__ApplyMigrations": "true",
+        "ApiConfiguration__ConnectionStrings__Default": "Data Source=vitalitynutri.db",
+        "ApiConfiguration__Ai__UseOmniRoute": "false",
         "ApiConfiguration__Ai__OmniRoute__ApiKey": "CHANGE_ME",
         "ApiConfiguration__Ai__Providers__Gemini__ApiKey": "CHANGE_ME",
         "ApiConfiguration__Ai__Providers__Groq__ApiKey": "CHANGE_ME",
         "ApiConfiguration__ExternalServices__Unsplash__AccessKey": "CHANGE_ME",
-        "ApiConfiguration__Telemetry__Sentry__Dsn": "hCHANGE_ME",
+        "ApiConfiguration__Auth__JwtSecret": "VitalityNutri_Dev_Default_Jwt_Secret_Salt_Key_2026_Minimum_64_Chars_Long!!",
+        "ApiConfiguration__Telemetry__Sentry__Dsn": "CHANGE_ME",
         "ApiConfiguration__Telemetry__ApplicationInsights__ConnectionString": "CHANGE_ME"
+      }
+    },
+    "Development-saas": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": true,
+      "launchUrl": "scalar/v1",
+      "applicationUrl": "http://localhost:5026",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development-saas",
+        "ApiConfiguration__App__Mode": "SaaS",
+        "ApiConfiguration__Database__Provider": "MySql",
+        "ApiConfiguration__Database__ApplyMigrations": "true",
+        "ApiConfiguration__ConnectionStrings__Default": "Server=localhost;Port=3306;Database=vitalitynutri;User ID=CHANGE_ME;Password=CHANGE_ME;SslMode=Preferred;",
+        "ApiConfiguration__Ai__UseOmniRoute": "true",
+        "ApiConfiguration__Ai__OmniRoute__ApiKey": "CHANGE_ME",
+        "ApiConfiguration__Ai__Providers__Gemini__ApiKey": "CHANGE_ME",
+        "ApiConfiguration__Ai__Providers__Groq__ApiKey": "CHANGE_ME",
+        "ApiConfiguration__ExternalServices__Unsplash__AccessKey": "CHANGE_ME",
+        "ApiConfiguration__Auth__JwtSecret": "CHANGE_ME_MINIMUM_64_CHARACTERS_LONG_SECRET_SALT_KEY_2026!!",
+        "ApiConfiguration__Telemetry__Sentry__Dsn": "CHANGE_ME",
+        "ApiConfiguration__Telemetry__ApplicationInsights__ConnectionString": "CHANGE_ME"
+      }
+    },
+    "Release": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": false,
+      "applicationUrl": "http://localhost:5026",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Release"
       }
     }
   }

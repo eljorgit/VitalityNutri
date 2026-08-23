@@ -9,6 +9,7 @@ namespace VitalityNutri.Infrastructure.Processing;
 internal sealed class DeterministicRecipeAiProcessingService(
     ApiConfiguration apiConfiguration,
     IUnifiedAiGateway aiGateway,
+    IAiPayloadCompressionService payloadCompression,
     ILogger<DeterministicRecipeAiProcessingService> logger)
     : IRecipeAiProcessingService
 {
@@ -20,7 +21,6 @@ internal sealed class DeterministicRecipeAiProcessingService(
         try
         {
             var prompt = LoadRecipePromptTemplate(input.Language, count, input.ExtraPrompt);
-            var chain = apiConfiguration.Ai.FallbackChains.RecipeAi;
             string? aiJson = null;
 
             if (!string.IsNullOrWhiteSpace(input.FileData))
@@ -28,9 +28,12 @@ internal sealed class DeterministicRecipeAiProcessingService(
                 var mime = input.SourceType.Equals("pdf", StringComparison.OrdinalIgnoreCase) ? "application/pdf" : "image/jpeg";
                 var raw = input.FileData.Contains(',') ? input.FileData[(input.FileData.IndexOf(',') + 1)..] : input.FileData;
                 var bytes = Convert.FromBase64String(raw);
+                bytes = mime == "application/pdf"
+                    ? payloadCompression.CompressPdfForAi(bytes)
+                    : payloadCompression.CompressImageForAi(bytes);
 
                 aiJson = await aiGateway.GenerateMultimodalAsync(
-                    chainConfig: chain,
+                    chainConfig: apiConfiguration.Ai.FallbackChains.RecipeVision,
                     prompt: prompt,
                     fileBytes: bytes,
                     mimeType: mime,
@@ -44,7 +47,7 @@ internal sealed class DeterministicRecipeAiProcessingService(
                     : prompt;
 
                 aiJson = await aiGateway.GenerateTextAsync(
-                    chainConfig: chain,
+                    chainConfig: apiConfiguration.Ai.FallbackChains.RecipeAi,
                     prompt: fullPrompt,
                     systemPrompt: null,
                     jsonMode: true,

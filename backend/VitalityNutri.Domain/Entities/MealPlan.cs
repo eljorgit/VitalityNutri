@@ -10,6 +10,7 @@ public sealed class MealPlan
     public bool IsActive { get; private set; }
     public string? FileHash { get; private set; }
     public string OriginalLanguage { get; private set; } = "es";
+    public long? UserId { get; private set; }
     public DateTimeOffset CreatedAtUtc { get; private set; }
     public DateTimeOffset UpdatedAtUtc { get; private set; }
 
@@ -17,16 +18,23 @@ public sealed class MealPlan
     {
     }
 
-    public MealPlan(string planJson, string metadataJson, string? fileName = null, string? savedFileName = null, string originalLanguage = "es")
+    public MealPlan(string planJson, string metadataJson, string? fileName = null, string? savedFileName = null, string originalLanguage = "es", long? userId = null)
     {
         PlanJson = planJson;
         MetadataJson = metadataJson;
         FileName = fileName;
         SavedFileName = savedFileName;
         OriginalLanguage = string.IsNullOrWhiteSpace(originalLanguage) ? "es" : originalLanguage.Trim().ToLowerInvariant();
+        UserId = userId;
         IsActive = true;
         CreatedAtUtc = DateTimeOffset.UtcNow;
         UpdatedAtUtc = CreatedAtUtc;
+    }
+
+    public void AssignUser(long userId)
+    {
+        UserId = userId;
+        UpdatedAtUtc = DateTimeOffset.UtcNow;
     }
 
     public void Deactivate()

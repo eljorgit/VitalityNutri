@@ -6,6 +6,7 @@ namespace VitalityNutri.Api.Controllers.Health;
 /// Exposes service health information.
 /// </summary>
 [ApiController]
+[Microsoft.AspNetCore.Authorization.AllowAnonymous]
 public sealed class HealthController : ControllerBase
 {
     /// <summary>

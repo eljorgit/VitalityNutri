@@ -9,12 +9,13 @@ public sealed class GroceryListState
     public string SelectedThreeDaysStart { get; private set; } = string.Empty;
     public string ExcludedMealsJson { get; private set; } = "[]";
     public string MultipliersJson { get; private set; } = "{}";
+    public long? UserId { get; private set; }
     public DateTimeOffset UpdatedAtUtc { get; private set; }
 
     private GroceryListState() { }
 
     public GroceryListState(string checkedItemsJson, string listType, string selectedSingleDay,
-        string selectedThreeDaysStart, string excludedMealsJson, string multipliersJson)
+        string selectedThreeDaysStart, string excludedMealsJson, string multipliersJson, long? userId = null)
     {
         CheckedItemsJson = checkedItemsJson;
         ListType = listType;
@@ -22,6 +23,13 @@ public sealed class GroceryListState
         SelectedThreeDaysStart = selectedThreeDaysStart;
         ExcludedMealsJson = excludedMealsJson;
         MultipliersJson = multipliersJson;
+        UserId = userId;
+        UpdatedAtUtc = DateTimeOffset.UtcNow;
+    }
+
+    public void AssignUser(long userId)
+    {
+        UserId = userId;
         UpdatedAtUtc = DateTimeOffset.UtcNow;
     }
 

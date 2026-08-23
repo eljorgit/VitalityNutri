@@ -9,6 +9,10 @@ import RecipeForm from "./components/RecipeForm";
 import ConfirmationModal, { ConfirmationVariant } from "./components/ConfirmationModal";
 import SettingsModal, { ThemeMode } from "./components/SettingsModal";
 import SystemDiagnosticsModal from "./components/SystemDiagnosticsModal";
+import AuthModal from "./components/AuthModal";
+import BrandLogo from "./components/BrandLogo";
+import { LandingPage } from "./components/LandingPage";
+import { useAuth } from "./context/AuthContext";
 import { useTranslation } from "react-i18next";
 import { getCanonicalPath, navigateTo } from "./utils/routes";
 import type { SupportedLang } from "./i18n/config";
@@ -21,7 +25,9 @@ import {
   highlightText,
 } from "./utils/searchHelpers";
 import { translateTag } from "./utils/tags";
-import { Github, ExternalLink, WifiOff } from "lucide-react";
+import { Github, ExternalLink, WifiOff, Sparkles, LogOut } from "lucide-react";
+import AccountArea from "./components/account/AccountArea";
+import VerifyEmailScreen from "./components/account/VerifyEmailScreen";
 import { useOfflineStatus } from "./utils/useOfflineStatus";
 import { version } from "@/package.json";
 
@@ -60,6 +66,9 @@ interface SearchHistoryItem {
 export default function App() {
   const { t, i18n } = useTranslation();
   const isOffline = useOfflineStatus();
+  const { user, isDemo, isAuthenticated, isOssMode, isLoading: isAuthLoading, logout } = useAuth();
+  const [isAuthOpen, setIsAuthOpen] = useState<boolean>(false);
+  const [verifyEmailToken, setVerifyEmailToken] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>("dashboard");
   const [showResetPlanConfirmation, setShowResetPlanConfirmation] = useState(false);
   const [appNotification, setAppNotification] = useState<{
@@ -103,6 +112,15 @@ export default function App() {
 
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [isDiagnosticsOpen, setIsDiagnosticsOpen] = useState<boolean>(false);
+
+  // Email-change verification deep link: /verify-email?token=...
+  useEffect(() => {
+    const path = window.location.pathname;
+    if (path === "/verify-email" || path.startsWith("/verify-email/")) {
+      const token = new URLSearchParams(window.location.search).get("token") ?? "";
+      setVerifyEmailToken(token);
+    }
+  }, []);
 
   useEffect(() => {
     const applyTheme = () => {
@@ -418,6 +436,15 @@ export default function App() {
     syncStateFromUrl(localizedPath);
   };
 
+  const handleLogout = async () => {
+    await logout();
+    setPlan(null);
+    setMetadata(null);
+    setCompletedRecipes({});
+    setActiveTab("dashboard");
+    navigate("/");
+  };
+
   const handleSetActiveTab = (tab: string) => {
     if (tab === "recetario") {
       navigate("/recipe-book");
@@ -462,14 +489,23 @@ export default function App() {
         }
 
         // Descargar estado de recetas completadas
-        try {
-          const completedRes = await fetch("/api/completed-recipes");
-          if (completedRes.ok) {
-            const completedData = await completedRes.json();
-            setCompletedRecipes(completedData.completedRecipes || {});
+        if (isDemo) {
+          const cached = sessionStorage.getItem("demo_completed_recipes");
+          if (cached) {
+            try {
+              setCompletedRecipes(JSON.parse(cached));
+            } catch {}
           }
-        } catch (err) {
-          console.error("Error al descargar recetas completadas:", err);
+        } else {
+          try {
+            const completedRes = await fetch("/api/completed-recipes");
+            if (completedRes.ok) {
+              const completedData = await completedRes.json();
+              setCompletedRecipes(completedData.completedRecipes || {});
+            }
+          } catch (err) {
+            console.error("Error al descargar recetas completadas:", err);
+          }
         }
 
         setIsLoading(false);
@@ -488,8 +524,10 @@ export default function App() {
   };
 
   useEffect(() => {
-    fetchGlobalPlan();
-  }, []);
+    if (isAuthenticated) {
+      fetchGlobalPlan();
+    }
+  }, [isAuthenticated]);
 
   // --- Search Pool: fetch lightweight recipe index from all plans ---
   const fetchSearchPool = useCallback(async () => {
@@ -517,7 +555,11 @@ export default function App() {
     }
   }, []);
 
-  useEffect(() => { fetchSearchPool(); }, [fetchSearchPool]);
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchSearchPool();
+    }
+  }, [isAuthenticated, fetchSearchPool]);
 
   // --- Search History: load from DB on mount ---
   const fetchSearchHistory = useCallback(async () => {
@@ -532,7 +574,11 @@ export default function App() {
     }
   }, []);
 
-  useEffect(() => { fetchSearchHistory(); }, [fetchSearchHistory]);
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchSearchHistory();
+    }
+  }, [isAuthenticated, fetchSearchHistory]);
 
   // Close search panel when clicking outside
   useEffect(() => {
@@ -899,6 +945,11 @@ export default function App() {
     };
     setCompletedRecipes(newCompleted);
 
+    if (isDemo) {
+      sessionStorage.setItem("demo_completed_recipes", JSON.stringify(newCompleted));
+      return;
+    }
+
     try {
       await fetch("/api/completed-recipes", {
         method: "POST",
@@ -918,6 +969,11 @@ export default function App() {
       newCompleted[`${day}-${meal}`] = targetState;
     });
     setCompletedRecipes(newCompleted);
+
+    if (isDemo) {
+      sessionStorage.setItem("demo_completed_recipes", JSON.stringify(newCompleted));
+      return;
+    }
 
     try {
       await fetch("/api/completed-recipes", {
@@ -965,6 +1021,34 @@ export default function App() {
     }
   };
 
+  if (isAuthLoading) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center text-white space-y-4">
+        <BrandLogo className="w-9 h-9 animate-bounce" />
+        <div className="flex items-center gap-2 text-emerald-400 font-medium text-sm">
+          <span className="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>
+          <span>Iniciando VitalityNutri...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (verifyEmailToken !== null) {
+    return (
+      <VerifyEmailScreen
+        token={verifyEmailToken}
+        onDone={() => {
+          setVerifyEmailToken(null);
+          window.history.pushState(null, "", "/");
+        }}
+      />
+    );
+  }
+
+  if (!isOssMode && !isAuthenticated) {
+    return <LandingPage />;
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-zinc-950 text-slate-800 dark:text-zinc-100 antialiased font-sans transition-all duration-300">
       {isOffline && (
@@ -987,7 +1071,7 @@ export default function App() {
               }}
               className="flex items-center gap-2 text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 tracking-tight hover:opacity-90 select-none text-left cursor-pointer transition-opacity shrink-0 group"
             >
-              <span className="hidden md:inline text-3xl filter drop-shadow-sm transform group-hover:scale-110 group-hover:rotate-12 transition-all duration-300 ease-out select-none" role="img" aria-label={t("general.brand_logo_aria")}>🥑</span>
+              <BrandLogo className="hidden md:inline-block w-7 h-7 filter drop-shadow-sm transform group-hover:scale-110 transition-all duration-300 ease-out" alt={t("general.brand_logo_aria")} />
               <span>VitalityNutri</span>
             </button>
 
@@ -1140,6 +1224,39 @@ export default function App() {
             >
               {themeMode === "dark" ? "dark_mode" : themeMode === "light" ? "light_mode" : "routine"}
             </button>
+
+            {/* Auth / Demo Profile (SaaS Mode Only) */}
+            {!isOssMode && (
+              isDemo ? (
+                <div className="flex items-center gap-1.5 pl-2 border-l border-zinc-200 dark:border-zinc-800">
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-700 dark:text-emerald-300 text-xs font-semibold select-none">
+                    <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                    <span className="hidden sm:inline">Modo Demo</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="p-2 text-zinc-400 hover:text-red-600 dark:hover:text-red-400 rounded-xl hover:bg-red-50 dark:hover:bg-red-950/30 transition text-xs font-medium"
+                    title="Log out"
+                  >
+                    <LogOut className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : isAuthenticated && user ? (
+                <AccountArea user={user} onLogout={handleLogout} />
+              ) : (
+                <div className="pl-2 border-l border-zinc-200 dark:border-zinc-800">
+                  <button
+                    type="button"
+                    onClick={() => setIsAuthOpen(true)}
+                    className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white rounded-xl text-xs font-semibold shadow-sm transition cursor-pointer"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    <span className="hidden sm:inline">Iniciar Sesión / Demo</span>
+                  </button>
+                </div>
+              )
+            )}
           </div>
         </div>
       </header>
@@ -1467,7 +1584,49 @@ export default function App() {
             </a>
           </span>
           <span className="text-[11px] text-gray-400 dark:text-zinc-600 font-medium">
-            {t("footer.ai")}
+            {i18n.language?.startsWith("es") ? (
+              <>
+                Diseñado con IA por{" "}
+                <a
+                  href="https://www.linkedin.com/in/jorgerc02/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-zinc-600 dark:text-zinc-400 hover:text-emerald-600 dark:hover:text-emerald-400 underline decoration-zinc-400/40 dark:decoration-zinc-600 underline-offset-2 transition-colors font-semibold"
+                >
+                  Jorge
+                </a>{" "}
+                de{" "}
+                <a
+                  href="https://malvioapps.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-zinc-600 dark:text-zinc-400 hover:text-emerald-600 dark:hover:text-emerald-400 underline decoration-zinc-400/40 dark:decoration-zinc-600 underline-offset-2 transition-colors font-semibold"
+                >
+                  MalvioApps
+                </a>
+              </>
+            ) : (
+              <>
+                Crafted with AI by{" "}
+                <a
+                  href="https://www.linkedin.com/in/jorgerc02/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-zinc-600 dark:text-zinc-400 hover:text-emerald-600 dark:hover:text-emerald-400 underline decoration-zinc-400/40 dark:decoration-zinc-600 underline-offset-2 transition-colors font-semibold"
+                >
+                  Jorge
+                </a>{" "}
+                from{" "}
+                <a
+                  href="https://malvioapps.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-zinc-600 dark:text-zinc-400 hover:text-emerald-600 dark:hover:text-emerald-400 underline decoration-zinc-400/40 dark:decoration-zinc-600 underline-offset-2 transition-colors font-semibold"
+                >
+                  MalvioApps
+                </a>
+              </>
+            )}
           </span>
         </div>
       </footer>
@@ -1483,7 +1642,7 @@ export default function App() {
               : "text-slate-400 hover:text-emerald-600 dark:text-zinc-500 dark:hover:text-emerald-400"
           }`}
         >
-          <span className="text-xl filter drop-shadow-sm select-none">🥑</span>
+          <BrandLogo className="w-5 h-5 filter drop-shadow-sm" />
           <span className="text-[10px] tracking-tight mt-0.5 font-bold">{t("mobile_nav.home")}</span>
         </button>
         <button
@@ -1638,6 +1797,11 @@ export default function App() {
       <SystemDiagnosticsModal
         isOpen={isDiagnosticsOpen}
         onClose={() => setIsDiagnosticsOpen(false)}
+      />
+
+      <AuthModal
+        isOpen={isAuthOpen}
+        onClose={() => setIsAuthOpen(false)}
       />
 
     </div>

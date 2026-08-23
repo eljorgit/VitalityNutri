@@ -9,6 +9,7 @@ import { logger } from "@utils/logger";
 import { apiFetch } from "@utils/api";
 import { Sparkles, Globe, RotateCcw } from "lucide-react";
 import { SpainFlag, UKFlag } from "./Flags";
+import { useAuth } from "../context/AuthContext";
 
 const formatAmountAndUnit = (amount: number, unit: string) => {
   let normalizedUnit = unit.trim().toLowerCase();
@@ -79,6 +80,7 @@ export default function RecipeDetail({
   onDelete,
 }: RecipeDetailProps) {
   const { t, i18n } = useTranslation();
+  const { isDemo } = useAuth();
   const searchParams = new URLSearchParams(window.location.search);
   const isFromBatchCooking = searchParams.get("from") === "batch-cooking";
   const backLabel = mode === "recetario"
@@ -100,7 +102,7 @@ export default function RecipeDetail({
   // Language & Translation State
   const recipeOriginalLang = (recipe.originalLanguage || "es").toLowerCase();
   const currentUiLang = (i18n.language || "en").slice(0, 2).toLowerCase();
-  const isLanguageMismatch = recipeOriginalLang !== currentUiLang;
+  const isLanguageMismatch = !isDemo && recipeOriginalLang !== currentUiLang;
 
   const [translatedData, setTranslatedData] = useState<{
     recipeName?: string;
@@ -1763,7 +1765,7 @@ export default function RecipeDetail({
             </button>
 
             {/* Edit Button (Only recetario mode, muted icon-only style) */}
-            {mode === "recetario" && onEdit && (
+            {mode === "recetario" && !isDemo && onEdit && (
               <button
                 type="button"
                 onClick={() => onEdit(recipe)}
@@ -1775,7 +1777,7 @@ export default function RecipeDetail({
             )}
 
             {/* Delete Button (Only recetario mode, muted icon-only style, disabled for plan recipes) */}
-            {mode === "recetario" && (
+            {mode === "recetario" && !isDemo && (
               <button
                 type="button"
                 disabled={recipe.source === "plan"}

@@ -12,6 +12,7 @@ namespace VitalityNutri.Infrastructure.Processing;
 internal sealed class DeterministicPlanExtractionService(
     ApiConfiguration apiConfiguration,
     IUnifiedAiGateway aiGateway,
+    IAiPayloadCompressionService payloadCompression,
     IRecipeImageLookupService imageLookupService,
     ILogger<DeterministicPlanExtractionService> logger)
     : IPlanExtractionService
@@ -42,7 +43,8 @@ internal sealed class DeterministicPlanExtractionService(
             return await EnrichPlanImagesAsync(normalized, cancellationToken);
         }
 
-        logger.LogWarning("[PlanExtraction] All AI fallbacks failed. Returning deterministic empty-week plan.");
+        logger.LogWarning("[PlanExtraction] All AI fallbacks failed{ScanHint}. Returning deterministic empty-week plan.",
+            normalizedText.Length == 0 ? " (PDF contains no selectable text - likely a scanned/image-only document)" : string.Empty);
         return CreateEmptyWeekPlanJson();
     }
 
@@ -64,13 +66,8 @@ internal sealed class DeterministicPlanExtractionService(
             return textResult;
         }
 
-        if (apiConfiguration.Ai.UseOmniRoute)
-        {
-            return null;
-        }
-
         var visionChain = apiConfiguration.Ai.FallbackChains.PlanVision;
-        var bytes = await System.IO.File.ReadAllBytesAsync(filePath, cancellationToken);
+        var bytes = payloadCompression.CompressPdfForAi(await System.IO.File.ReadAllBytesAsync(filePath, cancellationToken));
 
         return await aiGateway.GenerateMultimodalAsync(
             chainConfig: visionChain,
@@ -85,25 +82,8 @@ internal sealed class DeterministicPlanExtractionService(
     {
         var promptTemplate = LoadPlanPromptTemplate(language);
 
-        if (apiConfiguration.Ai.UseOmniRoute)
-        {
-            if (text.Length == 0)
-            {
-                return null;
-            }
-
-            var textChain = apiConfiguration.Ai.FallbackChains.PlanText;
-            return await aiGateway.GenerateTextAsync(
-                chainConfig: textChain,
-                prompt: text,
-                systemPrompt: promptTemplate,
-                jsonMode: true,
-                temperature: 0.2f,
-                cancellationToken: cancellationToken);
-        }
-
         var visionChain = apiConfiguration.Ai.FallbackChains.PlanVision;
-        var bytes = await System.IO.File.ReadAllBytesAsync(filePath, cancellationToken);
+        var bytes = payloadCompression.CompressPdfForAi(await System.IO.File.ReadAllBytesAsync(filePath, cancellationToken));
 
         var visionResult = await aiGateway.GenerateMultimodalAsync(
             chainConfig: visionChain,

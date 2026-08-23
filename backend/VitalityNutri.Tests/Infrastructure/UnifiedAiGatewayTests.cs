@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Text;
 using Microsoft.Extensions.Logging.Abstractions;
 using VitalityNutri.Infrastructure.Configuration;
@@ -25,7 +25,7 @@ public sealed class UnifiedAiGatewayTests
     {
         var config = new ApiConfiguration();
         var clientFactory = new TestHttpClientFactory(new MockHttpMessageHandler());
-        var gateway = new UnifiedAiGateway(config, clientFactory, NullLogger<UnifiedAiGateway>.Instance);
+        var gateway = new UnifiedAiGateway(config, clientFactory, NullLogger<UnifiedAiGateway>.Instance, new NullByokCredentialResolver());
 
         var result = await gateway.GenerateTextAsync(
             chainConfig: "groq:openai/gpt-oss-120b,gemini:gemini-3.6-flash",
@@ -51,7 +51,7 @@ public sealed class UnifiedAiGatewayTests
 
         var handler = new MockFailoverHttpMessageHandler();
         var clientFactory = new TestHttpClientFactory(handler);
-        var gateway = new UnifiedAiGateway(config, clientFactory, NullLogger<UnifiedAiGateway>.Instance);
+        var gateway = new UnifiedAiGateway(config, clientFactory, NullLogger<UnifiedAiGateway>.Instance, new NullByokCredentialResolver());
 
         var chain = "groq:openai/gpt-oss-120b,groq:openai/gpt-oss-20b";
         var result = await gateway.GenerateTextAsync(
@@ -82,7 +82,7 @@ public sealed class UnifiedAiGatewayTests
 
         var handler = new MockModelNotFoundHandler();
         var clientFactory = new TestHttpClientFactory(handler);
-        var gateway = new UnifiedAiGateway(config, clientFactory, NullLogger<UnifiedAiGateway>.Instance);
+        var gateway = new UnifiedAiGateway(config, clientFactory, NullLogger<UnifiedAiGateway>.Instance, new NullByokCredentialResolver());
 
         var chain = "groq:deprecated-model-xyz,groq:openai/gpt-oss-20b";
 
@@ -95,6 +95,14 @@ public sealed class UnifiedAiGatewayTests
         var result2 = await gateway.GenerateTextAsync(chain, "prompt", cancellationToken: CancellationToken.None);
         Assert.NotNull(result2);
         Assert.Equal(3, handler.RequestCount); // Only 1 additional request made instead of 2
+    }
+
+    private sealed class NullByokCredentialResolver : IByokCredentialResolver
+    {
+        public Task<ByokCredentials?> ResolveAsync(string token, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<ByokCredentials?>(null);
+        }
     }
 
     private sealed class MockModelNotFoundHandler : HttpMessageHandler

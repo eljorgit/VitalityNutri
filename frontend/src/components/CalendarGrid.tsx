@@ -4,6 +4,7 @@ import { MealPlan, DayType, MealType, Recipe } from "@src/types";
 import { apiFetch } from "@utils/api";
 import { Sparkles, Globe, RotateCcw } from "lucide-react";
 import { SpainFlag, UKFlag } from "./Flags";
+import { useAuth } from "../context/AuthContext";
 
 interface CalendarGridProps {
   plan: MealPlan | null;
@@ -17,11 +18,12 @@ interface CalendarGridProps {
 
 export default function CalendarGrid({ plan, metadata, onSelectRecipe, setActiveTab, completedRecipes, onToggleComplete, onToggleDayComplete }: CalendarGridProps) {
   const { t, i18n } = useTranslation();
+  const { isDemo } = useAuth();
 
   // Plan Language & Translation State
   const planOriginalLang = (metadata?.originalLanguage || (plan as any)?.originalLanguage || "es").toLowerCase();
   const currentUiLang = (i18n.language || "en").slice(0, 2).toLowerCase();
-  const isPlanLanguageMismatch = !!plan && planOriginalLang !== currentUiLang;
+  const isPlanLanguageMismatch = !isDemo && !!plan && planOriginalLang !== currentUiLang;
 
   const [translatedPlan, setTranslatedPlan] = React.useState<MealPlan | null>(null);
   const [isTranslatingPlan, setIsTranslatingPlan] = React.useState<boolean>(false);
@@ -291,7 +293,7 @@ export default function CalendarGrid({ plan, metadata, onSelectRecipe, setActive
     let planned = 0;
     daysKeys.forEach((day) => {
       mealsKeys.forEach((meal) => {
-        if (activeDisplayPlan.days[day] && activeDisplayPlan.days[day][meal]) {
+        if (activeDisplayPlan.days?.[day] && activeDisplayPlan.days[day][meal]) {
           planned++;
         }
       });
@@ -331,7 +333,7 @@ export default function CalendarGrid({ plan, metadata, onSelectRecipe, setActive
     let totalPlanned = 0;
     daysKeys.forEach((day) => {
       mealsKeys.forEach((meal) => {
-        if (activeDisplayPlan.days[day] && activeDisplayPlan.days[day][meal]) {
+        if (activeDisplayPlan.days?.[day] && activeDisplayPlan.days[day][meal]) {
           totalPlanned++;
           if (completedRecipes[`${day}-${meal}`]) {
             completed++;

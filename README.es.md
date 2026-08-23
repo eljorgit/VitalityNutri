@@ -7,7 +7,7 @@
   [![Vite](https://img.shields.io/badge/Vite-6.x-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vite.dev/)
   [![React](https://img.shields.io/badge/React-19-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://react.dev/)
   [![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-v4.0-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
-  [![Gemini AI](https://img.shields.io/badge/Gemini_AI-3.5_Flash-4285F4?style=for-the-badge&logo=google-gemini&logoColor=white)](https://ai.google.dev/)
+  [![IA](https://img.shields.io/badge/IA-Impulsada-4285F4?style=for-the-badge)]
   [![i18next](https://img.shields.io/badge/i18n-react--i18next-26A69A?style=for-the-badge&logo=i18next&logoColor=white)](https://react.i18next.com/)
   [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
   [![SQLite](https://img.shields.io/badge/SQLite-3-003B57?style=for-the-badge&logo=sqlite&logoColor=white)](https://sqlite.org/)
@@ -20,7 +20,7 @@
 
 ## 📝 Descripción
 
-VitalityNutri es una aplicación web full-stack de planificación nutricional que automatiza la conversión de guías de alimentación en formato PDF a menús estructurados semanales mediante Inteligencia Artificial. Utiliza el modelo **Gemini 3.5 Flash** de Google para extraer ingredientes, instrucciones y tablas calóricas con alta fidelidad. Toda la información se guarda en **SQLite**. Completamente internacionalizada con soporte para inglés y español.
+VitalityNutri es una aplicación web full-stack de planificación nutricional que automatiza la conversión de guías de alimentación en formato PDF a menús estructurados semanales mediante Inteligencia Artificial. Utiliza modelos de IA de última generación para extraer ingredientes, instrucciones y tablas calóricas con alta fidelidad. Toda la información se guarda en **SQLite**. Completamente internacionalizada con soporte para inglés y español.
 
 ---
 

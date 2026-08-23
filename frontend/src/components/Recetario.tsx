@@ -3,8 +3,10 @@ import { useTranslation } from "react-i18next";
 import { Recipe, MealPlan, MealType } from "@src/types";
 import ConfirmationModal from "./ConfirmationModal";
 import ImagePlaceholder from "./ImagePlaceholder";
+import BrandLogo from "./BrandLogo";
 import { MEAL_TAGS, MEAL_TAG_ICONS, getMealTag, translateTag } from "@utils/tags";
 import { logger } from "@utils/logger";
+import { useAuth } from "../context/AuthContext";
 
 interface RecetarioProps {
   onSelectRecipe: (recipe: Recipe) => void;
@@ -22,6 +24,7 @@ export default function Recetario({
   searchQuery = ""
 }: RecetarioProps) {
   const { t } = useTranslation();
+  const { isDemo } = useAuth();
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
@@ -341,15 +344,17 @@ export default function Recetario({
         </div>
 
         {/* Add New Recipe Button */}
-        <button
-          ref={addButtonRef}
-          type="button"
-          onClick={onAddNewRecipe}
-          className="inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm hover:shadow-md transition-all font-black text-xs cursor-pointer active:scale-95 self-start sm:self-auto"
-        >
-          <span className="material-symbols-outlined text-[16px] mr-1.5 font-bold">add</span>
-          {t("recetario.add_recipe_btn")}
-        </button>
+        {!isDemo && (
+          <button
+            ref={addButtonRef}
+            type="button"
+            onClick={onAddNewRecipe}
+            className="inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm hover:shadow-md transition-all font-black text-xs cursor-pointer active:scale-95 self-start sm:self-auto"
+          >
+            <span className="material-symbols-outlined text-[16px] mr-1.5 font-bold">add</span>
+            {t("recetario.add_recipe_btn")}
+          </button>
+        )}
       </div>
 
       {/* Category Tabs */}
@@ -542,7 +547,7 @@ export default function Recetario({
         </div>
       ) : filteredRecipes.length === 0 ? (
         <div className="bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 rounded-3xl p-16 text-center shadow-xs flex flex-col items-center gap-3">
-          <span className="text-5xl">🥑</span>
+          <BrandLogo className="w-12 h-12" />
           <h3 className="text-sm font-black text-slate-700 dark:text-zinc-300">{t("recetario.no_recipes_title")}</h3>
           <p className="text-xs text-slate-400 dark:text-zinc-500 max-w-sm">
             {searchQuery || selectedMealType !== "all" || selectedSource !== "Todos" || selectedTimeRange !== "Todos" || selectedCaloriesRange !== "Todos" || showOnlyFavorites
@@ -655,27 +660,29 @@ export default function Recetario({
                   </span>
 
                   {/* Actions buttons */}
-                  <div className="flex gap-1">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onEditRecipe(r);
-                      }}
-                      className="w-7 h-7 rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-500 dark:text-zinc-400 hover:text-emerald-600 dark:hover:text-emerald-400 flex items-center justify-center cursor-pointer transition"
-                      title={t("recetario.edit_tooltip")}
-                    >
-                      <span className="material-symbols-outlined text-[17px]">edit</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => handleStartDelete(e, r)}
-                      className="w-7 h-7 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/20 text-slate-500 hover:text-red-500 flex items-center justify-center cursor-pointer transition"
-                      title={t("recetario.delete_tooltip")}
-                    >
-                      <span className="material-symbols-outlined text-[17px]">delete</span>
-                    </button>
-                  </div>
+                  {!isDemo && (
+                    <div className="flex gap-1">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEditRecipe(r);
+                        }}
+                        className="w-7 h-7 rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-500 dark:text-zinc-400 hover:text-emerald-600 dark:hover:text-emerald-400 flex items-center justify-center cursor-pointer transition"
+                        title={t("recetario.edit_tooltip")}
+                      >
+                        <span className="material-symbols-outlined text-[17px]">edit</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => handleStartDelete(e, r)}
+                        className="w-7 h-7 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/20 text-slate-500 hover:text-red-500 flex items-center justify-center cursor-pointer transition"
+                        title={t("recetario.delete_tooltip")}
+                      >
+                        <span className="material-symbols-outlined text-[17px]">delete</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -703,16 +710,18 @@ export default function Recetario({
       )}
 
       {/* Floating Action Button — visible when the main button scrolls out of view */}
-      <button
-        type="button"
-        onClick={onAddNewRecipe}
-        aria-label={t("recetario.fab_aria_label")}
-        className={`fixed right-20 bottom-20 md:right-24 md:bottom-8 z-40 w-14 h-14 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg hover:shadow-xl flex items-center justify-center cursor-pointer active:scale-90 transition-all duration-300 fab-button ${
-          showFab ? "fab-visible" : "fab-hidden"
-        }`}
-      >
-        <span className="material-symbols-outlined text-[28px] font-bold">add</span>
-      </button>
+      {!isDemo && (
+        <button
+          type="button"
+          onClick={onAddNewRecipe}
+          aria-label={t("recetario.fab_aria_label")}
+          className={`fixed right-20 bottom-20 md:right-24 md:bottom-8 z-40 w-14 h-14 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg hover:shadow-xl flex items-center justify-center cursor-pointer active:scale-90 transition-all duration-300 fab-button ${
+            showFab ? "fab-visible" : "fab-hidden"
+          }`}
+        >
+          <span className="material-symbols-outlined text-[28px] font-bold">add</span>
+        </button>
+      )}
 
     </div>
   );

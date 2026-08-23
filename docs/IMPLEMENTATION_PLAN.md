@@ -41,9 +41,10 @@ Technical specification document and roadmap for developing the AI-powered diet 
 | **4. Chat (Optional)** | `/api/chat` endpoint with *In-Context Prompting* (diet summary in system prompt) | ⬜ Pending | Low |
 | **4. Chat (Optional)** | Chat cost controls: message count cap, token limits, sliding window memory | ⬜ Pending | Low |
 | **4. Chat (Optional)** | Feature flag to enable/disable chat in backend configuration | ⬜ Pending | Low |
-| **5. SaaS v2.0 Auth** | SaaS User Authentication & JWT management (SaaS-only multi-tenant) | ⬜ Pending | Medium |
-| **5. SaaS v2.0 Auth** | Per-user BYOK vault (AES-256-GCM encryption at rest in MySQL) | ⬜ Pending | Medium |
-| **5. SaaS v2.0 Auth** | Multi-factor authentication (TOTP) & email verification (SMTP) | ⬜ Pending | Medium |
+| **5. SaaS v2.0 Auth** | SaaS User Authentication & JWT management (Cookie + Bearer auth, salt in config) | ✅ Completed | High |
+| **5. SaaS v2.0 Auth** | 1-Click Demo Access with pre-seeded 7-day diet & full batch cooking | ✅ Completed | High |
+| **5. SaaS v2.0 Auth** | Demo ephemeral session isolation (`sessionStorage`) & read-only settings protection | ✅ Completed | High |
+| **5. SaaS v2.0 Auth** | Google OAuth support + Apple OAuth extensible contract | ✅ Completed | Medium |
 | **6. Frontend UI** | React 19 + Tailwind UI (Dashboard, Calendar, Grocery List, Recetario, Recipe Form, Batch Cooking) | ✅ Completed | High |
 | **6. Frontend UI** | Runtime UI language selector (`i18next` with `en` / `es` support) | ✅ Completed | High |
 | **6. Frontend UI** | Settings modal (Language, Theme Mode Light/Dark/System, AI translation settings, Advanced Diagnostics) | ✅ Completed | High |
@@ -51,7 +52,7 @@ Technical specification document and roadmap for developing the AI-powered diet 
 | **6. Frontend UI** | Original language tracking & live AI recipe translation via Groq `llama-3.1-8b-instant` | ✅ Completed | High |
 | **6. Frontend UI** | Separate Nginx (`5027`) + ASP.NET API (`5026`) containers with reverse proxy | ✅ Completed | High |
 | **6. Frontend UI** | Offline PWA mode (Service Worker caching for meal plan, recipes & grocery list) | ✅ Completed | High |
-| **7. Testing & QA** | .NET Unit and Integration Tests (95 passing tests in `VitalityNutri.Tests`) | ✅ Completed | High |
+| **7. Testing & QA** | .NET Unit and Integration Tests (133 passing tests in `VitalityNutri.Tests`, 0 warnings, 0 errors) | ✅ Completed | High |
 | **7. Testing & QA** | Frontend Vitest unit tests (20 passing tests) | ✅ Completed | High |
 | **7. Testing & QA** | Playwright E2E full user flow tests (13 passing tests across 6 suites) | ✅ Completed | High |
 | **7. Testing & QA** | CI/CD GitHub Actions workflow (test on PR + multi-container build on release tag) | ✅ Completed | High |
@@ -227,13 +228,13 @@ Handles PDF upload processing with automatic detection:
 3. **Threshold Check**: If text length $\ge 100$ characters $\to$ Selectable PDF $\to$ Text Fallback Chain. If $< 100$ characters $\to$ Scanned PDF $\to$ Multimodal Vision Chain.
 4. **Fallback Chains**:
    - **Text Chain**: Groq (`llama-3.3-70b-versatile`, `qwen/qwen3.6-27b`, `llama-3.1-8b-instant`) $\to$ Gemini (`gemini-3.7-flash`, `gemini-3.6-flash`, `gemini-3.5-flash-lite`).
-   - **Vision Chain**: Gemini Multimodal (`gemini-3.7-flash`, `gemini-3.6-flash`, `gemini-3.5-flash-lite`).
+   - **Vision Chain**: Gemini Multimodal (`gemini-3.7-flash`, `gemini-3.6-flash`, `gemini-3.5-flash-lite`). Vision/multimodal requests always execute directly against the Gemini API (Google.GenAI SDK) in both OSS and SaaS modes: PDF payloads exceed OmniRoute's context window, so OmniRoute is bypassed for vision unless a chain entry is explicitly prefixed with `omniroute:`.
 5. **Deterministic Parser Fallback**: If all live AI calls fail or keys are absent, falls back to deterministic rule-based text parser to guarantee reliable local operation without crashes.
 
 ### 2. Recipe AI Service (`DeterministicRecipeAiProcessingService.cs`)
 Handles single recipe improvements, conversions, and generation:
 - Receives user prompts or existing recipe data.
-- Calls OmniRoute or Groq/Gemini with structured JSON response formatting.
+- Calls OmniRoute or Groq/Gemini with structured JSON response formatting. File-based (vision) requests always use the Gemini-direct multimodal path via the `RecipeVision` chain.
 - Falls back to deterministic recipe generator on API exhaustion or network error.
 
 ### 3. Prompt Consolidation Architecture

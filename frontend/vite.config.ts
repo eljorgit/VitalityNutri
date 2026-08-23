@@ -14,7 +14,7 @@ export default defineConfig(() => {
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
-        includeAssets: ['favicon.ico', 'robots.txt', 'config.js'],
+        includeAssets: ['icons/app_icon.png', 'robots.txt', 'config.js'],
         manifest: {
           name: 'VitalityNutri - Planificador de Alimentación Consciente',
           short_name: 'VitalityNutri',
@@ -27,10 +27,10 @@ export default defineConfig(() => {
           start_url: '/',
           icons: [
             {
-              src: 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🥑</text></svg>',
-              sizes: '192x192 512x512',
-              type: 'image/svg+xml',
-              purpose: 'any maskable',
+              src: '/icons/app_icon.png',
+              sizes: '500x500',
+              type: 'image/png',
+              purpose: 'any',
             },
           ],
         },

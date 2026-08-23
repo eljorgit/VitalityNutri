@@ -37,14 +37,55 @@ internal static class ServiceCollectionExtensions
 			throw new InvalidOperationException("ApiConfiguration:Ai:OmniRoute:ApiKey is required when ApiConfiguration:App:Mode is SaaS.");
 		}
 
+		if (isSaaS && string.IsNullOrWhiteSpace(configuration.Ai.Providers.Gemini.ApiKey))
+		{
+			throw new InvalidOperationException("ApiConfiguration:Ai:Providers:Gemini:ApiKey is required when ApiConfiguration:App:Mode is SaaS.");
+		}
+
 		if (configuration.Ai.UseOmniRoute && !Uri.TryCreate(configuration.Ai.OmniRoute.Url, UriKind.Absolute, out _))
 		{
 			throw new InvalidOperationException("ApiConfiguration:Ai:OmniRoute:Url must be absolute.");
 		}
 
+		ValidateFallbackChains(configuration.Ai.FallbackChains);
+
+		if (isSaaS && string.IsNullOrWhiteSpace(configuration.Auth.JwtSecret))
+		{
+			throw new InvalidOperationException("ApiConfiguration:Auth:JwtSecret is required when ApiConfiguration:App:Mode is SaaS.");
+		}
+
 		if (string.IsNullOrWhiteSpace(configuration.ConnectionStrings.Default))
 		{
 			throw new InvalidOperationException("ApiConfiguration:ConnectionStrings:Default is required.");
+		}
+	}
+
+	private static void ValidateFallbackChains(FallbackChainsConfiguration fallbackChains)
+	{
+		var chains = new (string PropertyName, string Value)[]
+		{
+			("PlanText", fallbackChains.PlanText),
+			("PlanVision", fallbackChains.PlanVision),
+			("BatchCooking", fallbackChains.BatchCooking),
+			("RecipeAi", fallbackChains.RecipeAi),
+			("RecipeVision", fallbackChains.RecipeVision),
+			("Translation", fallbackChains.Translation),
+		};
+
+		foreach (var (propertyName, chain) in chains)
+		{
+			if (string.IsNullOrWhiteSpace(chain))
+			{
+				throw new InvalidOperationException($"ApiConfiguration:Ai:FallbackChains:{propertyName} must define at least one '{AiFallbackChainFormat.RequiredPattern}' entry.");
+			}
+
+			var invalidEntries = AiFallbackChainFormat.GetInvalidEntries(chain);
+			if (invalidEntries.Count > 0)
+			{
+				var supported = string.Join(", ", AiFallbackChainFormat.SupportedProviders);
+				throw new InvalidOperationException(
+					$"ApiConfiguration:Ai:FallbackChains:{propertyName} contains invalid entries [{string.Join(", ", invalidEntries)}]. Every entry must use the '{AiFallbackChainFormat.RequiredPattern}' pattern with a supported provider ({supported}).");
+			}
 		}
 	}
 }

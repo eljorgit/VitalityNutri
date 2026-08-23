@@ -10,13 +10,14 @@ public sealed class SearchHistoryItem
     public string RecipeName { get; private set; } = string.Empty;
     public string Image { get; private set; } = string.Empty;
     public bool IsActive { get; private set; }
+    public long? UserId { get; private set; }
     public DateTimeOffset ClickedAtUtc { get; private set; }
 
     private SearchHistoryItem()
     {
     }
 
-    public SearchHistoryItem(long planId, string planName, string day, string meal, string recipeName, string image, bool isActive)
+    public SearchHistoryItem(long planId, string planName, string day, string meal, string recipeName, string image, bool isActive, long? userId = null)
     {
         PlanId = planId;
         PlanName = planName ?? string.Empty;
@@ -25,6 +26,7 @@ public sealed class SearchHistoryItem
         RecipeName = recipeName;
         Image = image ?? string.Empty;
         IsActive = isActive;
+        UserId = userId;
         ClickedAtUtc = DateTimeOffset.UtcNow;
     }
 }

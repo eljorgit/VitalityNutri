@@ -1,0 +1,676 @@
+{
+  "metadata": {
+    "title": "Plan Nutricional Mediterráneo - Modo Demostración",
+    "week": "Semana 1",
+    "targetCalories": 2100,
+    "dietType": "Mediterránea Equilibrada",
+    "originalLanguage": "es"
+  },
+  "days": {
+    "monday": {
+      "breakfast": {
+        "recipeName": "Tostadas integrales con aguacate, tomate y huevo poché",
+        "calories": 420,
+        "time": "15 min",
+        "tag": "Rápido",
+        "image": "https://images.unsplash.com/photo-1525351484163-7529414344d8?w=800&auto=format&fit=crop",
+        "ingredients": [
+          { "name": "Pan integral 100%", "originalAmount": 80, "unit": "g", "category": "Panadería" },
+          { "name": "Aguacate maduro", "originalAmount": 60, "unit": "g", "category": "Frutas y Verduras" },
+          { "name": "Tomate maduro", "originalAmount": 1, "unit": "unidad", "category": "Frutas y Verduras" },
+          { "name": "Huevos camperos", "originalAmount": 2, "unit": "unidades", "category": "Huevos y Lácteos" },
+          { "name": "Aceite de oliva virgen extra", "originalAmount": 10, "unit": "ml", "category": "Aceites" }
+        ],
+        "tips": "Escalfa el huevo en agua hirviendo con un chorrito de vinagre para que mantenga forma perfecta.",
+        "steps": [
+          "Tostar las rebanadas de pan integral hasta que queden crujientes.",
+          "Chafar el aguacate con un tenedor y aliñar con sal en escamas y zumo de limón.",
+          "Untar el aguacate sobre las tostadas y añadir rodajas finas de tomate.",
+          "Hervir agua en un cazo, crear un remolino y cocer los huevos durante 3 minutos.",
+          "Colocar el huevo poché encima y terminar con pimienta negra y AOVE."
+        ],
+        "nutritionistTips": "Desayuno cardiosaludable rico en grasas monoinsaturadas y proteínas de alto valor biológico.",
+        "nutrition": { "calories": 420, "protein": 18, "carbs": 38, "fat": 22, "fiber": 7, "sodium": 340 },
+        "servings": 1
+      },
+      "lunch": {
+        "recipeName": "Salmón al horno con quinoa y verduras asadas",
+        "calories": 650,
+        "time": "30 min",
+        "tag": "Alto en Proteína",
+        "image": "https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=800&auto=format&fit=crop",
+        "ingredients": [
+          { "name": "Lomo de salmón fresco", "originalAmount": 200, "unit": "g", "category": "Pescados" },
+          { "name": "Quinoa real", "originalAmount": 60, "unit": "g", "category": "Cereales" },
+          { "name": "Calabacín", "originalAmount": 1, "unit": "unidad", "category": "Frutas y Verduras" },
+          { "name": "Pimiento rojo", "originalAmount": 1, "unit": "unidad", "category": "Frutas y Verduras" },
+          { "name": "Aceite de oliva virgen extra", "originalAmount": 15, "unit": "ml", "category": "Aceites" }
+        ],
+        "tips": "Añade un chorrito de zumo de limón y eneldo fresco al retirar del horno para realzar aroma.",
+        "steps": [
+          "Precalentar el horno a 190°C.",
+          "Cortar el calabacín y el pimiento en dados medianos y disponer en bandeja de horno con AOVE y romero.",
+          "Hornear las verduras durante 15 minutos.",
+          "Cocer la quinoa en agua o caldo vegetal durante 12 minutos hasta que absorba el líquido.",
+          "Incorporar el lomo de salmón a la bandeja de verduras y hornear 12 minutos más.",
+          "Emplatar la quinoa de base coronada con el salmón y las verduras asadas."
+        ],
+        "nutritionistTips": "Excelente aporte de ácidos grasos Omega-3 de cadena larga (EPA/DHA) y proteína completa.",
+        "nutrition": { "calories": 650, "protein": 45, "carbs": 48, "fat": 28, "fiber": 8, "sodium": 390 },
+        "servings": 1
+      },
+      "snack": {
+        "recipeName": "Yogur griego con nueces, semillas de chía y miel",
+        "calories": 220,
+        "time": "5 min",
+        "tag": "Snack",
+        "image": "https://images.unsplash.com/photo-1488477181946-6428a0291777?w=800&auto=format&fit=crop",
+        "ingredients": [
+          { "name": "Yogur griego natural sin azúcar", "originalAmount": 150, "unit": "g", "category": "Huevos y Lácteos" },
+          { "name": "Nueces peladas", "originalAmount": 20, "unit": "g", "category": "Frutos Secos" },
+          { "name": "Semillas de chía", "originalAmount": 5, "unit": "g", "category": "Semillas" },
+          { "name": "Miel pura de abeja", "originalAmount": 10, "unit": "g", "category": "Endulzantes" }
+        ],
+        "tips": "Deja reposar las semillas de chía en el yogur 5 minutos para que adquieran textura cremosa.",
+        "steps": [
+          "Verter el yogur griego en un bol.",
+          "Trocear las nueces toscamente con las manos.",
+          "Añadir las nueces y semillas de chía sobre el yogur y rociar con el hilo de miel."
+        ],
+        "nutritionistTips": "Merienda probiótica rica en calcio, magnesio y grasas saludables que regulan la saciedad.",
+        "nutrition": { "calories": 220, "protein": 12, "carbs": 16, "fat": 12, "fiber": 3, "sodium": 70 },
+        "servings": 1
+      },
+      "dinner": {
+        "recipeName": "Crema de calabacín con picatostes y tortilla francesa",
+        "calories": 380,
+        "time": "25 min",
+        "tag": "Ligero",
+        "image": "https://images.unsplash.com/photo-1547592166-23ac45744acd?w=800&auto=format&fit=crop",
+        "ingredients": [
+          { "name": "Calabacines verdes", "originalAmount": 2, "unit": "unidades", "category": "Frutas y Verduras" },
+          { "name": "Puerro", "originalAmount": 1, "unit": "unidad", "category": "Frutas y Verduras" },
+          { "name": "Huevos camperos", "originalAmount": 2, "unit": "unidades", "category": "Huevos y Lácteos" },
+          { "name": "Aceite de oliva virgen extra", "originalAmount": 10, "unit": "ml", "category": "Aceites" },
+          { "name": "Picatostes integrales", "originalAmount": 15, "unit": "g", "category": "Panadería" }
+        ],
+        "tips": "No peles del todo los calabacines para conservar clorofila, fibra y antioxidantes.",
+        "steps": [
+          "Sofreír el puerro en una cazuela con AOVE hasta dorar suavemente.",
+          "Añadir el calabacín en dados, cubrir con agua o caldo ligero y cocer 15 minutos.",
+          "Triturar intensamente con batidora hasta lograr una crema homogénea y sedosa.",
+          "Batir los huevos y cuajar una tortilla francesa jugosa en sartén antiadherente.",
+          "Servir la crema con los picatostes y acompañar de la tortilla."
+        ],
+        "nutritionistTips": "Cena de digestión fácil y alta densidad de micronutrientes como potasio y vitamina C.",
+        "nutrition": { "calories": 380, "protein": 22, "carbs": 18, "fat": 24, "fiber": 6, "sodium": 310 },
+        "servings": 1
+      }
+    },
+    "tuesday": {
+      "breakfast": {
+        "recipeName": "Bowl de avena templada con frutos rojos y semillas de calabaza",
+        "calories": 390,
+        "time": "10 min",
+        "tag": "Energético",
+        "image": "https://images.unsplash.com/photo-1517673132405-a56a62b18caf?w=800&auto=format&fit=crop",
+        "ingredients": [
+          { "name": "Copos de avena integral", "originalAmount": 50, "unit": "g", "category": "Cereales" },
+          { "name": "Bebida de almendras sin azúcar", "originalAmount": 200, "unit": "ml", "category": "Huevos y Lácteos" },
+          { "name": "Frutos del bosque variados", "originalAmount": 80, "unit": "g", "category": "Frutas y Verduras" },
+          { "name": "Semillas de calabaza", "originalAmount": 15, "unit": "g", "category": "Semillas" },
+          { "name": "Canela en polvo de Celián", "originalAmount": 2, "unit": "g", "category": "Especias" }
+        ],
+        "tips": "Cocina la avena a fuego bajo removiendo constantemente para liberar los betaglucanos.",
+        "steps": [
+          "Calentar la bebida de almendras con la canela en un cazo pequeño.",
+          "Añadir los copos de avena y remover a fuego suave durante 5 minutos.",
+          "Servir el porridge en un bol y decorar con frutos rojos y semillas de calabaza tostadas."
+        ],
+        "nutritionistTips": "Excelente aporte de fibra soluble (betaglucanos) que estabiliza la glucemia matutina.",
+        "nutrition": { "calories": 390, "protein": 14, "carbs": 56, "fat": 12, "fiber": 9, "sodium": 110 },
+        "servings": 1
+      },
+      "lunch": {
+        "recipeName": "Pechuga de pollo a la plancha con arroz integral y brócoli al vapor",
+        "calories": 580,
+        "time": "25 min",
+        "tag": "Equilibrado",
+        "image": "https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?w=800&auto=format&fit=crop",
+        "ingredients": [
+          { "name": "Pechuga de pollo de corral", "originalAmount": 200, "unit": "g", "category": "Carnes" },
+          { "name": "Arroz integral", "originalAmount": 70, "unit": "g", "category": "Cereales" },
+          { "name": "Brócoli fresco", "originalAmount": 150, "unit": "g", "category": "Frutas y Verduras" },
+          { "name": "Aceite de oliva virgen extra", "originalAmount": 15, "unit": "ml", "category": "Aceites" },
+          { "name": "Limón fresco", "originalAmount": 0.5, "unit": "unidad", "category": "Frutas y Verduras" }
+        ],
+        "tips": "Marina el pollo previamente con limón, orégano y ajo en polvo para mayor terneza.",
+        "steps": [
+          "Cocer el arroz integral con una pizca de sal y laurel (25 min).",
+          "Cortar el brócoli en ramilletes y cocinar al vapor 6-8 minutos al dente.",
+          "Marcar la pechuga a la plancha a fuego medio-alto con AOVE (4 minutos por lado).",
+          "Servir el plato combinando las tres elaboraciones con un toque de limón."
+        ],
+        "nutritionistTips": "Plato equilibrado que proporciona carbohidratos complejos de absorción lenta y sulforafano.",
+        "nutrition": { "calories": 580, "protein": 52, "carbs": 54, "fat": 16, "fiber": 7, "sodium": 290 },
+        "servings": 1
+      },
+      "snack": {
+        "recipeName": "Manzana crujiente con crema de cacahuete natural",
+        "calories": 190,
+        "time": "5 min",
+        "tag": "Snack",
+        "image": "https://images.unsplash.com/photo-1568702846914-96b305d2aaeb?w=800&auto=format&fit=crop",
+        "ingredients": [
+          { "name": "Manzana Fuji", "originalAmount": 1, "unit": "unidad", "category": "Frutas y Verduras" },
+          { "name": "Crema de cacahuete 100% natural", "originalAmount": 20, "unit": "g", "category": "Frutos Secos" },
+          { "name": "Canela en polvo", "originalAmount": 1, "unit": "g", "category": "Especias" }
+        ],
+        "tips": "Elige cremas de frutos secos que contengan 100% cacahuete sin aceites añadidos ni sal.",
+        "steps": [
+          "Lavar y cortar la manzana en gajos uniformes sin retirar la piel.",
+          "Disponer los gajos en un plato y acompañar del dip de crema de cacahuete.",
+          "Espolvorear con canela molida."
+        ],
+        "nutritionistTips": "Combinación perfecta de pectina saciante y ácidos grasos monoinsaturados.",
+        "nutrition": { "calories": 190, "protein": 6, "carbs": 24, "fat": 9, "fiber": 5, "sodium": 15 },
+        "servings": 1
+      },
+      "dinner": {
+        "recipeName": "Ensalada templada de lentejas con espinacas baby y queso feta",
+        "calories": 410,
+        "time": "15 min",
+        "tag": "Vegetariano",
+        "image": "https://images.unsplash.com/photo-1540420773420-3366772f4999?w=800&auto=format&fit=crop",
+        "ingredients": [
+          { "name": "Lentejas cocidas en conserva", "originalAmount": 180, "unit": "g", "category": "Legumbres" },
+          { "name": "Espinacas baby frescas", "originalAmount": 80, "unit": "g", "category": "Frutas y Verduras" },
+          { "name": "Queso feta auténtico", "originalAmount": 40, "unit": "g", "category": "Huevos y Lácteos" },
+          { "name": "Tomates cherry", "originalAmount": 80, "unit": "g", "category": "Frutas y Verduras" },
+          { "name": "Vinagre balsámico de Módena", "originalAmount": 10, "unit": "ml", "category": "Condimentos" },
+          { "name": "Aceite de oliva virgen extra", "originalAmount": 10, "unit": "ml", "category": "Aceites" }
+        ],
+        "tips": "Saltea las lentejas 2 minutos en sartén con ajo picado antes de mezclarlas con las espinacas.",
+        "steps": [
+          "Enjuagar y escurrir las lentejas cocidas.",
+          "Saltear en sartén caliente con 1 cda de AOVE durante 2 minutos.",
+          "En una ensaladera colocar base de espinacas baby y tomates cherry cortados por la mitad.",
+          "Añadir las lentejas templadas y desmenuzar el queso feta por encima.",
+          "Aliñar con AOVE, vinagre balsámico y sal marina."
+        ],
+        "nutritionistTips": "Rica en hierro no hemo, folatos, calcio y proteínas de origen vegetal.",
+        "nutrition": { "calories": 410, "protein": 21, "carbs": 42, "fat": 17, "fiber": 11, "sodium": 460 },
+        "servings": 1
+      }
+    },
+    "wednesday": {
+      "breakfast": {
+        "recipeName": "Tortitas de avena y plátano con canela y arándanos",
+        "calories": 410,
+        "time": "20 min",
+        "tag": "Dulce Saludable",
+        "image": "https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=800&auto=format&fit=crop",
+        "ingredients": [
+          { "name": "Copos de avena molidos", "originalAmount": 50, "unit": "g", "category": "Cereales" },
+          { "name": "Plátano maduro", "originalAmount": 1, "unit": "unidad", "category": "Frutas y Verduras" },
+          { "name": "Huevos camperos", "originalAmount": 2, "unit": "unidades", "category": "Huevos y Lácteos" },
+          { "name": "Arándanos frescos", "originalAmount": 40, "unit": "g", "category": "Frutas y Verduras" },
+          { "name": "Aceite de coco virgen", "originalAmount": 5, "unit": "ml", "category": "Aceites" }
+        ],
+        "tips": "Usa un plátano con motas oscuras para endulzar de forma 100% natural sin azúcar añadido.",
+        "steps": [
+          "Triturar en batidora la avena, el plátano, los huevos y una pizca de canela.",
+          "Calentar una sartén antiadherente con una gota de aceite de coco.",
+          "Verter porciones de masa y cocinar 2 minutos por lado hasta que aparezcan burbujas.",
+          "Servir apiladas y coronar con arándanos frescos."
+        ],
+        "nutritionistTips": "Aporte sostenido de energía con potasio natural y polifenoles protectores.",
+        "nutrition": { "calories": 410, "protein": 19, "carbs": 58, "fat": 12, "fiber": 7, "sodium": 150 },
+        "servings": 1
+      },
+      "lunch": {
+        "recipeName": "Lentejas estofadas tradicionales con verduras de la huerta",
+        "calories": 620,
+        "time": "40 min",
+        "tag": "Legumbres",
+        "image": "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&auto=format&fit=crop",
+        "ingredients": [
+          { "name": "Lentejas pardinas", "originalAmount": 80, "unit": "g", "category": "Legumbres" },
+          { "name": "Zanahorias", "originalAmount": 2, "unit": "unidades", "category": "Frutas y Verduras" },
+          { "name": "Cebolla dulce", "originalAmount": 1, "unit": "unidad", "category": "Frutas y Verduras" },
+          { "name": "Pimiento verde", "originalAmount": 1, "unit": "unidad", "category": "Frutas y Verduras" },
+          { "name": "Pimentón dulce de la Vera", "originalAmount": 5, "unit": "g", "category": "Especias" },
+          { "name": "Aceite de oliva virgen extra", "originalAmount": 15, "unit": "ml", "category": "Aceites" }
+        ],
+        "tips": "Añade un chorrito de vinagre de manzana al final de la cocción para mejorar absorción de hierro.",
+        "steps": [
+          "Rehogar en cazuela con AOVE la cebolla, el pimiento y la zanahoria picados.",
+          "Añadir el pimentón y remover 10 segundos fuera del fuego para no quemarlo.",
+          "Incorporar las lentejas, cubrir con agua fría y hoja de laurel.",
+          "Cocer a fuego medio-bajo durante 35 minutos hasta que estén tiernas y el caldo espeso."
+        ],
+        "nutritionistTips": "Plato de cuchara tradicional reconfortante, rico en minerales y prebióticos.",
+        "nutrition": { "calories": 620, "protein": 28, "carbs": 82, "fat": 17, "fiber": 18, "sodium": 380 },
+        "servings": 1
+      },
+      "snack": {
+        "recipeName": "Batido verde energizante de espinacas, plátano y kéfir",
+        "calories": 180,
+        "time": "5 min",
+        "tag": "Detox",
+        "image": "https://images.unsplash.com/photo-1610970881699-44a5587cabec?w=800&auto=format&fit=crop",
+        "ingredients": [
+          { "name": "Espinacas frescas", "originalAmount": 50, "unit": "g", "category": "Frutas y Verduras" },
+          { "name": "Plátano maduro", "originalAmount": 1, "unit": "unidad", "category": "Frutas y Verduras" },
+          { "name": "Kéfir natural de leche o agua", "originalAmount": 150, "unit": "ml", "category": "Huevos y Lácteos" }
+        ],
+        "tips": "Utiliza fruta congelada para conseguir una textura frappé ultra refrescante.",
+        "steps": [
+          "Colocar todos los ingredientes en el vaso de la batidora.",
+          "Triturar a máxima velocidad durante 45 segundos hasta obtener textura sedosa."
+        ],
+        "nutritionistTips": "Favorece la microbiota intestinal y aporta clorofila y magnesio biológicamente activo.",
+        "nutrition": { "calories": 180, "protein": 8, "carbs": 32, "fat": 3, "fiber": 4, "sodium": 65 },
+        "servings": 1
+      },
+      "dinner": {
+        "recipeName": "Merluza en papillote con verduras en juliana y patata al vapor",
+        "calories": 360,
+        "time": "25 min",
+        "tag": "Ligero",
+        "image": "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?w=800&auto=format&fit=crop",
+        "ingredients": [
+          { "name": "Lomo de merluza fresca", "originalAmount": 180, "unit": "g", "category": "Pescados" },
+          { "name": "Zanahoria", "originalAmount": 1, "unit": "unidad", "category": "Frutas y Verduras" },
+          { "name": "Puerro", "originalAmount": 1, "unit": "unidad", "category": "Frutas y Verduras" },
+          { "name": "Patata pequeña", "originalAmount": 1, "unit": "unidad", "category": "Frutas y Verduras" },
+          { "name": "Aceite de oliva virgen extra", "originalAmount": 10, "unit": "ml", "category": "Aceites" }
+        ],
+        "tips": "Sella el paquete de papel sulfurizado herméticamente para cocinar en sus propios jugos.",
+        "steps": [
+          "Precalentar el horno a 180°C.",
+          "Cortar las verduras en juliana muy fina y la patata en rodajas transparentes.",
+          "Disponer en el papel las verduras, encima la merluza, sal y un hilo de AOVE.",
+          "Cerrar en forma de sobre y hornear 18 minutos."
+        ],
+        "nutritionistTips": "Proteína magra de fácil asimilación, ideal para asegurar un descanso nocturno reparador.",
+        "nutrition": { "calories": 360, "protein": 34, "carbs": 24, "fat": 12, "fiber": 4, "sodium": 280 },
+        "servings": 1
+      }
+    },
+    "thursday": {
+      "breakfast": {
+        "recipeName": "Tostada de pan de centeno con requesón, nueces y miel",
+        "calories": 380,
+        "time": "10 min",
+        "tag": "Proteico",
+        "image": "https://images.unsplash.com/photo-1509722747041-616f39b57569?w=800&auto=format&fit=crop",
+        "ingredients": [
+          { "name": "Pan de centeno 100%", "originalAmount": 80, "unit": "g", "category": "Panadería" },
+          { "name": "Requesón fresco artesanal", "originalAmount": 70, "unit": "g", "category": "Huevos y Lácteos" },
+          { "name": "Nueces peladas", "originalAmount": 15, "unit": "g", "category": "Frutos Secos" },
+          { "name": "Miel de flores", "originalAmount": 10, "unit": "g", "category": "Endulzantes" }
+        ],
+        "tips": "El pan de centeno de masa madre fermentada lentamente ofrece el mejor perfil prebiótico.",
+        "steps": [
+          "Tostar las rebanadas de pan de centeno.",
+          "Untar generosamente el requesón sobre el pan caliente.",
+          "Repartir las nueces troceadas y regar con el chorrito de miel."
+        ],
+        "nutritionistTips": "Aporte sobresaliente de suero lácteo de alta biodisponibilidad y fósforo.",
+        "nutrition": { "calories": 380, "protein": 17, "carbs": 44, "fat": 14, "fiber": 6, "sodium": 240 },
+        "servings": 1
+      },
+      "lunch": {
+        "recipeName": "Wok de ternera magra con fideos de arroz y pimientos",
+        "calories": 640,
+        "time": "25 min",
+        "tag": "Oriental",
+        "image": "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=800&auto=format&fit=crop",
+        "ingredients": [
+          { "name": "Filete de ternera magra", "originalAmount": 180, "unit": "g", "category": "Carnes" },
+          { "name": "Fideos de arroz", "originalAmount": 60, "unit": "g", "category": "Pastas" },
+          { "name": "Pimiento rojo y verde", "originalAmount": 120, "unit": "g", "category": "Frutas y Verduras" },
+          { "name": "Salsa de soja reducida en sal", "originalAmount": 15, "unit": "ml", "category": "Salsas" },
+          { "name": "Aceite de sésamo virgen", "originalAmount": 10, "unit": "ml", "category": "Aceites" }
+        ],
+        "tips": "Cocina a fuego muy vivo sin tapar para que las verduras queden crujientes al dente.",
+        "steps": [
+          "Hidratar los fideos de arroz en agua caliente durante 5 minutos.",
+          "Cortar la ternera en tiras finas y saltear en wok a fuego máximo con aceite de sésamo (3 min).",
+          "Añadir las tiras de pimientos y saltear 3 minutos más.",
+          "Incorporar los fideos escurridos y la salsa de soja, mezclando todo durante 1 minuto."
+        ],
+        "nutritionistTips": "Excelente aporte de hierro hemo de alta absorción, zinc y complejo B.",
+        "nutrition": { "calories": 640, "protein": 46, "carbs": 58, "fat": 21, "fiber": 5, "sodium": 520 },
+        "servings": 1
+      },
+      "snack": {
+        "recipeName": "Almendras tostadas con chocolate negro 85%",
+        "calories": 210,
+        "time": "2 min",
+        "tag": "Antioxidante",
+        "image": "https://images.unsplash.com/photo-1549007994-cb92caebd54b?w=800&auto=format&fit=crop",
+        "ingredients": [
+          { "name": "Almendras tostadas sin sal", "originalAmount": 25, "unit": "g", "category": "Frutos Secos" },
+          { "name": "Chocolate negro 85% cacao", "originalAmount": 20, "unit": "g", "category": "Snacks" }
+        ],
+        "tips": "El chocolate con más del 85% de cacao tiene mínimo contenido en azúcares simples.",
+        "steps": [
+          "Servir el puñado de almendras junto a dos onzas de chocolate negro.",
+          "Disfrutar pausadamente masticando despacio para saborear los matices del cacao."
+        ],
+        "nutritionistTips": "Rico en flavonoides cardioprotectores y magnesio para relajar el sistema nervioso.",
+        "nutrition": { "calories": 210, "protein": 6, "carbs": 12, "fat": 16, "fiber": 4, "sodium": 5 },
+        "servings": 1
+      },
+      "dinner": {
+        "recipeName": "Revuelto de champiñones portobello y gambas con ensalada verde",
+        "calories": 390,
+        "time": "20 min",
+        "tag": "Bajo en Carbohidratos",
+        "image": "https://images.unsplash.com/photo-1525351484163-7529414344d8?w=800&auto=format&fit=crop",
+        "ingredients": [
+          { "name": "Champiñones portobello", "originalAmount": 150, "unit": "g", "category": "Frutas y Verduras" },
+          { "name": "Gambas peladas", "originalAmount": 120, "unit": "g", "category": "Pescados" },
+          { "name": "Huevos camperos", "originalAmount": 2, "unit": "unidades", "category": "Huevos y Lácteos" },
+          { "name": "Diente de ajo y perejil", "originalAmount": 1, "unit": "unidad", "category": "Especias" },
+          { "name": "Rúcula y canónigos", "originalAmount": 60, "unit": "g", "category": "Frutas y Verduras" },
+          { "name": "Aceite de oliva virgen extra", "originalAmount": 10, "unit": "ml", "category": "Aceites" }
+        ],
+        "tips": "Cuaja los huevos a fuego muy suave apagando la sartén para lograr un revuelto cremoso.",
+        "steps": [
+          "Dorar el ajo laminado con AOVE en sartén amplia.",
+          "Añadir los portobello troceados y saltear hasta que suelten su agua.",
+          "Incorporar las gambas y saltear 1 minuto.",
+          "Cascar los huevos directamente en la sartén, apagar el fuego y remover suavemente con cuchara de madera.",
+          "Emplatar junto a la ensalada de hojas verdes aliñada."
+        ],
+        "nutritionistTips": "Cena keto-friendly con alta biodisponibilidad de yodo, selenio y proteínas limpias.",
+        "nutrition": { "calories": 390, "protein": 36, "carbs": 8, "fat": 23, "fiber": 4, "sodium": 410 },
+        "servings": 1
+      }
+    },
+    "friday": {
+      "breakfast": {
+        "recipeName": "Smoothie bowl de mango y kéfir con semillas de chía y coco",
+        "calories": 370,
+        "time": "10 min",
+        "tag": "Probiótico",
+        "image": "https://images.unsplash.com/photo-1590301157890-4810ed352733?w=800&auto=format&fit=crop",
+        "ingredients": [
+          { "name": "Mango maduro troceado", "originalAmount": 120, "unit": "g", "category": "Frutas y Verduras" },
+          { "name": "Kéfir natural espeso", "originalAmount": 180, "unit": "g", "category": "Huevos y Lácteos" },
+          { "name": "Semillas de chía", "originalAmount": 10, "unit": "g", "category": "Semillas" },
+          { "name": "Copos de coco deshidratado sin azúcar", "originalAmount": 10, "unit": "g", "category": "Frutos Secos" }
+        ],
+        "tips": "Congela los dados de mango previamente para obtener textura helada sin añadir hielo.",
+        "steps": [
+          "Triturar el mango congelado con el kéfir hasta obtener un puré homogéneo.",
+          "Servir en bol amplio.",
+          "Decorar la superficie con líneas de semillas de chía y copos de coco tostados."
+        ],
+        "nutritionistTips": "Potente cóctel de enzimas digestivas, probióticos y vitamina A (betacarotenos).",
+        "nutrition": { "calories": 370, "protein": 11, "carbs": 52, "fat": 13, "fiber": 8, "sodium": 60 },
+        "servings": 1
+      },
+      "lunch": {
+        "recipeName": "Garbanzos salteados con espinacas frescas y bacalao desalado",
+        "calories": 630,
+        "time": "30 min",
+        "tag": "Tradicional",
+        "image": "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&auto=format&fit=crop",
+        "ingredients": [
+          { "name": "Garbanzos cocidos", "originalAmount": 200, "unit": "g", "category": "Legumbres" },
+          { "name": "Lomo de bacalao desalado", "originalAmount": 150, "unit": "g", "category": "Pescados" },
+          { "name": "Espinacas frescas", "originalAmount": 100, "unit": "g", "category": "Frutas y Verduras" },
+          { "name": "Dientes de ajo y pimentón", "originalAmount": 2, "unit": "unidades", "category": "Especias" },
+          { "name": "Aceite de oliva virgen extra", "originalAmount": 15, "unit": "ml", "category": "Aceites" }
+        ],
+        "tips": "Marca el bacalao por el lado de la piel primero para que quede crujiente y jugoso.",
+        "steps": [
+          "Dorar los ajos laminados en cazuela con AOVE.",
+          "Añadir el pimentón y enseguida las espinacas frescas hasta que bajen de volumen (2 min).",
+          "Incorporar los garbanzos cocidos y saltear durante 5 minutos para que absorban sabor.",
+          "Marcar el lomo de bacalao en sartén aparte y colocar sobre el salteado de garbanzos."
+        ],
+        "nutritionistTips": "Clásico mediterráneo con balance idóneo entre legumbre, pescado magro y verdura.",
+        "nutrition": { "calories": 630, "protein": 42, "carbs": 64, "fat": 19, "fiber": 14, "sodium": 590 },
+        "servings": 1
+      },
+      "snack": {
+        "recipeName": "Tostada de pan de espelta con jamón de pavo y aceite de oliva",
+        "calories": 200,
+        "time": "5 min",
+        "tag": "Snack",
+        "image": "https://images.unsplash.com/photo-1525351484163-7529414344d8?w=800&auto=format&fit=crop",
+        "ingredients": [
+          { "name": "Pan de espelta integral", "originalAmount": 50, "unit": "g", "category": "Panadería" },
+          { "name": "Pechuga de pavo >90% carne", "originalAmount": 40, "unit": "g", "category": "Carnes" },
+          { "name": "Aceite de oliva virgen extra", "originalAmount": 5, "unit": "ml", "category": "Aceites" }
+        ],
+        "tips": "Elige fiambre de pavo con porcentaje cárnico superior al 90% y libre de féculas.",
+        "steps": [
+          "Tostar la rebanada de pan de espelta.",
+          "Verter unas gotas de AOVE y colocar las lonchas finas de pavo."
+        ],
+        "nutritionistTips": "Snack saciante de bajo impacto glucémico ideal para media tarde.",
+        "nutrition": { "calories": 200, "protein": 14, "carbs": 22, "fat": 6, "fiber": 3, "sodium": 310 },
+        "servings": 1
+      },
+      "dinner": {
+        "recipeName": "Pizza artesana con base de coliflor, tomate natural, rúcula y jamón ibérico",
+        "calories": 440,
+        "time": "35 min",
+        "tag": "Cena Especial",
+        "image": "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=800&auto=format&fit=crop",
+        "ingredients": [
+          { "name": "Coliflor fresca rallada", "originalAmount": 250, "unit": "g", "category": "Frutas y Verduras" },
+          { "name": "Huevo campero", "originalAmount": 1, "unit": "unidad", "category": "Huevos y Lácteos" },
+          { "name": "Queso mozzarella rallado", "originalAmount": 40, "unit": "g", "category": "Huevos y Lácteos" },
+          { "name": "Tomate triturado casero", "originalAmount": 50, "unit": "g", "category": "Salsas" },
+          { "name": "Jamón ibérico de cebo", "originalAmount": 30, "unit": "g", "category": "Carnes" },
+          { "name": "Rúcula fresca y orégano", "originalAmount": 20, "unit": "g", "category": "Frutas y Verduras" }
+        ],
+        "tips": "Escurre muy bien el agua de la coliflor cocida usando un paño de cocina limpio para que la base quede crujiente.",
+        "steps": [
+          "Rallar la coliflor, cocer al microondas 4 min y escurrir enérgicamente el agua con un paño.",
+          "Mezclar con 1 huevo, orégano y la mitad de la mozzarella formando una masa.",
+          "Extender en bandeja de horno con papel vegetal y hornear 18 min a 200°C hasta dorar.",
+          "Cubrir con salsa de tomate, el resto de queso y hornear 5 min más.",
+          "Retirar del horno y añadir las lonchas de jamón ibérico y la rúcula en crudo."
+        ],
+        "nutritionistTips": "Versión ligera y rica en fibra de la pizza clásica, apta para una cena de viernes deliciosa.",
+        "nutrition": { "calories": 440, "protein": 34, "carbs": 18, "fat": 26, "fiber": 7, "sodium": 620 },
+        "servings": 1
+      }
+    },
+    "saturday": {
+      "breakfast": {
+        "recipeName": "Huevos revueltos con tomates cherry confitados y tostada rústica",
+        "calories": 430,
+        "time": "15 min",
+        "tag": "Fin de Semana",
+        "image": "https://images.unsplash.com/photo-1525351484163-7529414344d8?w=800&auto=format&fit=crop",
+        "ingredients": [
+          { "name": "Huevos camperos frescos", "originalAmount": 2, "unit": "unidades", "category": "Huevos y Lácteos" },
+          { "name": "Tomates cherry de rama", "originalAmount": 100, "unit": "g", "category": "Frutas y Verduras" },
+          { "name": "Pan de masa madre rústico", "originalAmount": 70, "unit": "g", "category": "Panadería" },
+          { "name": "Aceite de oliva virgen extra", "originalAmount": 15, "unit": "ml", "category": "Aceites" }
+        ],
+        "tips": "Confita los cherrys a fuego suave con AOVE y una ramita de tomillo hasta que exploten de dulzor.",
+        "steps": [
+          "Saltear los tomates cherry en sartén con AOVE y sal hasta que caramelicen (6 min).",
+          "Batir los huevos ligeramente y agregarlos a la sartén a fuego mínimo.",
+          "Tostar la rebanada de pan rústico.",
+          "Montar los huevos cremosos sobre el pan con los cherrys confitados encima."
+        ],
+        "nutritionistTips": "Rico en colina, luteína, zeaxantina y licopeno altamente biodisponible por la cocción en grasa saludable.",
+        "nutrition": { "calories": 430, "protein": 20, "carbs": 38, "fat": 22, "fiber": 5, "sodium": 340 },
+        "servings": 1
+      },
+      "lunch": {
+        "recipeName": "Arroz caldoso marinero con mejillones y sepia fresca",
+        "calories": 690,
+        "time": "45 min",
+        "tag": "Mediterráneo",
+        "image": "https://images.unsplash.com/photo-1534080564583-6be75777b70a?w=800&auto=format&fit=crop",
+        "ingredients": [
+          { "name": "Arroz bomba", "originalAmount": 80, "unit": "g", "category": "Cereales" },
+          { "name": "Sepia fresca limpia", "originalAmount": 120, "unit": "g", "category": "Pescados" },
+          { "name": "Mejillones frescos de roca", "originalAmount": 150, "unit": "g", "category": "Pescados" },
+          { "name": "Caldo de pescado o fumet casero", "originalAmount": 300, "unit": "ml", "category": "Caldos" },
+          { "name": "Sofregit de tomate, ajo y pimentón", "originalAmount": 40, "unit": "g", "category": "Salsas" },
+          { "name": "Aceite de oliva virgen extra", "originalAmount": 15, "unit": "ml", "category": "Aceites" }
+        ],
+        "tips": "Usa fumet de pescado de roca casero para conseguir una profundidad de sabor insuperable.",
+        "steps": [
+          "Abrir los mejillones al vapor con un chorrito de agua y reservar su jugo colado.",
+          "Dorar la sepia cortada en dados en cazuela de barro con AOVE.",
+          "Añadir el sofrito, el arroz bomba y nacarar durante 2 minutos.",
+          "Verter el caldo hirviendo y cocer durante 16 minutos a fuego medio.",
+          "Añadir los mejillones en los últimos 2 minutos y dejar reposar 3 minutos antes de servir."
+        ],
+        "nutritionistTips": "Festín mediterráneo de fin de semana con abundante zinc, hierro marino y fósforo.",
+        "nutrition": { "calories": 690, "protein": 40, "carbs": 76, "fat": 22, "fiber": 4, "sodium": 680 },
+        "servings": 1
+      },
+      "snack": {
+        "recipeName": "Brocheta de frutas de temporada con yogur griego natural",
+        "calories": 160,
+        "time": "10 min",
+        "tag": "Refrescante",
+        "image": "https://images.unsplash.com/photo-1488477181946-6428a0291777?w=800&auto=format&fit=crop",
+        "ingredients": [
+          { "name": "Fresas, kiwi y melón troceados", "originalAmount": 150, "unit": "g", "category": "Frutas y Verduras" },
+          { "name": "Yogur griego natural sin azúcar", "originalAmount": 60, "unit": "g", "category": "Huevos y Lácteos" },
+          { "name": "Menta fresca picada", "originalAmount": 2, "unit": "g", "category": "Especias" }
+        ],
+        "tips": "Ensarta la fruta alternando colores para una presentación visualmente atractiva.",
+        "steps": [
+          "Trocear la fruta en dados homogéneos y ensartar en palillos de brocheta.",
+          "Acompañar del dip de yogur griego aromatizado con menta fresca."
+        ],
+        "nutritionistTips": "Snack hidratante con vitamina C natural que estimula la síntesis de colágeno.",
+        "nutrition": { "calories": 160, "protein": 6, "carbs": 26, "fat": 4, "fiber": 4, "sodium": 35 },
+        "servings": 1
+      },
+      "dinner": {
+        "recipeName": "Brochetas de solomillo de pavo marinado con verduras a la parrilla",
+        "calories": 420,
+        "time": "25 min",
+        "tag": "Ligero",
+        "image": "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=800&auto=format&fit=crop",
+        "ingredients": [
+          { "name": "Solomillo de pavo fresco", "originalAmount": 200, "unit": "g", "category": "Carnes" },
+          { "name": "Pimiento rojo y verde", "originalAmount": 100, "unit": "g", "category": "Frutas y Verduras" },
+          { "name": "Cebolla morada", "originalAmount": 1, "unit": "unidad", "category": "Frutas y Verduras" },
+          { "name": "Aceite de oliva virgen extra", "originalAmount": 10, "unit": "ml", "category": "Aceites" },
+          { "name": "Hierbas provenzales y zumo de limón", "originalAmount": 5, "unit": "g", "category": "Especias" }
+        ],
+        "tips": "Deja marinar los dados de pavo 30 minutos con las hierbas y el limón antes de cocinarlos.",
+        "steps": [
+          "Cortar el pavo y las verduras en dados de 3 cm.",
+          "Ensartar alternando carne y verduras en las brochetas.",
+          "Cocinar en plancha o parrilla muy caliente durante 8-10 minutos girándolas regularmente.",
+          "Servir calientes con un toque de sal en escamas."
+        ],
+        "nutritionistTips": "Cena proteica limpia con aporte casi nulo de grasas saturadas.",
+        "nutrition": { "calories": 420, "protein": 48, "carbs": 12, "fat": 18, "fiber": 4, "sodium": 310 },
+        "servings": 1
+      }
+    },
+    "sunday": {
+      "breakfast": {
+        "recipeName": "Porridge de avena templada con manzana caramelizada y canela",
+        "calories": 400,
+        "time": "15 min",
+        "tag": "Reconfortante",
+        "image": "https://images.unsplash.com/photo-1517673132405-a56a62b18caf?w=800&auto=format&fit=crop",
+        "ingredients": [
+          { "name": "Copos de avena integral", "originalAmount": 50, "unit": "g", "category": "Cereales" },
+          { "name": "Manzana Golden", "originalAmount": 1, "unit": "unidad", "category": "Frutas y Verduras" },
+          { "name": "Leche o bebida vegetal", "originalAmount": 200, "unit": "ml", "category": "Huevos y Lácteos" },
+          { "name": "Nueces picadas", "originalAmount": 15, "unit": "g", "category": "Frutos Secos" },
+          { "name": "Canela en polvo", "originalAmount": 2, "unit": "g", "category": "Especias" }
+        ],
+        "tips": "Saltea la manzana en dados con canela en una sartén con unas gotas de agua hasta ablandar.",
+        "steps": [
+          "Saltear la manzana en dados con canela en una sartén pequeña hasta dorar.",
+          "Cocer la avena con la leche durante 5 minutos a fuego suave.",
+          "Servir en bol coronado con la manzana caliente y las nueces."
+        ],
+        "nutritionistTips": "Desayuno dominguero reconfortante de alta digestibilidad.",
+        "nutrition": { "calories": 400, "protein": 14, "carbs": 58, "fat": 13, "fiber": 9, "sodium": 120 },
+        "servings": 1
+      },
+      "lunch": {
+        "recipeName": "Pollo asado al limón y romero con patatas panaderas",
+        "calories": 670,
+        "time": "50 min",
+        "tag": "Tradicional",
+        "image": "https://images.unsplash.com/photo-1598103442097-8b74394b95c6?w=800&auto=format&fit=crop",
+        "ingredients": [
+          { "name": "Muslos de pollo de corral", "originalAmount": 250, "unit": "g", "category": "Carnes" },
+          { "name": "Patatas medianas", "originalAmount": 150, "unit": "g", "category": "Frutas y Verduras" },
+          { "name": "Cebolla dulce", "originalAmount": 1, "unit": "unidad", "category": "Frutas y Verduras" },
+          { "name": "Limón y ramitas de romero fresco", "originalAmount": 1, "unit": "unidad", "category": "Frutas y Verduras" },
+          { "name": "Aceite de oliva virgen extra", "originalAmount": 15, "unit": "ml", "category": "Aceites" }
+        ],
+        "tips": "Riega el pollo con su propio jugo a mitad del horneado para una piel dorada y crujiente.",
+        "steps": [
+          "Precalentar el horno a 200°C.",
+          "Cortar las patatas y la cebolla en rodajas panaderas y colocar en la base de la fuente.",
+          "Disponer los muslos de pollo encima, salpimentar y añadir el limón en gajos y el romero.",
+          "Regar con AOVE y hornear durante 45 minutos hasta que la carne esté tierna y la piel crujiente."
+        ],
+        "nutritionistTips": "Comida familiar de domingo completa con aminoácidos esenciales y colágeno biodisponible.",
+        "nutrition": { "calories": 670, "protein": 54, "carbs": 48, "fat": 28, "fiber": 6, "sodium": 420 },
+        "servings": 1
+      },
+      "snack": {
+        "recipeName": "Infusión digestiva de manzanilla con frutos secos variados",
+        "calories": 170,
+        "time": "5 min",
+        "tag": "Relax",
+        "image": "https://images.unsplash.com/photo-1544787219-7f47ccb76574?w=800&auto=format&fit=crop",
+        "ingredients": [
+          { "name": "Infusión de manzanilla y anís", "originalAmount": 1, "unit": "taza", "category": "Bebidas" },
+          { "name": "Almendras y nueces crudas", "originalAmount": 25, "unit": "g", "category": "Frutos Secos" }
+        ],
+        "tips": "Infusiona la manzanilla durante 5 minutos tapada para concentrar los aceites esenciales calmantes.",
+        "steps": [
+          "Hervir 200 ml de agua e infusionar la manzanilla 5 minutos.",
+          "Servir junto al puñadito de frutos secos crudos sin sal."
+        ],
+        "nutritionistTips": "Efecto carminativo y relajante antes de encarar la nueva semana laboral.",
+        "nutrition": { "calories": 170, "protein": 5, "carbs": 6, "fat": 14, "fiber": 3, "sodium": 5 },
+        "servings": 1
+      },
+      "dinner": {
+        "recipeName": "Sopa casera de verduras de temporada con huevo escalfado",
+        "calories": 320,
+        "time": "30 min",
+        "tag": "Depurativo",
+        "image": "https://images.unsplash.com/photo-1547592166-23ac45744acd?w=800&auto=format&fit=crop",
+        "ingredients": [
+          { "name": "Caldo de verduras casero", "originalAmount": 300, "unit": "ml", "category": "Caldos" },
+          { "name": "Puerro, zanahoria, apio y calabacín", "originalAmount": 150, "unit": "g", "category": "Frutas y Verduras" },
+          { "name": "Huevo campero", "originalAmount": 1, "unit": "unidad", "category": "Huevos y Lácteos" },
+          { "name": "Fideos finos integrales", "originalAmount": 25, "unit": "g", "category": "Pastas" },
+          { "name": "Aceite de oliva virgen extra", "originalAmount": 5, "unit": "ml", "category": "Aceites" }
+        ],
+        "tips": "Casca el huevo directamente sobre la sopa hirviendo en el último minuto para escalfarlo al punto.",
+        "steps": [
+          "Picar las verduras en brunoise fina y rehogar en cazuela con unas gotas de AOVE.",
+          "Añadir el caldo vegetal y cocer 15 minutos.",
+          "Incorporar los fideos integrales y cocer 4 minutos.",
+          "Cascar el huevo dentro del caldo, apagar el fuego y dejar cuajar tapado 2 minutos antes de servir."
+        ],
+        "nutritionistTips": "Cena depurativa e hidratante que prepara el organismo para un descanso profundo de domingo noche.",
+        "nutrition": { "calories": 320, "protein": 16, "carbs": 32, "fat": 13, "fiber": 5, "sodium": 390 },
+        "servings": 1
+      }
+    }
+  }
+}

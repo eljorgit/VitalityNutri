@@ -5,6 +5,7 @@ namespace VitalityNutri.Api.Controllers.Diagnostics;
 
 /// <summary>Diagnostics endpoint to test and verify Sentry integration.</summary>
 [ApiController, Route("api/test-sentry")]
+[Microsoft.AspNetCore.Authorization.AllowAnonymous]
 public sealed class SentryTestController : ControllerBase
 {
     /// <summary>Captures a test event or message to Sentry.</summary>

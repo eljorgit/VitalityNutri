@@ -7,7 +7,7 @@
   [![Vite](https://img.shields.io/badge/Vite-6.x-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vite.dev/)
   [![React](https://img.shields.io/badge/React-19-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://react.dev/)
   [![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-v4.0-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
-  [![Gemini AI](https://img.shields.io/badge/Gemini_AI-3.5_Flash-4285F4?style=for-the-badge&logo=google-gemini&logoColor=white)](https://ai.google.dev/)
+  [![AI](https://img.shields.io/badge/AI-Powered-4285F4?style=for-the-badge)]
   [![i18next](https://img.shields.io/badge/i18n-react--i18next-26A69A?style=for-the-badge&logo=i18next&logoColor=white)](https://react.i18next.com/)
   [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
   [![SQLite](https://img.shields.io/badge/SQLite-3-003B57?style=for-the-badge&logo=sqlite&logoColor=white)](https://sqlite.org/)
@@ -20,7 +20,7 @@
 
 ## 📝 Description
 
-VitalityNutri is a full-stack nutritional planning web application that automates the conversion of PDF meal guides into structured weekly menus using Artificial Intelligence. It uses Google's **Gemini 3.5 Flash** model to extract and map ingredients, instructions, and calorie tables with high fidelity. All data is stored locally in **SQLite**. Fully internationalized with English and Spanish support.
+VitalityNutri is a full-stack nutritional planning web application that automates the conversion of PDF meal guides into structured weekly menus using Artificial Intelligence. It uses state-of-the-art AI models to extract and map ingredients, instructions, and calorie tables with high fidelity. All data is stored locally in **SQLite**. Fully internationalized with English and Spanish support.
 
 ---
 
@@ -43,7 +43,7 @@ VitalityNutri is a full-stack nutritional planning web application that automate
 
 ## ✨ Features
 
-* **🤖 AI-Powered Extraction** — Upload PDF meal plans and let Gemini AI extract structured weekly menus automatically
+* **🤖 AI-Powered Extraction** — Upload PDF meal plans and let the AI extract structured weekly menus automatically
 * **📅 Interactive Weekly Calendar** — Clear view of 4 daily meals: Breakfast, Lunch, Snack, Dinner
 * **🍲 Recipe Book & Detail View** — Ingredients by course, step-by-step instructions, calorie estimates, Unsplash images
 * **🛒 Smart Grocery List** — Auto-grouped by supermarket categories, intelligent normalization, day/range selection, multipliers

@@ -34,13 +34,32 @@ public sealed class ModeAiConfigurationGuardTests
             ["ApiConfiguration:Database:ApplyMigrations"] = "false",
             ["ApiConfiguration:Ai:UseOmniRoute"] = "true",
             ["ApiConfiguration:Ai:OmniRoute:Url"] = "http://omniroute:20128/v1",
-            ["ApiConfiguration:Ai:OmniRoute:ApiKey"] = "test-key"
+            ["ApiConfiguration:Ai:OmniRoute:ApiKey"] = "test-key",
+            ["ApiConfiguration:Ai:Providers:Gemini:ApiKey"] = "test-gemini-key"
         });
 
         using var client = factory.CreateClient();
         var response = await client.GetAsync("/health");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public void SaaSMode_WithoutGeminiKey_FailsOnStartup()
+    {
+        using var factory = new ConfiguredApiFactory(new Dictionary<string, string?>
+        {
+            ["ApiConfiguration:App:Mode"] = "SaaS",
+            ["ApiConfiguration:Database:Provider"] = "MySql",
+            ["ApiConfiguration:Database:ApplyMigrations"] = "false",
+            ["ApiConfiguration:Ai:UseOmniRoute"] = "true",
+            ["ApiConfiguration:Ai:OmniRoute:Url"] = "http://omniroute:20128/v1",
+            ["ApiConfiguration:Ai:OmniRoute:ApiKey"] = "test-key",
+            ["ApiConfiguration:Ai:Providers:Gemini:ApiKey"] = ""
+        });
+
+        var exception = Assert.ThrowsAny<Exception>(() => factory.CreateClient());
+        Assert.Contains("ApiConfiguration:Ai:Providers:Gemini:ApiKey is required when ApiConfiguration:App:Mode is SaaS", exception.ToString(), StringComparison.Ordinal);
     }
 
     [Fact]

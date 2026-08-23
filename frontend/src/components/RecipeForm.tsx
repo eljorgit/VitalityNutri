@@ -4,6 +4,7 @@ import { Recipe, Ingredient } from "@src/types";
 import ImagePlaceholder from "./ImagePlaceholder";
 import ConfirmationModal from "./ConfirmationModal";
 import { MEAL_TAGS, DESCRIPTOR_TAGS, parseTag, formatTag } from "@utils/tags";
+import { useAuth } from "../context/AuthContext";
 
 const getIngredientHelperText = (amount: number, unit: string, totalServings: number, t: (key: string, params?: any) => string) => {
   if (!amount || amount <= 0) return null;
@@ -43,6 +44,7 @@ interface RecipeFormProps {
 
 export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps) {
   const { t } = useTranslation();
+  const { isDemo } = useAuth();
   const isEditing = !!recipe;
 
   // Form Fields State
@@ -361,7 +363,7 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
     setDescriptorTag(parsedTag.descriptor || "");
 
     // Filter out skipped ingredients
-    let flatIngs = recipe.ingredients.filter((ing: any) => ing.name && ing.name.trim() !== "");
+    let flatIngs = (Array.isArray(recipe.ingredients) ? recipe.ingredients : []).filter((ing: any) => ing.name && ing.name.trim() !== "");
     if (flatIngs.length === 0) {
       flatIngs = [{ name: "", originalAmount: 100, unit: "g", category: "Otros" }];
     } else {
@@ -369,7 +371,7 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
     }
     setIngredients(flatIngs);
 
-    let flatSteps = [...recipe.steps];
+    let flatSteps = [...(Array.isArray(recipe.steps) ? recipe.steps : [])];
     if (flatSteps.length === 0) {
       flatSteps = [""];
     } else {
@@ -1427,6 +1429,27 @@ export default function RecipeForm({ recipe, onGoBack, onSave }: RecipeFormProps
     // Direct save if everything matches
     submitSave(activeIngs, activeStps);
   };
+
+  if (isDemo) {
+    return (
+      <div className="space-y-6 text-left max-w-container-max mx-auto">
+        <div className="bg-white dark:bg-zinc-900 rounded-3xl p-12 text-center border border-gray-100 dark:border-zinc-800 max-w-lg mx-auto">
+          <span className="material-symbols-outlined text-4xl text-emerald-600 dark:text-emerald-400 mb-4">lock</span>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Modo Demo (Solo Lectura)</h2>
+          <p className="text-sm text-gray-550 dark:text-zinc-400 mb-6">
+            La creación y edición de recetas están deshabilitadas en el modo de demostración.
+          </p>
+          <button
+            type="button"
+            onClick={onGoBack}
+            className="px-6 py-2.5 bg-[#0f5238] hover:bg-[#116c4a] text-white font-semibold text-sm rounded-full transition cursor-pointer"
+          >
+            {t("recipeform.back_btn")}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 text-left max-w-container-max mx-auto">

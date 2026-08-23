@@ -27,11 +27,13 @@ namespace VitalityNutri.Api.Controllers.Recipes;
 /// <param name="sender">Application request dispatcher.</param>
 /// <param name="languageProvider">Language resolution provider.</param>
 /// <param name="localizer">Localized messages accessor.</param>
+/// <param name="currentUserProvider">Current user context provider.</param>
 [ApiController, Route("api/recipes")]
 public sealed class RecipesController(
     ISender sender,
     ICurrentLanguageProvider languageProvider,
-    IStringLocalizer<Messages> localizer) : ControllerBase
+    IStringLocalizer<Messages> localizer,
+    ICurrentUserProvider currentUserProvider) : ControllerBase
 {
     /// <summary>Returns recipes ordered from newest to oldest.</summary>
     [HttpGet]
@@ -68,6 +70,11 @@ public sealed class RecipesController(
     [HttpPost("report-broken-image")]
     public async Task<ActionResult<object>> ReportBrokenImage(ReportBrokenImageRequest request, CancellationToken token)
     {
+        if (currentUserProvider.IsDemo())
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new RecipeErrorResponse("Image replacement is disabled in demo mode."));
+        }
+
         if (!request.RecipeId.HasValue || request.RecipeId.Value <= 0)
         {
             return BadRequest(new RecipeErrorResponse(localizer[Messages.RecipesIdRequired]));
@@ -88,6 +95,11 @@ public sealed class RecipesController(
     [HttpPost("process-ai"), EnableRateLimiting("general-write")]
     public async Task<ActionResult<object>> ProcessAi(ProcessRecipeAiRequest request, CancellationToken token)
     {
+        if (currentUserProvider.IsDemo())
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new RecipeErrorResponse("AI recipe generation is disabled in demo mode."));
+        }
+
         if (!IsValidSourcePayload(request))
         {
             return BadRequest(new RecipeErrorResponse(localizer[Messages.RecipesInvalidParamsOrFileData]));
@@ -118,6 +130,11 @@ public sealed class RecipesController(
     [HttpPost, EnableRateLimiting("general-write")]
     public async Task<ActionResult<RecipeCreatedResponse>> Create(RecipeWriteRequest request, CancellationToken token)
     {
+        if (currentUserProvider.IsDemo())
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new RecipeErrorResponse("Recipe creation is disabled in demo mode."));
+        }
+
         if (!request.TryToModel(out var recipe))
             return BadRequest(new RecipeErrorResponse(localizer[Messages.RecipesMissingRequiredFields]));
         var id = await sender.Send(new CreateRecipeCommand(recipe), token);
@@ -128,6 +145,11 @@ public sealed class RecipesController(
     [HttpPut("{id}"), EnableRateLimiting("general-write")]
     public async Task<ActionResult<RecipeWriteResponse>> Update(string id, RecipeWriteRequest request, CancellationToken token)
     {
+        if (currentUserProvider.IsDemo())
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new RecipeErrorResponse("Recipe updating is disabled in demo mode."));
+        }
+
         if (!long.TryParse(id, out var recipeId)) return BadRequest(new RecipeErrorResponse(localizer[Messages.RecipesInvalidId]));
         if (!request.TryToModel(out var recipe))
             return BadRequest(new RecipeErrorResponse(localizer[Messages.RecipesMissingRequiredFields]));
@@ -139,6 +161,11 @@ public sealed class RecipesController(
     [HttpPut("{id}/toggle-favorite"), EnableRateLimiting("general-write")]
     public async Task<ActionResult<FavoriteToggleResponse>> ToggleFavorite(string id, CancellationToken token)
     {
+        if (currentUserProvider.IsDemo())
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new RecipeErrorResponse("Favorites are read-only in demo mode."));
+        }
+
         if (!long.TryParse(id, out var recipeId)) return BadRequest(new RecipeErrorResponse(localizer[Messages.RecipesInvalidId]));
         var isFavorite = await sender.Send(new ToggleFavoriteCommand(recipeId), token);
         return isFavorite.HasValue
@@ -150,6 +177,11 @@ public sealed class RecipesController(
     [HttpDelete("{id}"), EnableRateLimiting("general-write")]
     public async Task<ActionResult<RecipeWriteResponse>> Delete(string id, CancellationToken token)
     {
+        if (currentUserProvider.IsDemo())
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new RecipeErrorResponse("Recipe deletion is disabled in demo mode."));
+        }
+
         if (!long.TryParse(id, out var recipeId)) return BadRequest(new RecipeErrorResponse(localizer[Messages.RecipesInvalidId]));
         await sender.Send(new DeleteRecipeCommand(recipeId), token);
         return Ok(new RecipeWriteResponse(true));
@@ -159,6 +191,11 @@ public sealed class RecipesController(
     [HttpPost("translate"), EnableRateLimiting("general-write")]
     public async Task<ActionResult<TranslateRecipeResult>> TranslatePayload([FromBody] TranslateRecipePayloadRequest request, [FromQuery] string? targetLang, CancellationToken token)
     {
+        if (currentUserProvider.IsDemo())
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new RecipeErrorResponse("Recipe translation is disabled in demo mode."));
+        }
+
         var lang = string.IsNullOrWhiteSpace(targetLang) ? (string.IsNullOrWhiteSpace(request.TargetLanguage) ? languageProvider.GetCurrentLanguage() : request.TargetLanguage) : targetLang;
         var result = await sender.Send(new TranslateRecipePayloadCommand(
             request.RecipeName ?? string.Empty,
@@ -186,6 +223,11 @@ public sealed class RecipesController(
     [HttpPost("{id}/translate"), EnableRateLimiting("general-write")]
     public async Task<ActionResult<TranslateRecipeResult>> Translate(string id, [FromQuery] string? targetLang, CancellationToken token)
     {
+        if (currentUserProvider.IsDemo())
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new RecipeErrorResponse("Recipe translation is disabled in demo mode."));
+        }
+
         if (!long.TryParse(id, out var recipeId)) return BadRequest(new RecipeErrorResponse(localizer[Messages.RecipesInvalidId]));
         var lang = string.IsNullOrWhiteSpace(targetLang) ? languageProvider.GetCurrentLanguage() : targetLang;
         var result = await sender.Send(new TranslateRecipeCommand(recipeId, lang), token);

@@ -7,15 +7,20 @@ using VitalityNutri.Application.Plans.ResetPlan;
 using VitalityNutri.Application.Plans.TranslatePlan;
 using VitalityNutri.Application.Plans.UpdatePlanRecipe;
 
+using VitalityNutri.Application.Abstractions.Common;
+
 namespace VitalityNutri.Api.Controllers.Plans;
 
 /// <summary>
 /// Handles meal-plan operations.
 /// </summary>
 /// <param name="sender">The application request dispatcher.</param>
+/// <param name="currentUserProvider">Current user context provider.</param>
 [ApiController]
 [Route("api/plan")]
-public sealed class PlansController(ISender sender) : ControllerBase
+public sealed class PlansController(
+    ISender sender,
+    ICurrentUserProvider currentUserProvider) : ControllerBase
 {
     /// <summary>
     /// Returns the currently active meal plan.
@@ -65,6 +70,11 @@ public sealed class PlansController(ISender sender) : ControllerBase
     [ProducesResponseType<PlanResponse>(StatusCodes.Status200OK)]
     public async Task<ActionResult<PlanResponse>> TranslateActive([FromQuery] string? targetLang, CancellationToken cancellationToken)
     {
+        if (currentUserProvider.IsDemo())
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new PlanWriteResponse(false, null, "Plan translation is disabled in demo mode."));
+        }
+
         var lang = string.IsNullOrWhiteSpace(targetLang) ? "en" : targetLang.Trim().ToLowerInvariant();
         var result = await sender.Send(new TranslatePlanCommand(null, lang), cancellationToken);
         return Ok(result is null
@@ -77,6 +87,11 @@ public sealed class PlansController(ISender sender) : ControllerBase
     [ProducesResponseType<PlanByIdResponse>(StatusCodes.Status200OK)]
     public async Task<ActionResult<PlanByIdResponse>> TranslateById(long id, [FromQuery] string? targetLang, CancellationToken cancellationToken)
     {
+        if (currentUserProvider.IsDemo())
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new PlanByIdResponse(null, null, false));
+        }
+
         var lang = string.IsNullOrWhiteSpace(targetLang) ? "en" : targetLang.Trim().ToLowerInvariant();
         var result = await sender.Send(new TranslatePlanCommand(id, lang), cancellationToken);
         return result is null ? NotFound() : Ok(new PlanByIdResponse(result.Plan, result.Metadata, false));
@@ -86,6 +101,11 @@ public sealed class PlansController(ISender sender) : ControllerBase
     [HttpPost("reset")]
     public async Task<ActionResult<PlanWriteResponse>> Reset(CancellationToken cancellationToken)
     {
+        if (currentUserProvider.IsDemo())
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new PlanWriteResponse(false, null, "Plan reset is disabled in demo mode."));
+        }
+
         await sender.Send(new ResetPlanCommand(), cancellationToken);
         return Ok(new PlanWriteResponse(true, null, null));
     }
@@ -94,6 +114,11 @@ public sealed class PlansController(ISender sender) : ControllerBase
     [HttpPost("update-recipe")]
     public async Task<ActionResult<PlanWriteResponse>> UpdateRecipe(UpdatePlanRecipeRequest request, CancellationToken cancellationToken)
     {
+        if (currentUserProvider.IsDemo())
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new PlanWriteResponse(false, null, "Recipe updates are disabled in demo mode."));
+        }
+
         var plan = await sender.Send(new UpdatePlanRecipeCommand(request.Day, request.Meal, request.Recipe), cancellationToken);
         return plan.HasValue ? Ok(new PlanWriteResponse(true, plan, null)) : BadRequest();
     }

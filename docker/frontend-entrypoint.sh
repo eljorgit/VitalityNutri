@@ -3,6 +3,7 @@ set -eu
 
 language="${FRONTEND_LANGUAGE:-en}"
 site_visibility="${FRONTEND_SITE_VISIBILITY:-local}"
+app_mode="${FRONTEND_APP_MODE:-saas}"
 api_url="${FRONTEND_API_URL:-}"
 max_upload_size_mb="${FRONTEND_MAX_UPLOAD_SIZE_MB:-15}"
 
@@ -22,10 +23,19 @@ case "$site_visibility" in
     ;;
 esac
 
+case "$app_mode" in
+  saas|oss) ;;
+  *)
+    echo "Unsupported FRONTEND_APP_MODE '$app_mode'; falling back to 'saas'." >&2
+    app_mode="saas"
+    ;;
+esac
+
 cat > /usr/share/nginx/html/config.js <<EOF
 window.__VITALITYNUTRI_CONFIG__ = {
   language: "$language",
   siteVisibility: "$site_visibility",
+  appMode: "$app_mode",
   apiUrl: "$api_url",
   maxUploadSizeMb: Number("$max_upload_size_mb") || 15
 };
