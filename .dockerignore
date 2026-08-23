@@ -13,6 +13,8 @@ coverage/
 .env*
 !.env.backend.example
 !.env.frontend.example
+!.env.backend.release.example
+!.env.frontend.release.example
 
 # SQLite database and uploaded files
 data/

@@ -174,7 +174,7 @@ public sealed class UnsplashConfiguration
 
 public sealed class AuthConfiguration
 {
-    public string JwtSecret { get; init; } = "VitalityNutri_Dev_Default_Jwt_Secret_Salt_Key_2026_Minimum_64_Chars_Long!!";
+    public string JwtSecret { get; init; } = string.Empty;
     public string Issuer { get; init; } = "VitalityNutri";
     public string Audience { get; init; } = "VitalityNutriApp";
     public int ExpirationMinutes { get; init; } = 1440; // 24 hours

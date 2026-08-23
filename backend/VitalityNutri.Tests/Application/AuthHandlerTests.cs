@@ -17,7 +17,13 @@ public sealed class AuthHandlerTests
 {
     private readonly InMemoryUserRepository _userRepo = new();
     private readonly Pbkdf2PasswordHasher _hasher = new();
-    private readonly JwtTokenGenerator _jwtGen = new(new ApiConfiguration());
+    private readonly JwtTokenGenerator _jwtGen = new(new ApiConfiguration
+    {
+        Auth = new AuthConfiguration
+        {
+            JwtSecret = "Tests_Jwt_Secret_Salt_Key_2026_Minimum_64_Chars_Long_For_AuthHandlers"
+        }
+    });
 
     [Fact]
     public async Task RegisterUser_CreatesUser_AndReturnsAuthResult()

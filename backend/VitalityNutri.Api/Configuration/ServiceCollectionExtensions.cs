@@ -49,9 +49,9 @@ internal static class ServiceCollectionExtensions
 
 		ValidateFallbackChains(configuration.Ai.FallbackChains);
 
-		if (isSaaS && string.IsNullOrWhiteSpace(configuration.Auth.JwtSecret))
+		if (string.IsNullOrWhiteSpace(configuration.Auth.JwtSecret))
 		{
-			throw new InvalidOperationException("ApiConfiguration:Auth:JwtSecret is required when ApiConfiguration:App:Mode is SaaS.");
+			throw new InvalidOperationException("ApiConfiguration:Auth:JwtSecret is required.");
 		}
 
 		if (string.IsNullOrWhiteSpace(configuration.ConnectionStrings.Default))

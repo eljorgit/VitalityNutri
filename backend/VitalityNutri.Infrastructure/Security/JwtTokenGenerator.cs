@@ -13,9 +13,7 @@ public sealed class JwtTokenGenerator(ApiConfiguration apiConfiguration) : IJwtT
     public string GenerateToken(long userId, string email, string role, string fullName)
     {
         var authConfig = apiConfiguration.Auth;
-        var secret = !string.IsNullOrWhiteSpace(authConfig.JwtSecret)
-            ? authConfig.JwtSecret
-            : "VitalityNutri_Default_Development_Secret_Salt_Key_64_Characters_Long_Minimum!";
+        var secret = authConfig.JwtSecret;
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);

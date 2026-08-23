@@ -56,7 +56,13 @@ public sealed class JwtTokenGeneratorTests
     [Fact]
     public void GenerateRefreshToken_ProducesNonEmptyBase64String()
     {
-        var generator = new JwtTokenGenerator(new ApiConfiguration());
+        var generator = new JwtTokenGenerator(new ApiConfiguration
+        {
+            Auth = new AuthConfiguration
+            {
+                JwtSecret = "Test_Secret_Key_For_Unit_Tests_That_Is_Long_Enough_To_Satisfy_HmacSha256_Requirement!!"
+            }
+        });
         var rt1 = generator.GenerateRefreshToken();
         var rt2 = generator.GenerateRefreshToken();
 

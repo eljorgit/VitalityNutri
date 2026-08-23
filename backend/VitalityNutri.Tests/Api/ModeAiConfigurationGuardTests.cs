@@ -92,6 +92,7 @@ public sealed class ModeAiConfigurationGuardTests
                     ["ApiConfiguration:Database:Provider"] = "Sqlite",
                     ["ApiConfiguration:Database:ApplyMigrations"] = "false",
                     ["ApiConfiguration:ConnectionStrings:Default"] = "Data Source=:memory:",
+                    ["ApiConfiguration:Auth:JwtSecret"] = "Testing_Mode_Guard_Jwt_Secret_Salt_Key_2026_Minimum_64_Chars_Long",
                     ["ApiConfiguration:Security:UseHttpsRedirection"] = "false",
                     ["ApiConfiguration:Ai:UseOmniRoute"] = "false",
                     ["ApiConfiguration:Ai:OmniRoute:Url"] = "http://omniroute:20128/v1",

@@ -1,0 +1,56 @@
+name: vitalitynutri-release
+
+services:
+  frontend:
+    image: ghcr.io/eljorgit/vitalitynutri-frontend:latest
+    build:
+      context: .
+      dockerfile: docker/frontend.Dockerfile
+    ports:
+      - "5227:80"
+    expose:
+      - "80"
+    environment:
+      - BACKEND_UPSTREAM=http://backend:80
+    env_file:
+      - path: .env.frontend.release
+        required: false
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:80/frontend-health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  backend:
+    image: ghcr.io/eljorgit/vitalitynutri-backend:latest
+    build:
+      context: .
+      dockerfile: docker/backend.Dockerfile
+    ports:
+      - "5226:80"
+    expose:
+      - "80"
+    env_file:
+      - path: .env.backend.release
+        required: false
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Release
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:80/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
+    volumes:
+      - backend-data-release:/app/data
+
+volumes:
+  backend-data-release:

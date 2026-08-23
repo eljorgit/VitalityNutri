@@ -70,9 +70,7 @@ try
 
     // Authentication & JWT Bearer (Supports HttpOnly Cookie & Bearer Header)
     var authConfig = apiConfig.Auth;
-    var jwtSecret = !string.IsNullOrWhiteSpace(authConfig.JwtSecret)
-        ? authConfig.JwtSecret
-        : "VitalityNutri_Dev_Default_Jwt_Secret_Salt_Key_2026_Minimum_64_Chars_Long!!";
+    var jwtSecret = authConfig.JwtSecret;
 
     builder.Services.AddAuthentication(options =>
     {

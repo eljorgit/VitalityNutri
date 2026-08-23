@@ -10,7 +10,7 @@ Visual Studio and `dotnet run` use the private launch profile for local debuggin
 Copy-Item backend/VitalityNutri.Api/Properties/launchSettings.example.json backend/VitalityNutri.Api/Properties/launchSettings.json
 ```
 
-Replace the `CHANGE_ME` values in `launchSettings.json`. The real file is ignored by Git; only `launchSettings.example.json` is tracked. Specific local profiles are split between `appsettings.Development-oss.json` (local SQLite), `appsettings.Development-saas.json` (MySQL SaaS dev), and `appsettings.Release.json` (empty production defaults).
+Replace the `CHANGE_ME` values in `launchSettings.json`. The real file is ignored by Git; only `launchSettings.example.json` is tracked. Specific local profiles are split between `appsettings.Development-oss.json` (local SQLite), `appsettings.Development-saas.json` (MySQL SaaS dev), and `appsettings.Release.json` (release defaults).
 
 Do not use `.env.backend` for direct Windows debugging. It is consumed by Docker Compose on the VPS.
 
@@ -36,11 +36,11 @@ Both local files are ignored by Git and Docker build contexts.
 
 ### Backend: `.env.backend`
 
-Loaded only by the `backend` container through Docker Compose. Set `ASPNETCORE_ENVIRONMENT=Development` on a development VPS or `Production` on a production VPS.
+Loaded only by the `backend` container through Docker Compose. Set `ASPNETCORE_ENVIRONMENT=Development` on a development VPS or `Release` on a production VPS.
 
 | Variable | Required | Default | Purpose |
 | --- | --- | --- | --- |
-| `ASPNETCORE_ENVIRONMENT` | No | `Production` | ASP.NET Core environment. Scalar/OpenAPI endpoints are exposed only in Development. |
+| `ASPNETCORE_ENVIRONMENT` | No | `Release` | ASP.NET Core environment. Scalar/OpenAPI endpoints are exposed only in Development. |
 | `ASPNETCORE_HTTP_PORTS` | No | `80` | HTTP port inside the ASP.NET container. |
 | `ApiConfiguration__App__Mode` | No | `Oss` | `SaaS` requires MySQL; `Oss` supports MySQL or SQLite. |
 | `ApiConfiguration__Security__UseHttpsRedirection` | No | `false` | Enable only when ASP.NET terminates TLS itself. |
@@ -165,3 +165,29 @@ Direct API client -> localhost:5026 -> backend:80
 - OpenAPI in Development only: `http://localhost:5027/openapi/v1.json`
 
 The React app still uses relative `/api/*` URLs through Nginx, avoiding CORS and keeping one browser origin. Port `5026` exists for direct API consumers; restrict it with your host firewall or reverse proxy if it should not be internet-accessible.
+
+## Development and release on the same host
+
+This repository now ships two Compose files so both environments can coexist on one machine without port conflicts:
+
+- `docker-compose.yml` (development stack): web `5027`, api `5026`
+- `docker-compose.release.yml` (release stack): web `5227`, api `5226`
+
+Use separate environment files for release:
+
+```powershell
+Copy-Item .env.backend.release.example .env.backend.release
+Copy-Item .env.frontend.release.example .env.frontend.release
+```
+
+Start development stack:
+
+```powershell
+docker compose -f docker-compose.yml up -d
+```
+
+Start release stack:
+
+```powershell
+docker compose -f docker-compose.release.yml up -d
+```

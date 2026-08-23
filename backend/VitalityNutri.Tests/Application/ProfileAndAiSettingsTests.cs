@@ -27,7 +27,13 @@ public sealed class ProfileAndAiSettingsTests
     private readonly InMemoryUserAiSettingsRepository _aiSettingsRepo = new();
     private readonly InMemoryUserVerificationTokenRepository _tokenRepo = new();
     private readonly Pbkdf2PasswordHasher _hasher = new();
-    private readonly JwtTokenGenerator _jwtGen = new(new ApiConfiguration());
+    private readonly JwtTokenGenerator _jwtGen = new(new ApiConfiguration
+    {
+        Auth = new AuthConfiguration
+        {
+            JwtSecret = "Tests_Jwt_Secret_Salt_Key_2026_Minimum_64_Chars_Long_For_ProfileAndAiSettings"
+        }
+    });
     private readonly MockApiKeyProtector _protector = new();
     private readonly MockAiCreditLimits _limits = new();
     private readonly MockAppLinksProvider _links = new();

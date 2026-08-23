@@ -7,9 +7,14 @@ coverage/
 .env*
 !.env.backend.example
 !.env.frontend.example
+!.env.backend.release.example
+!.env.frontend.release.example
 backend/VitalityNutri.Api/Properties/launchSettings.json
 !backend/VitalityNutri.Api/Properties/launchSettings.example.json
 data/
+backend/VitalityNutri.Api/*.db
+backend/VitalityNutri.Api/*.db-shm
+backend/VitalityNutri.Api/*.db-wal
 test-results/
 nul
 

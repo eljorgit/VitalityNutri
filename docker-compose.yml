@@ -1,4 +1,4 @@
-name: vitalitynutri
+name: vitalitynutri-dev
 
 services:
   frontend:
