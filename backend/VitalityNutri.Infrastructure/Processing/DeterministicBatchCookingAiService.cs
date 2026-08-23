@@ -35,6 +35,7 @@ internal sealed class DeterministicBatchCookingAiService(
                 systemPrompt: null,
                 jsonMode: true,
                 temperature: 0.2f,
+                usageContext: new AiUsageContext(AiUsageOperation.BatchCooking),
                 cancellationToken: cancellationToken);
 
             if (!string.IsNullOrWhiteSpace(aiResponseText))

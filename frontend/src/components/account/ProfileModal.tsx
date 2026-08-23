@@ -30,7 +30,6 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
   const [firstName, setFirstName] = useState(user?.firstName ?? "");
   const [surname, setSurname] = useState(user?.surname ?? "");
   const [newEmail, setNewEmail] = useState("");
-  const [emailPassword, setEmailPassword] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
 
@@ -65,11 +64,10 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
       const res = await apiFetch("/api/account/change-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ newEmail, currentPassword: emailPassword || null }),
+        body: JSON.stringify({ newEmail }),
       });
       if (!res.ok) throw new Error(await readError(res, t("account.generic_error")));
       setNewEmail("");
-      setEmailPassword("");
       setMessage({ kind: "ok", text: t("account.email_verification_sent") });
     });
 
@@ -169,12 +167,6 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                 <label className="block text-xs font-semibold text-zinc-500 dark:text-zinc-400 mb-1">{t("account.new_email")}</label>
                 <input className={inputCls} type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} />
               </div>
-              {user?.authProvider === "local" && (
-                <div>
-                  <label className="block text-xs font-semibold text-zinc-500 dark:text-zinc-400 mb-1">{t("account.current_password")}</label>
-                  <input className={inputCls} type="password" value={emailPassword} onChange={(e) => setEmailPassword(e.target.value)} />
-                </div>
-              )}
               <button type="button" className={btnCls} disabled={busy || !newEmail.trim()} onClick={changeEmail}>
                 {t("account.send_verification")}
               </button>

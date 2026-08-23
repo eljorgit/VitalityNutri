@@ -30,6 +30,8 @@ public static class AccountEmailTemplates
         <p>Recibimos una solicitud para cambiar el correo de tu cuenta a <strong>{System.Net.WebUtility.HtmlEncode(newEmail)}</strong>.</p>
         <p>Para confirmar el cambio, haz clic en el siguiente enlace (v&aacute;lido durante 24 horas):</p>
         <p><a href="{url}" style="display:inline-block;background:#16a34a;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none">Confirmar correo electr&oacute;nico</a></p>
+        <p>O pega este enlace en tu navegador:</p>
+        <p><a href="{url}" style="word-break:break-all">{System.Net.WebUtility.HtmlEncode(url)}</a></p>
         <p>Si no solicitaste este cambio, puedes ignorar este mensaje y tu correo actual seguir&aacute; activo.</p>
         <p style="color:#6b7280;font-size:13px">Equipo de VitalityNutri</p>
         """);
@@ -39,6 +41,8 @@ public static class AccountEmailTemplates
         <p>We received a request to change your account email to <strong>{System.Net.WebUtility.HtmlEncode(newEmail)}</strong>.</p>
         <p>To confirm the change, click the link below (valid for 24 hours):</p>
         <p><a href="{url}" style="display:inline-block;background:#16a34a;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none">Confirm email address</a></p>
+        <p>Or paste this link in your browser:</p>
+        <p><a href="{url}" style="word-break:break-all">{System.Net.WebUtility.HtmlEncode(url)}</a></p>
         <p>If you did not request this change, you can ignore this message and your current email will remain active.</p>
         <p style="color:#6b7280;font-size:13px">The VitalityNutri Team</p>
         """);

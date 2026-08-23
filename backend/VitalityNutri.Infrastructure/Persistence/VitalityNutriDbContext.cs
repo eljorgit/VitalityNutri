@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using VitalityNutri.Application.Abstractions.Common;
 using VitalityNutri.Domain.Entities;
 using VitalityNutri.Infrastructure.Configuration;
@@ -30,6 +31,7 @@ public sealed class VitalityNutriDbContext(
     public DbSet<UserAiProviderKey> UserAiProviderKeys => Set<UserAiProviderKey>();
     public DbSet<UserAiSettings> UserAiSettings => Set<UserAiSettings>();
     public DbSet<AiUsageWeekly> AiUsageWeeklies => Set<AiUsageWeekly>();
+    public DbSet<AiUsageEvent> AiUsageEvents => Set<AiUsageEvent>();
     public DbSet<UserVerificationToken> UserVerificationTokens => Set<UserVerificationToken>();
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
@@ -288,11 +290,47 @@ public sealed class VitalityNutriDbContext(
         aiUsageWeekly.HasKey(x => x.Id);
         aiUsageWeekly.Property(x => x.Id).HasColumnName("id");
         aiUsageWeekly.Property(x => x.UserId).HasColumnName("user_id").IsRequired();
-        aiUsageWeekly.Property(x => x.WeekStartUtc).HasColumnName("week_start_utc").IsRequired();
+        var weekStartUtcProperty = aiUsageWeekly.Property(x => x.WeekStartUtc)
+            .HasColumnName("week_start_utc")
+            .IsRequired();
+        if (!Database.IsSqlite())
+        {
+            weekStartUtcProperty
+                .HasColumnType("date")
+                .HasConversion(new ValueConverter<DateOnly, DateTime>(
+                    dateOnly => dateOnly.ToDateTime(TimeOnly.MinValue),
+                    dateTime => DateOnly.FromDateTime(dateTime)));
+        }
         aiUsageWeekly.Property(x => x.CreditsUsed).HasColumnName("credits_used").HasPrecision(8, 2).HasDefaultValue(0m).IsRequired();
         aiUsageWeekly.Property(x => x.UpdatedAtUtc).HasColumnName("updated_at").IsRequired();
         aiUsageWeekly.HasIndex(x => new { x.UserId, x.WeekStartUtc }).IsUnique();
         aiUsageWeekly.HasQueryFilter(x => !IsSaaS || x.UserId == CurrentUserId);
+
+        // --- AI Usage Events (weekly credits log) ---
+        var aiUsageEvent = modelBuilder.Entity<AiUsageEvent>();
+        aiUsageEvent.ToTable("ai_usage_events");
+        aiUsageEvent.HasKey(x => x.Id);
+        aiUsageEvent.Property(x => x.Id).HasColumnName("id");
+        aiUsageEvent.Property(x => x.UserId).HasColumnName("user_id").IsRequired();
+        var usageEventWeekStartUtcProperty = aiUsageEvent.Property(x => x.WeekStartUtc)
+            .HasColumnName("week_start_utc")
+            .IsRequired();
+        if (!Database.IsSqlite())
+        {
+            usageEventWeekStartUtcProperty
+                .HasColumnType("date")
+                .HasConversion(new ValueConverter<DateOnly, DateTime>(
+                    dateOnly => dateOnly.ToDateTime(TimeOnly.MinValue),
+                    dateTime => DateOnly.FromDateTime(dateTime)));
+        }
+        aiUsageEvent.Property(x => x.Operation).HasColumnName("operation").HasMaxLength(64).IsRequired();
+        aiUsageEvent.Property(x => x.ChainName).HasColumnName("chain_name").HasMaxLength(512).IsRequired();
+        aiUsageEvent.Property(x => x.CreditsDelta).HasColumnName("credits_delta").HasPrecision(8, 2).IsRequired();
+        aiUsageEvent.Property(x => x.BalanceAfter).HasColumnName("balance_after").HasPrecision(8, 2).HasDefaultValue(0m).IsRequired();
+        aiUsageEvent.Property(x => x.CreatedAtUtc).HasColumnName("created_at").IsRequired();
+        aiUsageEvent.HasIndex(x => new { x.UserId, x.WeekStartUtc });
+        aiUsageEvent.HasIndex(x => x.CreatedAtUtc);
+        aiUsageEvent.HasQueryFilter(x => !IsSaaS || x.UserId == CurrentUserId);
 
         // --- User Verification Tokens (pre-auth lookup, no tenant filter) ---
         var verificationToken = modelBuilder.Entity<UserVerificationToken>();

@@ -76,7 +76,8 @@ internal static class ServiceCollectionExtensions
 		{
 			if (string.IsNullOrWhiteSpace(chain))
 			{
-				throw new InvalidOperationException($"ApiConfiguration:Ai:FallbackChains:{propertyName} must define at least one '{AiFallbackChainFormat.RequiredPattern}' entry.");
+				throw new InvalidOperationException(
+					$"ApiConfiguration:Ai:FallbackChains:{propertyName} is required and must be configured in appsettings or environment variables with at least one '{AiFallbackChainFormat.RequiredPattern}' entry.");
 			}
 
 			var invalidEntries = AiFallbackChainFormat.GetInvalidEntries(chain);

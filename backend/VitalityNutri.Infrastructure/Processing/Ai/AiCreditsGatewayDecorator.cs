@@ -24,29 +24,29 @@ public sealed class AiCreditsGatewayDecorator(
     ILogger<AiCreditsGatewayDecorator> logger) : IUnifiedAiGateway
 {
     private readonly ApiConfiguration _config = apiConfiguration.Value;
-    private Dictionary<string, decimal>? _chainCosts;
 
     public Task<string?> GenerateTextAsync(
         string chainConfig, string prompt, string? systemPrompt = null, bool jsonMode = true,
-        float temperature = 0.2f, CancellationToken cancellationToken = default)
-        => MeterAsync(chainConfig,
-            () => inner.GenerateTextAsync(chainConfig, prompt, systemPrompt, jsonMode, temperature, cancellationToken),
+        float temperature = 0.2f, AiUsageContext? usageContext = null, CancellationToken cancellationToken = default)
+        => MeterAsync(chainConfig, prompt, usageContext,
+            () => inner.GenerateTextAsync(chainConfig, prompt, systemPrompt, jsonMode, temperature, usageContext, cancellationToken),
             cancellationToken);
 
     public async Task<string?> GenerateMultimodalAsync(
         string chainConfig, string prompt, byte[] fileBytes, string mimeType,
-        float temperature = 0.2f, CancellationToken cancellationToken = default)
-        => await MeterAsync(chainConfig,
-            () => inner.GenerateMultimodalAsync(chainConfig, prompt, fileBytes, mimeType, temperature, cancellationToken),
+        float temperature = 0.2f, AiUsageContext? usageContext = null, CancellationToken cancellationToken = default)
+        => await MeterAsync(chainConfig, prompt, usageContext,
+            () => inner.GenerateMultimodalAsync(chainConfig, prompt, fileBytes, mimeType, temperature, usageContext, cancellationToken),
             cancellationToken);
 
     public async IAsyncEnumerable<string> StreamTextAsync(
         string chainConfig, string prompt, string? systemPrompt = null, bool jsonMode = true,
-        float temperature = 0.2f, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
+        float temperature = 0.2f, AiUsageContext? usageContext = null,
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var scope = await ReserveAsync(chainConfig, cancellationToken);
+        var scope = await ReserveAsync(chainConfig, prompt, usageContext, cancellationToken);
         var emitted = false;
-        await foreach (var chunk in inner.StreamTextAsync(chainConfig, prompt, systemPrompt, jsonMode, temperature, cancellationToken))
+        await foreach (var chunk in inner.StreamTextAsync(chainConfig, prompt, systemPrompt, jsonMode, temperature, usageContext, cancellationToken))
         {
             emitted = true;
             yield return chunk;
@@ -60,11 +60,12 @@ public sealed class AiCreditsGatewayDecorator(
 
     public async IAsyncEnumerable<string> StreamMultimodalAsync(
         string chainConfig, string prompt, byte[] fileBytes, string mimeType,
-        float temperature = 0.2f, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
+        float temperature = 0.2f, AiUsageContext? usageContext = null,
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var scope = await ReserveAsync(chainConfig, cancellationToken);
+        var scope = await ReserveAsync(chainConfig, prompt, usageContext, cancellationToken);
         var emitted = false;
-        await foreach (var chunk in inner.StreamMultimodalAsync(chainConfig, prompt, fileBytes, mimeType, temperature, cancellationToken))
+        await foreach (var chunk in inner.StreamMultimodalAsync(chainConfig, prompt, fileBytes, mimeType, temperature, usageContext, cancellationToken))
         {
             emitted = true;
             yield return chunk;
@@ -76,9 +77,14 @@ public sealed class AiCreditsGatewayDecorator(
         }
     }
 
-    private async Task<string?> MeterAsync(string chainConfig, Func<Task<string?>> call, CancellationToken cancellationToken)
+    private async Task<string?> MeterAsync(
+        string chainConfig,
+        string prompt,
+        AiUsageContext? usageContext,
+        Func<Task<string?>> call,
+        CancellationToken cancellationToken)
     {
-        var scope = await ReserveAsync(chainConfig, cancellationToken);
+        var scope = await ReserveAsync(chainConfig, prompt, usageContext, cancellationToken);
         try
         {
             var result = await call();
@@ -97,10 +103,17 @@ public sealed class AiCreditsGatewayDecorator(
     }
 
     /// <summary>Returns a reservation; refunding it reverses the charge.</summary>
-    private async Task<CreditReservation> ReserveAsync(string chainConfig, CancellationToken cancellationToken)
+    private async Task<CreditReservation> ReserveAsync(
+        string chainConfig,
+        string prompt,
+        AiUsageContext? usageContext,
+        CancellationToken cancellationToken)
     {
-        var costs = _chainCosts ??= BuildChainCosts();
-        if (!costs.TryGetValue(chainConfig, out var cost) || cost <= 0m)
+        var operation = ResolveOperation(chainConfig, usageContext);
+        var sourceTextLength = Math.Max(0, usageContext?.SourceTextLength ?? prompt.Length);
+        var cost = ResolveCost(operation, sourceTextLength);
+
+        if (cost <= 0m)
         {
             return CreditReservation.Unmetered();
         }
@@ -137,20 +150,89 @@ public sealed class AiCreditsGatewayDecorator(
 
         usage.AddCredits(cost);
         await aiUsageLedgerRepository.UpdateAsync(usage, cancellationToken);
-        return new CreditReservation(usage, aiUsageLedgerRepository, cost, logger, userId.Value);
+
+        await TryLogUsageEventAsync(userId.Value, usage.WeekStartUtc, operation, chainConfig, cost, usage.CreditsUsed, cancellationToken);
+        return new CreditReservation(usage, aiUsageLedgerRepository, cost, logger, userId.Value, operation, chainConfig);
     }
 
-    private Dictionary<string, decimal> BuildChainCosts()
+    private AiUsageOperation ResolveOperation(string chainConfig, AiUsageContext? usageContext)
     {
-        return new Dictionary<string, decimal>(StringComparer.Ordinal)
+        if (usageContext is not null && usageContext.Operation != AiUsageOperation.Unspecified)
         {
-            [_config.Ai.FallbackChains.PlanText] = AiCreditPolicy.PlanUploadCost,
-            [_config.Ai.FallbackChains.PlanVision] = AiCreditPolicy.PlanUploadCost,
-            [_config.Ai.FallbackChains.BatchCooking] = AiCreditPolicy.BatchCookingCost,
-            [_config.Ai.FallbackChains.RecipeAi] = AiCreditPolicy.RecipeAiCost,
-            [_config.Ai.FallbackChains.RecipeVision] = AiCreditPolicy.RecipeAiCost,
-            [_config.Ai.FallbackChains.Translation] = AiCreditPolicy.TranslationCost,
+            return usageContext.Operation;
+        }
+
+        if (string.Equals(chainConfig, _config.Ai.FallbackChains.PlanText, StringComparison.Ordinal))
+        {
+            return AiUsageOperation.PlanUploadText;
+        }
+
+        if (string.Equals(chainConfig, _config.Ai.FallbackChains.PlanVision, StringComparison.Ordinal))
+        {
+            return AiUsageOperation.PlanUploadVision;
+        }
+
+        if (string.Equals(chainConfig, _config.Ai.FallbackChains.BatchCooking, StringComparison.Ordinal))
+        {
+            return AiUsageOperation.BatchCooking;
+        }
+
+        if (string.Equals(chainConfig, _config.Ai.FallbackChains.RecipeAi, StringComparison.Ordinal))
+        {
+            return AiUsageOperation.RecipeText;
+        }
+
+        if (string.Equals(chainConfig, _config.Ai.FallbackChains.RecipeVision, StringComparison.Ordinal))
+        {
+            return AiUsageOperation.RecipeVision;
+        }
+
+        if (string.Equals(chainConfig, _config.Ai.FallbackChains.Translation, StringComparison.Ordinal))
+        {
+            return AiUsageOperation.TranslationText;
+        }
+
+        return AiUsageOperation.Unspecified;
+    }
+
+    private static decimal ResolveCost(AiUsageOperation operation, int sourceTextLength)
+        => operation switch
+        {
+            AiUsageOperation.PlanUploadText => AiCreditPolicy.PlanUploadTextCost,
+            AiUsageOperation.PlanUploadVision => AiCreditPolicy.PlanUploadVisionCost,
+            AiUsageOperation.BatchCooking => AiCreditPolicy.BatchCookingCost,
+            AiUsageOperation.RecipeText => AiCreditPolicy.GetRecipeTextCost(sourceTextLength),
+            AiUsageOperation.RecipeVision => AiCreditPolicy.RecipeVisionCost,
+            AiUsageOperation.TranslationText => AiCreditPolicy.TranslationTextCost,
+            AiUsageOperation.PlanTranslation => AiCreditPolicy.PlanTranslationCost,
+            _ => 0m
         };
+
+    private async Task TryLogUsageEventAsync(
+        long userId,
+        DateOnly weekStartUtc,
+        AiUsageOperation operation,
+        string chainConfig,
+        decimal creditsDelta,
+        decimal balanceAfter,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var usageEvent = new Domain.Entities.AiUsageEvent(
+                userId,
+                weekStartUtc,
+                operation.ToString(),
+                chainConfig,
+                creditsDelta,
+                balanceAfter);
+
+            await aiUsageLedgerRepository.AddEventAsync(usageEvent, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to persist AI usage event for user {UserId}.", userId);
+        }
     }
 
     private sealed class CreditReservation(
@@ -158,11 +240,20 @@ public sealed class AiCreditsGatewayDecorator(
         IAiUsageLedgerRepository? repository,
         decimal cost,
         ILogger logger,
-        long userId)
+        long userId,
+        AiUsageOperation operation,
+        string chainConfig)
     {
         private bool _refunded;
 
-        public static CreditReservation Unmetered() => new(null, null, 0m, NullLogger.Instance, 0);
+        public static CreditReservation Unmetered() => new(
+            null,
+            null,
+            0m,
+            NullLogger.Instance,
+            0,
+            AiUsageOperation.Unspecified,
+            string.Empty);
 
         public async Task RefundAsync()
         {
@@ -176,6 +267,13 @@ public sealed class AiCreditsGatewayDecorator(
             try
             {
                 await repository.UpdateAsync(usage);
+                await repository.AddEventAsync(new Domain.Entities.AiUsageEvent(
+                    userId,
+                    usage.WeekStartUtc,
+                    operation.ToString(),
+                    chainConfig,
+                    -cost,
+                    usage.CreditsUsed));
             }
             catch (Exception ex)
             {

@@ -28,4 +28,26 @@ public sealed class EfAiUsageLedgerRepository(VitalityNutriDbContext dbContext) 
         dbContext.AiUsageWeeklies.Update(usage);
         await dbContext.SaveChangesAsync(cancellationToken);
     }
+
+    public async Task AddEventAsync(AiUsageEvent usageEvent, CancellationToken cancellationToken = default)
+    {
+        dbContext.AiUsageEvents.Add(usageEvent);
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<AiUsageEvent>> GetRecentEventsAsync(
+        long userId,
+        DateOnly weekStartUtc,
+        int limit = 50,
+        CancellationToken cancellationToken = default)
+    {
+        var boundedLimit = Math.Clamp(limit, 1, 200);
+
+        return await dbContext.AiUsageEvents
+            .AsNoTracking()
+            .Where(e => e.UserId == userId && e.WeekStartUtc == weekStartUtc)
+            .OrderByDescending(e => e.CreatedAtUtc)
+            .Take(boundedLimit)
+            .ToListAsync(cancellationToken);
+    }
 }

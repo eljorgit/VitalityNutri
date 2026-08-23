@@ -3,6 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import { useTranslation } from "react-i18next";
 import { X, GraduationCap, Mail, Lock, User, Sparkles, Loader2, AlertCircle } from "lucide-react";
 import BrandLogo from "./BrandLogo";
+import { navigateTo } from "../utils/routes";
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -12,6 +13,11 @@ interface AuthModalProps {
 export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const { t } = useTranslation();
   const { login, register, demoLogin } = useAuth();
+  const navigateInternally = (canonicalPath: string) => {
+    const localizedPath = navigateTo(canonicalPath);
+    window.history.pushState(null, "", localizedPath);
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  };
 
   const [tab, setTab] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
@@ -240,6 +246,26 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 "Create Account"
               )}
             </button>
+
+            <p className="text-[11px] text-zinc-500 dark:text-zinc-400 text-center leading-relaxed">
+              {t("legal.auth_notice")}{" "}
+              <button
+                type="button"
+                onClick={() => navigateInternally("/terms-and-conditions")}
+                className="underline underline-offset-2 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+              >
+                {t("legal.terms_and_conditions")}
+              </button>{" "}
+              {t("legal.and")}{" "}
+              <button
+                type="button"
+                onClick={() => navigateInternally("/privacy-policy")}
+                className="underline underline-offset-2 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+              >
+                {t("legal.privacy_policy")}
+              </button>
+              .
+            </p>
           </form>
         </div>
       </div>

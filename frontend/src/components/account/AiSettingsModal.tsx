@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { X, Plus, Trash2, RefreshCw, Cloud, KeySquare, Sparkles } from "lucide-react";
+import { X, Plus, Trash2, RefreshCw, Cloud, KeySquare, Sparkles, Info } from "lucide-react";
 import { apiFetch } from "../../utils/api";
 import { useAuth } from "../../context/AuthContext";
 
@@ -28,6 +28,19 @@ interface AiSettingsDto {
   weeklyPlatformLimit: number;
   creditsUsedThisWeek: number;
   currentWeekStartUtc: string;
+  usageMetrics: {
+    key: string;
+    description: string;
+    minCredits: number;
+    maxCredits: number;
+  }[];
+  usageInteractions: {
+    timestampUtc: string;
+    operation: string;
+    creditsUsed: number;
+    model?: string | null;
+    status?: string | null;
+  }[];
 }
 
 const PROVIDER_TYPES = ["gemini", "openai", "groq", "openrouter", "openai-compatible", "anthropic"];
@@ -48,6 +61,7 @@ export default function AiSettingsModal({ isOpen, onClose }: AiSettingsModalProp
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [showUsageInfo, setShowUsageInfo] = useState(false);
 
   const [newAlias, setNewAlias] = useState("");
   const [newProvider, setNewProvider] = useState(PROVIDER_TYPES[0]);
@@ -213,6 +227,7 @@ export default function AiSettingsModal({ isOpen, onClose }: AiSettingsModalProp
                       <Cloud className="w-4 h-4 text-emerald-600" /> {t("account.mode_platform")}
                     </span>
                     <span className="block text-xs text-zinc-500 dark:text-zinc-400 mt-1">{t("account.mode_platform_desc")}</span>
+                    <span className="block text-[11px] mt-2 font-semibold text-emerald-700 dark:text-emerald-300">{t("account.platform_free_limited")}</span>
                   </button>
                   <button
                     type="button"
@@ -240,6 +255,59 @@ export default function AiSettingsModal({ isOpen, onClose }: AiSettingsModalProp
                     </div>
                     <div className="h-2 rounded-full bg-zinc-100 dark:bg-zinc-800 overflow-hidden">
                       <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${usedPct}%` }} />
+                    </div>
+                    <div className="mt-2 flex items-center justify-between gap-2">
+                      <p className="text-[11px] text-zinc-500 dark:text-zinc-400">{t("account.credits_panel_hint")}</p>
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-zinc-200 dark:border-zinc-700 text-[11px] text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+                        onClick={() => setShowUsageInfo((value) => !value)}
+                      >
+                        <Info className="w-3.5 h-3.5" />
+                        {t("account.credits_info_button")}
+                      </button>
+                    </div>
+                    {showUsageInfo && (
+                      <div className="mt-2 rounded-xl border border-emerald-200 dark:border-emerald-900/70 bg-emerald-50/70 dark:bg-emerald-950/20 px-3 py-3 text-xs text-emerald-900 dark:text-emerald-200 space-y-1.5">
+                        <p className="font-semibold">{t("account.credits_info_title")}</p>
+                        {settings.usageMetrics.length > 0 ? (
+                          <ul className="list-disc pl-4 space-y-1">
+                            {settings.usageMetrics.map((metric) => (
+                              <li key={metric.key}>
+                                {metric.description}: {metric.minCredits === metric.maxCredits
+                                  ? `${metric.minCredits}`
+                                  : `${metric.minCredits} - ${metric.maxCredits}`}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p>{t("account.credits_info_unavailable")}</p>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="mt-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-3">
+                      <p className="text-xs font-semibold text-zinc-700 dark:text-zinc-200 mb-2">{t("account.ai_usage_interactions_title")}</p>
+                      {settings.usageInteractions.length > 0 ? (
+                        <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                          {settings.usageInteractions.map((item, idx) => {
+                            const signedValue = (item.status ?? "").toLowerCase().includes("refund") ? item.creditsUsed : -item.creditsUsed;
+                            return (
+                              <div key={`${item.timestampUtc}-${idx}`} className="flex items-center justify-between gap-2 text-[11px] text-zinc-600 dark:text-zinc-300">
+                                <div className="min-w-0">
+                                  <p className="truncate font-medium text-zinc-700 dark:text-zinc-200">{item.operation}</p>
+                                  <p className="truncate text-zinc-500 dark:text-zinc-400">{new Date(item.timestampUtc).toLocaleString()} {item.model ? `· ${item.model}` : ""}</p>
+                                </div>
+                                <p className={`font-semibold ${signedValue < 0 ? "text-emerald-700 dark:text-emerald-300" : "text-amber-700 dark:text-amber-300"}`}>
+                                  {signedValue > 0 ? "+" : ""}{signedValue.toFixed(2)}
+                                </p>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <p className="text-[11px] text-zinc-500 dark:text-zinc-400">{t("account.ai_usage_interactions_empty")}</p>
+                      )}
                     </div>
                   </div>
                 )}

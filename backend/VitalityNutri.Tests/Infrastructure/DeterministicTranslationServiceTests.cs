@@ -130,6 +130,7 @@ public sealed class DeterministicTranslationServiceTests
             string? systemPrompt = null,
             bool jsonMode = true,
             float temperature = 0.2F,
+          AiUsageContext? usageContext = null,
             CancellationToken cancellationToken = default)
         {
             var response = """
@@ -157,9 +158,9 @@ public sealed class DeterministicTranslationServiceTests
             return Task.FromResult<string?>(response);
         }
 
-        public Task<string?> GenerateMultimodalAsync(string chainConfig, string prompt, byte[] fileBytes, string mimeType, float temperature = 0.2F, CancellationToken cancellationToken = default) => Task.FromResult<string?>(null);
-        public async IAsyncEnumerable<string> StreamTextAsync(string chainConfig, string prompt, string? systemPrompt = null, bool jsonMode = true, float temperature = 0.2F, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default) { await Task.CompletedTask; yield break; }
-        public async IAsyncEnumerable<string> StreamMultimodalAsync(string chainConfig, string prompt, byte[] fileBytes, string mimeType, float temperature = 0.2F, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default) { await Task.CompletedTask; yield break; }
+        public Task<string?> GenerateMultimodalAsync(string chainConfig, string prompt, byte[] fileBytes, string mimeType, float temperature = 0.2F, AiUsageContext? usageContext = null, CancellationToken cancellationToken = default) => Task.FromResult<string?>(null);
+        public async IAsyncEnumerable<string> StreamTextAsync(string chainConfig, string prompt, string? systemPrompt = null, bool jsonMode = true, float temperature = 0.2F, AiUsageContext? usageContext = null, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default) { await Task.CompletedTask; yield break; }
+        public async IAsyncEnumerable<string> StreamMultimodalAsync(string chainConfig, string prompt, byte[] fileBytes, string mimeType, float temperature = 0.2F, AiUsageContext? usageContext = null, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default) { await Task.CompletedTask; yield break; }
     }
 
     private sealed class PlanAiGatewayStub : IUnifiedAiGateway
@@ -172,6 +173,7 @@ public sealed class DeterministicTranslationServiceTests
             string? systemPrompt = null,
             bool jsonMode = true,
             float temperature = 0.2F,
+          AiUsageContext? usageContext = null,
             CancellationToken cancellationToken = default)
         {
             LastPrompt = prompt;
@@ -212,6 +214,7 @@ public sealed class DeterministicTranslationServiceTests
             byte[] fileBytes,
             string mimeType,
             float temperature = 0.2F,
+          AiUsageContext? usageContext = null,
             CancellationToken cancellationToken = default)
         {
             return Task.FromResult<string?>(null);
@@ -223,6 +226,7 @@ public sealed class DeterministicTranslationServiceTests
             string? systemPrompt = null,
             bool jsonMode = true,
             float temperature = 0.2F,
+          AiUsageContext? usageContext = null,
             [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             await Task.CompletedTask;
@@ -235,6 +239,7 @@ public sealed class DeterministicTranslationServiceTests
             byte[] fileBytes,
             string mimeType,
             float temperature = 0.2F,
+          AiUsageContext? usageContext = null,
             [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             await Task.CompletedTask;

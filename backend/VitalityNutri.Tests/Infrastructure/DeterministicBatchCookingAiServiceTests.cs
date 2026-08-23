@@ -66,19 +66,19 @@ public sealed class DeterministicBatchCookingAiServiceTests
 
     private sealed class StubAiGateway : IUnifiedAiGateway
     {
-        public Task<string?> GenerateTextAsync(string chainConfig, string prompt, string? systemPrompt = null, bool jsonMode = true, float temperature = 0.2f, CancellationToken cancellationToken = default)
+        public Task<string?> GenerateTextAsync(string chainConfig, string prompt, string? systemPrompt = null, bool jsonMode = true, float temperature = 0.2f, AiUsageContext? usageContext = null, CancellationToken cancellationToken = default)
             => Task.FromResult<string?>(null);
 
-        public Task<string?> GenerateMultimodalAsync(string chainConfig, string prompt, byte[] fileBytes, string mimeType, float temperature = 0.2f, CancellationToken cancellationToken = default)
+        public Task<string?> GenerateMultimodalAsync(string chainConfig, string prompt, byte[] fileBytes, string mimeType, float temperature = 0.2f, AiUsageContext? usageContext = null, CancellationToken cancellationToken = default)
             => Task.FromResult<string?>(null);
 
-        public async IAsyncEnumerable<string> StreamTextAsync(string chainConfig, string prompt, string? systemPrompt = null, bool jsonMode = true, float temperature = 0.2f, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
+        public async IAsyncEnumerable<string> StreamTextAsync(string chainConfig, string prompt, string? systemPrompt = null, bool jsonMode = true, float temperature = 0.2f, AiUsageContext? usageContext = null, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             await Task.CompletedTask;
             yield break;
         }
 
-        public async IAsyncEnumerable<string> StreamMultimodalAsync(string chainConfig, string prompt, byte[] fileBytes, string mimeType, float temperature = 0.2f, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
+        public async IAsyncEnumerable<string> StreamMultimodalAsync(string chainConfig, string prompt, byte[] fileBytes, string mimeType, float temperature = 0.2f, AiUsageContext? usageContext = null, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             await Task.CompletedTask;
             yield break;

@@ -17,6 +17,58 @@ namespace VitalityNutri.Migrations.Sqlite.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.9");
 
+            modelBuilder.Entity("VitalityNutri.Domain.Entities.AiUsageEvent", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("BalanceAfter")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(8, 2)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue(0m)
+                        .HasColumnName("balance_after");
+
+                    b.Property<string>("ChainName")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("chain_name");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<decimal>("CreditsDelta")
+                        .HasPrecision(8, 2)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("credits_delta");
+
+                    b.Property<string>("Operation")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("operation");
+
+                    b.Property<long>("UserId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("user_id");
+
+                    b.Property<DateOnly>("WeekStartUtc")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("week_start_utc");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAtUtc");
+
+                    b.HasIndex("UserId", "WeekStartUtc");
+
+                    b.ToTable("ai_usage_events", (string)null);
+                });
+
             modelBuilder.Entity("VitalityNutri.Domain.Entities.AiUsageWeekly", b =>
                 {
                     b.Property<long>("Id")

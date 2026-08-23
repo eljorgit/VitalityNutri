@@ -38,6 +38,7 @@ internal sealed class DeterministicRecipeAiProcessingService(
                     fileBytes: bytes,
                     mimeType: mime,
                     temperature: 0.4f,
+                    usageContext: new AiUsageContext(AiUsageOperation.RecipeVision),
                     cancellationToken: cancellationToken);
             }
             else
@@ -52,6 +53,7 @@ internal sealed class DeterministicRecipeAiProcessingService(
                     systemPrompt: null,
                     jsonMode: true,
                     temperature: 0.4f,
+                    usageContext: new AiUsageContext(AiUsageOperation.RecipeText, input.TextData?.Length ?? 0),
                     cancellationToken: cancellationToken);
             }
 

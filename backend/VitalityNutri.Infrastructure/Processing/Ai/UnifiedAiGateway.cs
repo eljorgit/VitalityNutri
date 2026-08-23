@@ -36,6 +36,7 @@ public sealed class UnifiedAiGateway(
         string? systemPrompt = null,
         bool jsonMode = true,
         float temperature = 0.2f,
+        AiUsageContext? usageContext = null,
         CancellationToken cancellationToken = default)
     {
         var chain = await MaterializeChainAsync(ParseChain(chainConfig), cancellationToken);
@@ -97,6 +98,7 @@ public sealed class UnifiedAiGateway(
         byte[] fileBytes,
         string mimeType,
         float temperature = 0.2f,
+        AiUsageContext? usageContext = null,
         CancellationToken cancellationToken = default)
     {
         var chain = await MaterializeChainAsync(ParseChain(chainConfig), cancellationToken);
@@ -150,6 +152,7 @@ public sealed class UnifiedAiGateway(
         string? systemPrompt = null,
         bool jsonMode = true,
         float temperature = 0.2f,
+        AiUsageContext? usageContext = null,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var chain = await MaterializeChainAsync(ParseChain(chainConfig), cancellationToken);
@@ -233,6 +236,7 @@ public sealed class UnifiedAiGateway(
         byte[] fileBytes,
         string mimeType,
         float temperature = 0.2f,
+        AiUsageContext? usageContext = null,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var chain = await MaterializeChainAsync(ParseChain(chainConfig), cancellationToken);

@@ -95,7 +95,13 @@ public sealed class ModeAiConfigurationGuardTests
                     ["ApiConfiguration:Security:UseHttpsRedirection"] = "false",
                     ["ApiConfiguration:Ai:UseOmniRoute"] = "false",
                     ["ApiConfiguration:Ai:OmniRoute:Url"] = "http://omniroute:20128/v1",
-                    ["ApiConfiguration:Ai:OmniRoute:ApiKey"] = ""
+                    ["ApiConfiguration:Ai:OmniRoute:ApiKey"] = "",
+                    ["ApiConfiguration:Ai:FallbackChains:PlanText"] = "openai:gpt-5-mini",
+                    ["ApiConfiguration:Ai:FallbackChains:PlanVision"] = "gemini:gemini-3.7-flash",
+                    ["ApiConfiguration:Ai:FallbackChains:BatchCooking"] = "openai:gpt-5-mini",
+                    ["ApiConfiguration:Ai:FallbackChains:RecipeAi"] = "openai:gpt-5-mini",
+                    ["ApiConfiguration:Ai:FallbackChains:RecipeVision"] = "gemini:gemini-3.7-flash",
+                    ["ApiConfiguration:Ai:FallbackChains:Translation"] = "openai:gpt-5-mini"
                 };
 
                 foreach (var pair in values)

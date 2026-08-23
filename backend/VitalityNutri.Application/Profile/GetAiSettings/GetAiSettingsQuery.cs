@@ -31,12 +31,39 @@ public sealed class GetAiSettingsQueryHandler(
 
         var weekStart = AiWeek.WeekStartUtc();
         var usage = await aiUsageLedgerRepository.GetOrCreateAsync(userId, weekStart, cancellationToken);
+        var recentEvents = await aiUsageLedgerRepository.GetRecentEventsAsync(userId, weekStart, 50, cancellationToken);
+
+        var usageMetrics = BuildUsageMetrics();
+        var usageInteractions = recentEvents
+            .Select(e => new AiUsageInteractionDto(
+                e.CreatedAtUtc,
+                e.Operation,
+                Math.Abs(e.CreditsDelta),
+                e.ChainName,
+                e.CreditsDelta < 0m ? "Refunded" : "Charged"))
+            .ToList();
 
         return AiSettingsMapper.ToDto(
             settings,
             keys,
             aiCreditLimits.GetWeeklyPlatformLimit(),
             usage.CreditsUsed,
-            weekStart);
+            weekStart,
+            usageMetrics,
+            usageInteractions);
+    }
+
+    private static IReadOnlyList<AiUsageMetricDto> BuildUsageMetrics()
+    {
+        return
+        [
+            new AiUsageMetricDto("plan-text", "Plan upload (text)", AiCreditPolicy.PlanUploadTextCost, AiCreditPolicy.PlanUploadTextCost),
+            new AiUsageMetricDto("plan-vision", "Plan upload (vision/PDF)", AiCreditPolicy.PlanUploadVisionCost, AiCreditPolicy.PlanUploadVisionCost),
+            new AiUsageMetricDto("batch-cooking", "Batch cooking", AiCreditPolicy.BatchCookingCost, AiCreditPolicy.BatchCookingCost),
+            new AiUsageMetricDto("recipe-text", "Recipe AI (text, size-based)", AiCreditPolicy.RecipeTextMinCost, AiCreditPolicy.RecipeTextMaxCost),
+            new AiUsageMetricDto("recipe-vision", "Recipe AI (vision)", AiCreditPolicy.RecipeVisionCost, AiCreditPolicy.RecipeVisionCost),
+            new AiUsageMetricDto("translation-text", "Translation (text)", AiCreditPolicy.TranslationTextCost, AiCreditPolicy.TranslationTextCost),
+            new AiUsageMetricDto("translation-plan", "Translation (whole plan)", AiCreditPolicy.PlanTranslationCost, AiCreditPolicy.PlanTranslationCost)
+        ];
     }
 }

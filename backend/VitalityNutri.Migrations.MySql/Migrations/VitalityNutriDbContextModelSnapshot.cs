@@ -19,6 +19,58 @@ namespace VitalityNutri.Migrations.MySql.Migrations
                 .HasAnnotation("ProductVersion", "10.0.9")
                 .HasAnnotation("Relational:MaxIdentifierLength", 64);
 
+            modelBuilder.Entity("VitalityNutri.Domain.Entities.AiUsageEvent", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("BalanceAfter")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(8, 2)
+                        .HasColumnType("decimal(8,2)")
+                        .HasDefaultValue(0m)
+                        .HasColumnName("balance_after");
+
+                    b.Property<string>("ChainName")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("varchar(512)")
+                        .HasColumnName("chain_name");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("datetime")
+                        .HasColumnName("created_at");
+
+                    b.Property<decimal>("CreditsDelta")
+                        .HasPrecision(8, 2)
+                        .HasColumnType("decimal(8,2)")
+                        .HasColumnName("credits_delta");
+
+                    b.Property<string>("Operation")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)")
+                        .HasColumnName("operation");
+
+                    b.Property<long>("UserId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("user_id");
+
+                    b.Property<DateTime>("WeekStartUtc")
+                        .HasColumnType("date")
+                        .HasColumnName("week_start_utc");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAtUtc");
+
+                    b.HasIndex("UserId", "WeekStartUtc");
+
+                    b.ToTable("ai_usage_events", (string)null);
+                });
+
             modelBuilder.Entity("VitalityNutri.Domain.Entities.AiUsageWeekly", b =>
                 {
                     b.Property<long>("Id")
@@ -41,7 +93,7 @@ namespace VitalityNutri.Migrations.MySql.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("user_id");
 
-                    b.Property<DateOnly>("WeekStartUtc")
+                    b.Property<DateTime>("WeekStartUtc")
                         .HasColumnType("date")
                         .HasColumnName("week_start_utc");
 

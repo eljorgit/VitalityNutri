@@ -114,12 +114,12 @@ public sealed class PdfConfiguration
 
 public sealed class FallbackChainsConfiguration
 {
-    public string PlanText { get; init; } = "openai:gpt-5-mini,anthropic:claude-sonnet-4-5,omniroute:strict-json";
-    public string PlanVision { get; init; } = "anthropic:claude-sonnet-4-5,openai:gpt-5-mini,omniroute:vision-multimodal,gemini:gemini-3.5-flash-lite,gemini:gemini-3.1-flash-lite,gemini:gemini-3.7-flash,gemini:gemini-3.6-flash,gemini:gemini-3.5-flash";
-    public string BatchCooking { get; init; } = "openai:gpt-5-mini,anthropic:claude-sonnet-4-5,omniroute:strict-json";
-    public string RecipeAi { get; init; } = "openai:gpt-5-mini,anthropic:claude-sonnet-4-5,omniroute:strict-json";
-    public string RecipeVision { get; init; } = "anthropic:claude-sonnet-4-5,openai:gpt-5-mini,omniroute:vision-multimodal,gemini:gemini-3.5-flash-lite,gemini:gemini-3.1-flash-lite,gemini:gemini-3.7-flash,gemini:gemini-3.6-flash,gemini:gemini-3.5-flash";
-    public string Translation { get; init; } = "openai:gpt-5-mini,omniroute:light-free";
+    public string PlanText { get; init; } = string.Empty;
+    public string PlanVision { get; init; } = string.Empty;
+    public string BatchCooking { get; init; } = string.Empty;
+    public string RecipeAi { get; init; } = string.Empty;
+    public string RecipeVision { get; init; } = string.Empty;
+    public string Translation { get; init; } = string.Empty;
 }
 
 public sealed class AiProvidersConfiguration

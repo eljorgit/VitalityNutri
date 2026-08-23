@@ -35,6 +35,29 @@ export function apiUrl(path: string): string {
   return `${baseUrl}${cleanPath}`;
 }
 
+function getRequestTimeoutMs(): number {
+  const raw = import.meta.env.VITE_API_TIMEOUT_MS;
+  const parsed = typeof raw === "string" ? Number(raw) : Number(raw);
+  if (Number.isFinite(parsed) && parsed >= 1000) {
+    return parsed;
+  }
+  return 12000;
+}
+
+async function fetchWithTimeout(url: string, init: RequestInit): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), getRequestTimeoutMs());
+
+  try {
+    return await fetch(url, {
+      ...init,
+      signal: controller.signal,
+    });
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+}
+
 /**
  * Silent session refresh: exchanges the stored refresh token for a fresh JWT.
  * Concurrent 401s share a single in-flight refresh attempt.
@@ -47,7 +70,7 @@ async function tryRefreshSession(): Promise<boolean> {
       try {
         const refreshToken = localStorage.getItem("vitality_refresh_token");
         if (!refreshToken) return false;
-        const res = await fetch(apiUrl("/api/auth/refresh"), {
+        const res = await fetchWithTimeout(apiUrl("/api/auth/refresh"), {
           method: "POST",
           credentials: "include",
           headers: {
@@ -93,7 +116,7 @@ export async function apiFetch(path: string, init?: RequestInit, opts?: { _retri
     }
   }
 
-  const response = await fetch(apiUrl(path), {
+  const response = await fetchWithTimeout(apiUrl(path), {
     credentials: "include",
     ...init,
     headers,

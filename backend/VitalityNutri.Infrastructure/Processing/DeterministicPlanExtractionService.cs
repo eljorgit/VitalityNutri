@@ -59,6 +59,7 @@ internal sealed class DeterministicPlanExtractionService(
             systemPrompt: promptTemplate,
             jsonMode: true,
             temperature: 0.2f,
+            usageContext: new AiUsageContext(AiUsageOperation.PlanUploadText, text.Length),
             cancellationToken: cancellationToken);
 
         if (!string.IsNullOrWhiteSpace(textResult))
@@ -75,6 +76,7 @@ internal sealed class DeterministicPlanExtractionService(
             fileBytes: bytes,
             mimeType: "application/pdf",
             temperature: 0.2f,
+            usageContext: new AiUsageContext(AiUsageOperation.PlanUploadVision),
             cancellationToken: cancellationToken);
     }
 
@@ -91,6 +93,7 @@ internal sealed class DeterministicPlanExtractionService(
             fileBytes: bytes,
             mimeType: "application/pdf",
             temperature: 0.2f,
+            usageContext: new AiUsageContext(AiUsageOperation.PlanUploadVision),
             cancellationToken: cancellationToken);
 
         if (!string.IsNullOrWhiteSpace(visionResult))
@@ -109,6 +112,7 @@ internal sealed class DeterministicPlanExtractionService(
             systemPrompt: promptTemplate,
             jsonMode: true,
             temperature: 0.2f,
+            usageContext: new AiUsageContext(AiUsageOperation.PlanUploadText, text.Length),
             cancellationToken: cancellationToken);
     }
 

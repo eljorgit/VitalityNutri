@@ -4,10 +4,17 @@ import { useTranslation } from "react-i18next";
 import { Github, ExternalLink, Sparkles, PlayCircle, LogIn, UserPlus, X, Calendar, ChefHat, ShoppingCart, Languages, FileText, ShieldCheck, Clock } from "lucide-react";
 import { SpainFlag, UKFlag } from "./Flags";
 import BrandLogo from "./BrandLogo";
+import LegalScreen from "./LegalScreen";
 import { setStoredLang, SupportedLang } from "../i18n/config";
 import { version } from "@/package.json";
+import { navigateTo } from "../utils/routes";
 
-export const LandingPage: React.FC = () => {
+interface LandingPageProps {
+  legalDocumentType?: "privacy" | "terms";
+  onNavigate?: (path: string) => void;
+}
+
+export const LandingPage: React.FC<LandingPageProps> = ({ legalDocumentType, onNavigate }) => {
   const { t, i18n } = useTranslation();
   const { login, register, demoLogin } = useAuth();
 
@@ -29,6 +36,17 @@ export const LandingPage: React.FC = () => {
   };
 
   const isSpanish = i18n.language?.startsWith("es");
+
+  const navigateInternally = (canonicalPath: string) => {
+    if (onNavigate) {
+      onNavigate(canonicalPath);
+      return;
+    }
+
+    const localizedPath = navigateTo(canonicalPath);
+    window.history.pushState(null, "", localizedPath);
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  };
 
   const handleDemoClick = async () => {
     setError(null);
@@ -71,14 +89,19 @@ export const LandingPage: React.FC = () => {
     <div className="min-h-screen bg-white text-slate-800 flex flex-col justify-between selection:bg-emerald-500 selection:text-white">
       {/* Top Navbar with Login Buttons */}
       <header className="border-b border-slate-200 backdrop-blur-md sticky top-0 z-40 bg-white/90 px-4 sm:px-8 py-3.5 flex items-center justify-between shadow-sm">
-        <div className="flex items-center space-x-3">
+        <button
+          type="button"
+          onClick={() => navigateInternally("/")}
+          className="flex items-center space-x-3 text-left cursor-pointer"
+          aria-label={isSpanish ? "Ir al inicio" : "Go to home"}
+        >
           <BrandLogo className="w-7 h-7 filter drop-shadow-md" />
           <div>
             <span className="text-xl font-black tracking-tight bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">
               VitalityNutri
             </span>
           </div>
-        </div>
+        </button>
 
         <div className="flex items-center gap-2 sm:gap-3">
           {/* Language Switcher */}
@@ -126,6 +149,12 @@ export const LandingPage: React.FC = () => {
 
       {/* Main Landing Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16 flex-1 flex flex-col justify-center space-y-16">
+        {legalDocumentType ? (
+          <section className="w-full max-w-5xl mx-auto">
+            <LegalScreen documentType={legalDocumentType} forceLight />
+          </section>
+        ) : (
+          <>
         
         {/* Hero Section */}
         <section className="text-center max-w-4xl mx-auto space-y-6">
@@ -338,6 +367,9 @@ export const LandingPage: React.FC = () => {
           </div>
         </section>
 
+          </>
+        )}
+
       </main>
 
 
@@ -468,6 +500,26 @@ export const LandingPage: React.FC = () => {
                   </>
                 )}
               </button>
+
+              <p className="text-[11px] text-slate-500 text-center leading-relaxed">
+                {t("legal.auth_notice")}{" "}
+                <button
+                  type="button"
+                  onClick={() => navigateInternally("/terms-and-conditions")}
+                  className="underline underline-offset-2 hover:text-emerald-600 transition-colors"
+                >
+                  {t("legal.terms_and_conditions")}
+                </button>{" "}
+                {t("legal.and")}{" "}
+                <button
+                  type="button"
+                  onClick={() => navigateInternally("/privacy-policy")}
+                  className="underline underline-offset-2 hover:text-emerald-600 transition-colors"
+                >
+                  {t("legal.privacy_policy")}
+                </button>
+                .
+              </p>
             </form>
           </div>
         </div>
@@ -517,6 +569,22 @@ export const LandingPage: React.FC = () => {
             >
               {t("footer.license")}
             </a>
+            <span className="opacity-40">|</span>
+            <button
+              type="button"
+              onClick={() => navigateInternally("/privacy-policy")}
+              className="hover:text-emerald-600 transition-colors"
+            >
+              {t("legal.privacy_policy")}
+            </button>
+            <span className="opacity-40">|</span>
+            <button
+              type="button"
+              onClick={() => navigateInternally("/terms-and-conditions")}
+              className="hover:text-emerald-600 transition-colors"
+            >
+              {t("legal.terms_and_conditions")}
+            </button>
           </span>
           <span className="text-[11px] font-medium text-slate-500">
             {i18n.language?.startsWith("es") ? (

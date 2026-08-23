@@ -135,7 +135,7 @@ export default function SettingsModal({
               </div>
               <div>
                 <h2 id="settings-modal-title" className="text-base font-extrabold text-slate-800 dark:text-zinc-100">
-                  {t("settings.title", "Preferences & Configuration")}
+                  {t("settings.title", "Settings")}
                 </h2>
                 <p className="text-xs text-slate-500 dark:text-zinc-400">
                   {t("settings.subtitle", "Customize language, servings, and appearance")}

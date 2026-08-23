@@ -47,6 +47,7 @@ internal sealed class DeterministicTranslationService(
                 systemPrompt: systemPrompt,
                 jsonMode: true,
                 temperature: 0.2f,
+                usageContext: new AiUsageContext(AiUsageOperation.TranslationText, userPayload.Length),
                 cancellationToken: cancellationToken);
 
             if (!string.IsNullOrWhiteSpace(aiJson))
@@ -91,6 +92,7 @@ internal sealed class DeterministicTranslationService(
                 systemPrompt: systemPrompt,
                 jsonMode: false,
                 temperature: 0.2f,
+                usageContext: new AiUsageContext(AiUsageOperation.TranslationText, text.Length),
                 cancellationToken: cancellationToken);
 
             if (!string.IsNullOrWhiteSpace(aiText))
@@ -131,6 +133,7 @@ internal sealed class DeterministicTranslationService(
                 systemPrompt: systemPrompt,
                 jsonMode: true,
                 temperature: 0.2f,
+                usageContext: new AiUsageContext(AiUsageOperation.PlanTranslation, prompt.Length),
                 cancellationToken: cancellationToken);
 
             if (!string.IsNullOrWhiteSpace(aiJson))

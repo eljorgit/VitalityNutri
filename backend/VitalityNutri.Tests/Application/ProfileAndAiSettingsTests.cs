@@ -72,20 +72,6 @@ public sealed class ProfileAndAiSettingsTests
     // ---------- ChangeEmail ----------
 
     [Fact]
-    public async Task ChangeEmail_ThrowsUnprocessable_WhenCurrentPasswordWrong()
-    {
-        var user = MakeUser();
-        await _userRepo.AddAsync(user, default);
-        var sender = new RecordingEmailSender();
-
-        var handler = new ChangeEmailCommandHandler(
-            UserProvider(user.Id), _userRepo, _tokenRepo, _hasher, sender, _language, _links);
-
-        await Assert.ThrowsAsync<UnprocessableEntityException>(
-            () => handler.Handle(new ChangeEmailCommand("new@vitality.com", "WrongPassword"), default));
-    }
-
-    [Fact]
     public async Task ChangeEmail_SendsVerification_ToNewAddress()
     {
         var user = MakeUser();
@@ -93,9 +79,9 @@ public sealed class ProfileAndAiSettingsTests
         var sender = new RecordingEmailSender();
 
         var handler = new ChangeEmailCommandHandler(
-            UserProvider(user.Id), _userRepo, _tokenRepo, _hasher, sender, _language, _links);
+            UserProvider(user.Id), _userRepo, _tokenRepo, sender, _language, _links);
 
-        var result = await handler.Handle(new ChangeEmailCommand("new@vitality.com", "Secret123!"), default);
+        var result = await handler.Handle(new ChangeEmailCommand("new@vitality.com", null), default);
 
         Assert.True(result.VerificationEmailSent);
         var email = Assert.Single(sender.Sent);
@@ -113,10 +99,10 @@ public sealed class ProfileAndAiSettingsTests
         var sender = new RecordingEmailSender();
 
         var handler = new ChangeEmailCommandHandler(
-            UserProvider(user.Id), _userRepo, _tokenRepo, _hasher, sender, _language, _links);
+            UserProvider(user.Id), _userRepo, _tokenRepo, sender, _language, _links);
 
         await Assert.ThrowsAsync<ConflictException>(
-            () => handler.Handle(new ChangeEmailCommand("taken@vitality.com", "Secret123!"), default));
+            () => handler.Handle(new ChangeEmailCommand("taken@vitality.com", null), default));
     }
 
     // ---------- VerifyEmailChange ----------
@@ -138,7 +124,8 @@ public sealed class ProfileAndAiSettingsTests
 
         Assert.Equal("new@vitality.com", result.User.Email);
         Assert.NotEmpty(result.Token);
-        Assert.NotEmpty(result.RefreshToken);
+        Assert.NotNull(result.RefreshToken);
+        Assert.NotEmpty(result.RefreshToken!);
     }
 
     [Fact]
@@ -232,6 +219,8 @@ public sealed class ProfileAndAiSettingsTests
         Assert.Equal(10m, result.WeeklyPlatformLimit);
         Assert.Equal(5m, result.CreditsUsedThisWeek);
         Assert.Equal(NamedAiChains.All, result.AvailableChains);
+        Assert.NotEmpty(result.UsageMetrics);
+        Assert.Empty(result.UsageInteractions);
         Assert.Empty(result.ProviderKeys);
     }
 
@@ -477,6 +466,15 @@ public sealed class ProfileAndAiSettingsTests
             => Task.FromResult(usage);
 
         public Task UpdateAsync(AiUsageWeekly usage, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+        public Task AddEventAsync(AiUsageEvent usageEvent, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+        public Task<IReadOnlyList<AiUsageEvent>> GetRecentEventsAsync(
+            long userId,
+            DateOnly weekStartUtc,
+            int limit = 50,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult<IReadOnlyList<AiUsageEvent>>([]);
     }
 
     private sealed class InMemoryUserVerificationTokenRepository : IUserVerificationTokenRepository

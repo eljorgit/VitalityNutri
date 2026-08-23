@@ -7,12 +7,13 @@ import BatchCooking from "./components/BatchCooking";
 import Recetario from "./components/Recetario";
 import RecipeForm from "./components/RecipeForm";
 import ConfirmationModal, { ConfirmationVariant } from "./components/ConfirmationModal";
-import SettingsModal, { ThemeMode } from "./components/SettingsModal";
 import SystemDiagnosticsModal from "./components/SystemDiagnosticsModal";
 import AuthModal from "./components/AuthModal";
+import LegalScreen from "./components/LegalScreen";
 import BrandLogo from "./components/BrandLogo";
+import SettingsScreen, { type SettingsSection, type ThemeMode } from "./components/settings/SettingsScreen";
 import { LandingPage } from "./components/LandingPage";
-import { useAuth } from "./context/AuthContext";
+import { useAuth } from "./context/AuthContext.tsx";
 import { useTranslation } from "react-i18next";
 import { getCanonicalPath, navigateTo } from "./utils/routes";
 import type { SupportedLang } from "./i18n/config";
@@ -70,6 +71,8 @@ export default function App() {
   const [isAuthOpen, setIsAuthOpen] = useState<boolean>(false);
   const [verifyEmailToken, setVerifyEmailToken] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>("dashboard");
+  const isLegalTab = activeTab === "privacy-policy" || activeTab === "terms-and-conditions";
+  const isLandingContext = !isOssMode && !isAuthenticated;
   const [showResetPlanConfirmation, setShowResetPlanConfirmation] = useState(false);
   const [appNotification, setAppNotification] = useState<{
     title: string;
@@ -110,7 +113,7 @@ export default function App() {
     return "system";
   });
 
-  const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
+  const [settingsSection, setSettingsSection] = useState<SettingsSection>("general");
   const [isDiagnosticsOpen, setIsDiagnosticsOpen] = useState<boolean>(false);
 
   // Email-change verification deep link: /verify-email?token=...
@@ -123,6 +126,13 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (isLandingContext) {
+      // Landing is always light and must not persist theme overrides.
+      document.documentElement.classList.remove("dark");
+      localStorage.removeItem("theme");
+      return;
+    }
+
     const applyTheme = () => {
       let isDark = false;
       if (themeMode === "dark") {
@@ -147,7 +157,7 @@ export default function App() {
       mediaQuery.addEventListener("change", handleChange);
       return () => mediaQuery.removeEventListener("change", handleChange);
     }
-  }, [themeMode]);
+  }, [themeMode, isLandingContext]);
 
   // Scroll lock effect when mobile search is open
   useEffect(() => {
@@ -363,6 +373,31 @@ export default function App() {
       setRecetarioRecipeDetail(null);
       setEditingRecipe(null);
       setIsViewingActivePlan(true);
+    } else if (pathname.startsWith("/settings")) {
+      const parts = pathname.split("/").filter(Boolean);
+      const requestedSection = parts[1] as SettingsSection | undefined;
+      const validSections: SettingsSection[] = ["general", "profile", "ai", "sessions"];
+      setSettingsSection(validSections.includes(requestedSection as SettingsSection) ? (requestedSection as SettingsSection) : "general");
+      setActiveTab("settings");
+      setSelectedRecipeDetail(null);
+      setInactiveRecipeDetail(null);
+      setRecetarioRecipeDetail(null);
+      setEditingRecipe(null);
+      setIsViewingActivePlan(true);
+    } else if (pathname.startsWith("/privacy-policy")) {
+      setActiveTab("privacy-policy");
+      setSelectedRecipeDetail(null);
+      setInactiveRecipeDetail(null);
+      setRecetarioRecipeDetail(null);
+      setEditingRecipe(null);
+      setIsViewingActivePlan(true);
+    } else if (pathname.startsWith("/terms-and-conditions")) {
+      setActiveTab("terms-and-conditions");
+      setSelectedRecipeDetail(null);
+      setInactiveRecipeDetail(null);
+      setRecetarioRecipeDetail(null);
+      setEditingRecipe(null);
+      setIsViewingActivePlan(true);
     }
   };
 
@@ -420,6 +455,12 @@ export default function App() {
       document.title = t("titles.batch-cooking");
     } else if (activeTab === "dashboard") {
       document.title = t("titles.dashboard");
+    } else if (activeTab === "settings") {
+      document.title = `${t("settings.title", "Settings")} | VitalityNutri`;
+    } else if (activeTab === "privacy-policy") {
+      document.title = `${t("legal.privacy_policy")} | VitalityNutri`;
+    } else if (activeTab === "terms-and-conditions") {
+      document.title = `${t("legal.terms_and_conditions")} | VitalityNutri`;
     } else {
       document.title = t("titles.default");
     }
@@ -448,9 +489,16 @@ export default function App() {
   const handleSetActiveTab = (tab: string) => {
     if (tab === "recetario") {
       navigate("/recipe-book");
+    } else if (tab === "settings") {
+      navigate(`/settings/${settingsSection}`);
     } else {
       navigate(`/${tab}`);
     }
+  };
+
+  const openSettingsSection = (section: SettingsSection) => {
+    setSettingsSection(section);
+    navigate(`/settings/${section}`);
   };
 
   const handleSelectRecipe = (day: DayType, meal: MealType, recipe: Recipe) => {
@@ -1046,7 +1094,15 @@ export default function App() {
   }
 
   if (!isOssMode && !isAuthenticated) {
-    return <LandingPage />;
+    if (activeTab === "privacy-policy") {
+      return <LandingPage legalDocumentType="privacy" onNavigate={navigate} />;
+    }
+
+    if (activeTab === "terms-and-conditions") {
+      return <LandingPage legalDocumentType="terms" onNavigate={navigate} />;
+    }
+
+    return <LandingPage onNavigate={navigate} />;
   }
 
   return (
@@ -1204,10 +1260,10 @@ export default function App() {
             {/* Settings button */}
             <button 
               type="button" 
-              onClick={() => setIsSettingsOpen(true)}
+              onClick={() => openSettingsSection("general")}
               className="p-2.5 text-slate-500 hover:text-emerald-700 dark:text-zinc-400 dark:hover:text-emerald-300 hover:bg-gray-50 dark:hover:bg-zinc-800 rounded-xl transition duration-200 material-symbols-outlined select-none text-xl font-bold cursor-pointer flex items-center justify-center shadow-sm border border-transparent dark:border-zinc-800/40 bg-slate-50/40 dark:bg-zinc-900 shrink-0"
-              title={t("settings.title", "Preferences & Configuration")}
-              aria-label={t("settings.title", "Preferences & Configuration")}
+              title={t("settings.title", "Settings")}
+              aria-label={t("settings.title", "Settings")}
             >
               settings
             </button>
@@ -1236,14 +1292,14 @@ export default function App() {
                   <button
                     type="button"
                     onClick={handleLogout}
-                    className="p-2 text-zinc-400 hover:text-red-600 dark:hover:text-red-400 rounded-xl hover:bg-red-50 dark:hover:bg-red-950/30 transition text-xs font-medium"
+                    className="p-2 bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-950/40 dark:hover:bg-red-950/60 dark:text-red-300 rounded-xl transition text-xs font-medium"
                     title="Log out"
                   >
                     <LogOut className="w-4 h-4" />
                   </button>
                 </div>
               ) : isAuthenticated && user ? (
-                <AccountArea user={user} onLogout={handleLogout} />
+                <AccountArea user={user} onLogout={handleLogout} onOpenSettingsSection={openSettingsSection} />
               ) : (
                 <div className="pl-2 border-l border-zinc-200 dark:border-zinc-800">
                   <button
@@ -1323,7 +1379,9 @@ export default function App() {
       )}
       {/* 2. Main Content Frame */}
       <main className="flex-grow w-full max-w-container-max mx-auto px-6 pt-6 pb-36 md:py-12">
-        {isLoading ? (
+        {isLegalTab ? (
+          <LegalScreen documentType={activeTab === "privacy-policy" ? "privacy" : "terms"} />
+        ) : isLoading ? (
           <div className="py-24 text-center">
             <div className="w-12 h-12 rounded-full border-4 border-emerald-100 dark:border-zinc-800 border-t-emerald-600 dark:border-t-emerald-400 animate-spin mx-auto mb-4"></div>
             <p className="text-sm font-semibold text-gray-550 dark:text-zinc-400">{t("loading.fetching_plan")}</p>
@@ -1529,6 +1587,15 @@ export default function App() {
               />
             )}
 
+            {activeTab === "settings" && (
+              <SettingsScreen
+                section={settingsSection}
+                onSectionChange={(section) => openSettingsSection(section)}
+                currentTheme={themeMode}
+                onThemeChange={setThemeMode}
+              />
+            )}
+
           </div>
         )}
       </main>
@@ -1582,6 +1649,22 @@ export default function App() {
             >
               {t("footer.license")}
             </a>
+            <span className="opacity-40">|</span>
+            <button
+              type="button"
+              onClick={() => navigate("/privacy-policy")}
+              className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors cursor-pointer"
+            >
+              {t("legal.privacy_policy")}
+            </button>
+            <span className="opacity-40">|</span>
+            <button
+              type="button"
+              onClick={() => navigate("/terms-and-conditions")}
+              className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors cursor-pointer"
+            >
+              {t("legal.terms_and_conditions")}
+            </button>
           </span>
           <span className="text-[11px] text-gray-400 dark:text-zinc-600 font-medium">
             {i18n.language?.startsWith("es") ? (
@@ -1785,13 +1868,6 @@ export default function App() {
             });
           }
         }}
-      />
-
-      <SettingsModal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        currentTheme={themeMode}
-        onThemeChange={setThemeMode}
       />
 
       <SystemDiagnosticsModal

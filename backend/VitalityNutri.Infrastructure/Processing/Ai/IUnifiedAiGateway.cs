@@ -8,6 +8,7 @@ public interface IUnifiedAiGateway
         string? systemPrompt = null,
         bool jsonMode = true,
         float temperature = 0.2f,
+        AiUsageContext? usageContext = null,
         CancellationToken cancellationToken = default);
 
     Task<string?> GenerateMultimodalAsync(
@@ -16,6 +17,7 @@ public interface IUnifiedAiGateway
         byte[] fileBytes,
         string mimeType,
         float temperature = 0.2f,
+        AiUsageContext? usageContext = null,
         CancellationToken cancellationToken = default);
 
     IAsyncEnumerable<string> StreamTextAsync(
@@ -24,6 +26,7 @@ public interface IUnifiedAiGateway
         string? systemPrompt = null,
         bool jsonMode = true,
         float temperature = 0.2f,
+        AiUsageContext? usageContext = null,
         CancellationToken cancellationToken = default);
 
     IAsyncEnumerable<string> StreamMultimodalAsync(
@@ -32,5 +35,6 @@ public interface IUnifiedAiGateway
         byte[] fileBytes,
         string mimeType,
         float temperature = 0.2f,
+        AiUsageContext? usageContext = null,
         CancellationToken cancellationToken = default);
 }

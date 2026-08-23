@@ -29,7 +29,6 @@ public sealed class ChangeEmailCommandHandler(
     ICurrentUserProvider currentUserProvider,
     IUserRepository userRepository,
     IUserVerificationTokenRepository verificationTokenRepository,
-    IPasswordHasher passwordHasher,
     IEmailSender emailSender,
     ICurrentLanguageProvider currentLanguageProvider,
     IAppLinksProvider appLinksProvider)
@@ -52,16 +51,6 @@ public sealed class ChangeEmailCommandHandler(
         if (string.Equals(normalizedNewEmail, user.Email, StringComparison.Ordinal))
         {
             throw new ConflictException("This is already your current email address.");
-        }
-
-        // Local accounts must confirm identity with their password; OAuth accounts have no local password.
-        if (string.Equals(user.AuthProvider, "local", StringComparison.OrdinalIgnoreCase))
-        {
-            if (string.IsNullOrWhiteSpace(request.CurrentPassword) ||
-                !passwordHasher.VerifyPassword(request.CurrentPassword, user.PasswordHash, user.PasswordSalt))
-            {
-                throw new UnprocessableEntityException("Your current password is incorrect.");
-            }
         }
 
         if (await userRepository.EmailExistsAsync(normalizedNewEmail, cancellationToken))

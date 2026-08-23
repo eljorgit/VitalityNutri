@@ -671,62 +671,6 @@ export default function Dashboard({
               )}
             </div>
 
-            {isProcessing && (
-              <div 
-                className="modal-overlay fixed inset-0 bg-black/60 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center z-[9999] animate-fade-in no-print !mt-0"
-                style={{ marginTop: 0 }}
-              >
-                <div 
-                  className="bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 rounded-3xl p-8 max-w-md w-full shadow-2xl flex flex-col items-center gap-6"
-                  style={{ marginTop: 0 }}
-                >
-                  <div className="relative">
-                    <div className="w-20 h-20 rounded-full border-4 border-emerald-100 dark:border-zinc-800 border-t-emerald-600 dark:border-t-emerald-400 animate-spin"></div>
-                    <div className="absolute inset-0 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-                      <span className="material-symbols-outlined text-2xl animate-pulse">auto_awesome</span>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h3 className="text-xl font-bold text-[#0f5238] dark:text-emerald-400 mb-2 animate-pulse">{t("dashboard.processing_title")}</h3>
-                    <p className="text-xs text-gray-500 dark:text-zinc-400 leading-relaxed">
-                      {t("dashboard.processing_desc")}
-                    </p>
-                  </div>
-
-                  <div className="w-full flex flex-col gap-2">
-                    <div className="flex justify-between items-center text-xs font-bold">
-                      <span className="text-emerald-700 dark:text-emerald-400">
-                        {loadingSteps[loadingStep]}
-                      </span>
-                      <span className="text-gray-400 dark:text-zinc-500">{Math.round(progress)}%</span>
-                    </div>
-                    <div className="w-full h-2.5 bg-gray-100 dark:bg-zinc-800 rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-emerald-600 dark:bg-emerald-400 transition-all duration-300 ease-out rounded-full" 
-                        style={{ width: `${progress}%` }}
-                      ></div>
-                    </div>
-                  </div>
-
-                  {isDev && (
-                    <div className="w-full text-xs font-mono font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 rounded-xl p-2.5 flex items-center justify-center gap-1.5 animate-pulse select-none">
-                      <span className="material-symbols-outlined text-[16px]">timer</span>
-                      {t("dashboard.dev_timer", { time: elapsedTime.toFixed(1) })}
-                    </div>
-                  )}
-
-                  <button
-                    type="button"
-                    onClick={handleCancel}
-                    className="mt-2 px-6 py-2.5 bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-950 transition-colors cursor-pointer flex items-center justify-center gap-1.5 border border-red-100 dark:border-red-900/30 font-bold text-xs rounded-xl"
-                  >
-                    <span className="material-symbols-outlined text-[15px]">cancel</span>
-                    {t("dashboard.cancel_process_btn")}
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
 
           <div className="lg:col-span-4 flex flex-col gap-6 relative z-10">
@@ -1055,6 +999,63 @@ export default function Dashboard({
           </div>
         </div>
       </section>
+
+      {isProcessing && (
+        <div 
+          className="modal-overlay fixed inset-0 bg-black/60 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center z-[9999] animate-fade-in no-print !mt-0"
+          style={{ marginTop: 0 }}
+        >
+          <div 
+            className="bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 rounded-3xl p-8 max-w-md w-full shadow-2xl flex flex-col items-center gap-6"
+            style={{ marginTop: 0 }}
+          >
+            <div className="relative">
+              <div className="w-20 h-20 rounded-full border-4 border-emerald-100 dark:border-zinc-800 border-t-emerald-600 dark:border-t-emerald-400 animate-spin"></div>
+              <div className="absolute inset-0 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                <span className="material-symbols-outlined text-2xl animate-pulse">auto_awesome</span>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="text-xl font-bold text-[#0f5238] dark:text-emerald-400 mb-2 animate-pulse">{t("dashboard.processing_title")}</h3>
+              <p className="text-xs text-gray-500 dark:text-zinc-400 leading-relaxed">
+                {t("dashboard.processing_desc")}
+              </p>
+            </div>
+
+            <div className="w-full flex flex-col gap-2">
+              <div className="flex justify-between items-center text-xs font-bold">
+                <span className="text-emerald-700 dark:text-emerald-400">
+                  {loadingSteps[loadingStep]}
+                </span>
+                <span className="text-gray-400 dark:text-zinc-500">{Math.round(progress)}%</span>
+              </div>
+              <div className="w-full h-2.5 bg-gray-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-emerald-600 dark:bg-emerald-400 transition-all duration-300 ease-out rounded-full" 
+                  style={{ width: `${progress}%` }}
+                ></div>
+              </div>
+            </div>
+
+            {isDev && (
+              <div className="w-full text-xs font-mono font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 rounded-xl p-2.5 flex items-center justify-center gap-1.5 animate-pulse select-none">
+                <span className="material-symbols-outlined text-[16px]">timer</span>
+                {t("dashboard.dev_timer", { time: elapsedTime.toFixed(1) })}
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={handleCancel}
+              className="mt-2 px-6 py-2.5 bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-950 transition-colors cursor-pointer flex items-center justify-center gap-1.5 border border-red-100 dark:border-red-900/30 font-bold text-xs rounded-xl"
+            >
+              <span className="material-symbols-outlined text-[15px]">cancel</span>
+              {t("dashboard.cancel_process_btn")}
+            </button>
+          </div>
+        </div>
+      )}
 
       {showHistoryModal && (
         <div 

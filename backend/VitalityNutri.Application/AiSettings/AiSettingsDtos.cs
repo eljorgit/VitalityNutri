@@ -31,6 +31,19 @@ public sealed record ProviderKeyDto(
 
 public sealed record ChainOverrideDto(string ChainName, IReadOnlyList<string> Tokens);
 
+public sealed record AiUsageMetricDto(
+    string Key,
+    string Description,
+    decimal MinCredits,
+    decimal MaxCredits);
+
+public sealed record AiUsageInteractionDto(
+    DateTimeOffset TimestampUtc,
+    string Operation,
+    decimal CreditsUsed,
+    string? Model,
+    string? Status);
+
 public sealed record AiSettingsDto(
     string Mode,
     IReadOnlyList<ProviderKeyDto> ProviderKeys,
@@ -38,7 +51,9 @@ public sealed record AiSettingsDto(
     IReadOnlyList<string> AvailableChains,
     decimal WeeklyPlatformLimit,
     decimal CreditsUsedThisWeek,
-    DateTimeOffset CurrentWeekStartUtc);
+    DateTimeOffset CurrentWeekStartUtc,
+    IReadOnlyList<AiUsageMetricDto> UsageMetrics,
+    IReadOnlyList<AiUsageInteractionDto> UsageInteractions);
 
 internal static class AiSettingsMapper
 {
@@ -47,7 +62,9 @@ internal static class AiSettingsMapper
         IReadOnlyCollection<UserAiProviderKey> keys,
         decimal weeklyPlatformLimit,
         decimal creditsUsedThisWeek,
-        DateOnly weekStartUtc)
+        DateOnly weekStartUtc,
+        IReadOnlyList<AiUsageMetricDto>? usageMetrics = null,
+        IReadOnlyList<AiUsageInteractionDto>? usageInteractions = null)
     {
         var overrides = new List<ChainOverrideDto>();
         if (!string.IsNullOrWhiteSpace(settings.ChainOverridesJson))
@@ -96,6 +113,8 @@ internal static class AiSettingsMapper
             NamedAiChains.All,
             weeklyPlatformLimit,
             creditsUsedThisWeek,
-            weekStartUtc.ToDateTime(TimeOnly.MinValue));
+            weekStartUtc.ToDateTime(TimeOnly.MinValue),
+            usageMetrics ?? [],
+            usageInteractions ?? []);
     }
 }
