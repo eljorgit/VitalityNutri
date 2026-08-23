@@ -16,5 +16,9 @@ export default defineConfig({
     url: "http://localhost:5027",
     reuseExistingServer: !process.env.CI,
     timeout: 30000,
+    env: {
+      VITE_APP_MODE: "oss",
+      VITE_LANGUAGE: "en",
+    },
   },
 });

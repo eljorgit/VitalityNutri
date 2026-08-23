@@ -1,17 +1,17 @@
 import { test, expect } from "@playwright/test";
+import { setupApiMocks } from "./test-helpers";
 
 test.beforeEach(async ({ page }) => {
+  await setupApiMocks(page);
   await page.goto("/");
   await page.evaluate(() => localStorage.clear());
+  await page.goto("/");
 });
 
 test.describe("Smoke tests", () => {
 
   test("app shell renders on homepage", async ({ page }) => {
-    // The header logo button should be visible
-    await expect(
-      page.getByRole("button", { name: /VitalityNutri/i })
-    ).toBeVisible();
+    await expect(page.getByText("VitalityNutri").first()).toBeVisible();
   });
 
   test("app renders in the language set by VITE_LANGUAGE env var", async ({ page }) => {

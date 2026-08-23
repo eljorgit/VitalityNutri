@@ -138,6 +138,34 @@ export const sampleBatchCookingGuide = {
 };
 
 export async function setupApiMocks(page: Page) {
+  await page.route("**/api/app-info**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        mode: "Oss",
+        auth: {
+          googleEnabled: false,
+          appleEnabled: false,
+          demoEnabled: true,
+        },
+      }),
+    });
+  });
+
+  await page.route("**/api/auth/me**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        id: "e2e-user",
+        firstName: "E2E",
+        surname: "Tester",
+        email: "e2e@example.com",
+      }),
+    });
+  });
+
   await page.route("**/api/plan**", async (route) => {
     const url = new URL(route.request().url());
     if (url.pathname.startsWith("/api/plan/batch-cooking")) {
