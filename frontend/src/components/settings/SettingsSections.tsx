@@ -676,7 +676,7 @@ export function AiSettingsSection() {
 
   const saveOverrides = () =>
     run(async () => {
-      const overrides = Object.entries(chainDrafts).map(([chainName, raw]) => ({
+      const overrides = (Object.entries(chainDrafts) as [string, string][]).map(([chainName, raw]) => ({
         chainName,
         tokens: raw
           .split(",")
