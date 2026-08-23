@@ -2,7 +2,7 @@ name: vitalitynutri-dev
 
 services:
   frontend:
-    image: ghcr.io/eljorgit/vitalitynutri-frontend:latest
+    image: ghcr.io/eljorgit/vitalitynutri-frontend:${IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: docker/frontend.Dockerfile
@@ -27,7 +27,7 @@ services:
         condition: service_healthy
 
   backend:
-    image: ghcr.io/eljorgit/vitalitynutri-backend:latest
+    image: ghcr.io/eljorgit/vitalitynutri-backend:${IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: docker/backend.Dockerfile

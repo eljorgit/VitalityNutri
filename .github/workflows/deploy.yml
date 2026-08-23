@@ -1,0 +1,138 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Deployment target"
+        required: true
+        type: choice
+        options:
+          - development
+          - production
+      tag:
+        description: "Tag to deploy (must already have a successful CI docker build)"
+        required: true
+        type: string
+      confirm:
+        description: "Type DEPLOY to confirm deployment"
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+  packages: read
+
+concurrency:
+  group: deploy-${{ github.event.inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: "Deploy: ${{ github.event.inputs.environment }} via SSH"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ github.event.inputs.tag }}
+
+      - name: Resolve deploy configuration
+        id: cfg
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event.inputs.environment }}" = "production" ]; then
+            echo "compose_file=docker-compose.release.yml" >> $GITHUB_OUTPUT
+          else
+            echo "compose_file=docker-compose.yml" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Validate deployment confirmation
+        run: |
+          if [ "${{ github.event.inputs.confirm }}" != "DEPLOY" ]; then
+            echo "Deployment canceled. Set confirm to DEPLOY to run deployment."
+            exit 1
+          fi
+
+      - name: Validate selected tag has successful CI docker build
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          TAG: ${{ github.event.inputs.tag }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$TAG" =~ ^v ]]; then
+            echo "Tag '$TAG' is invalid. Use a release tag that starts with 'v'."
+            exit 1
+          fi
+
+          RUN_ID=$(curl -sS -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/$REPO/actions/workflows/ci.yml/runs?event=push&status=completed&per_page=100" \
+            | jq -r --arg TAG "$TAG" '.workflow_runs[] | select(.head_branch == $TAG and .conclusion == "success") | .id' \
+            | head -n1)
+
+          if [ -z "${RUN_ID:-}" ]; then
+            echo "No successful CI run found for tag '$TAG'."
+            exit 1
+          fi
+
+          DOCKER_JOB_OK=$(curl -sS -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/$REPO/actions/runs/$RUN_ID/jobs?per_page=100" \
+            | jq -r '[.jobs[] | select(.name == "Publish: Docker Images to GHCR" and .conclusion == "success")] | length')
+
+          if [ "$DOCKER_JOB_OK" -eq 0 ]; then
+            echo "Tag '$TAG' does not have a successful docker publish job in CI run $RUN_ID."
+            exit 1
+          fi
+
+          echo "Validated tag '$TAG' with successful docker publish run $RUN_ID."
+
+      - name: Check Secrets
+        id: check-deploy
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+          TAILSCALE_AUTHKEY: ${{ secrets.TAILSCALE_AUTHKEY }}
+        run: |
+          echo "tailscale=$([ -n "$TAILSCALE_AUTHKEY" ] && echo true || echo false)" >> $GITHUB_OUTPUT
+          echo "ssh=$([ -n "$SSH_HOST" ] && [ -n "$SSH_KEY" ] && echo true || echo false)" >> $GITHUB_OUTPUT
+
+      - name: Connect to Tailscale
+        if: steps.check-deploy.outputs.tailscale == 'true'
+        uses: tailscale/github-action@v2
+        with:
+          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
+
+      - name: Copy selected compose file to server
+        if: steps.check-deploy.outputs.ssh == 'true'
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          source: "${{ steps.cfg.outputs.compose_file }}"
+          target: "${{ secrets.DEPLOY_PATH }}"
+          overwrite: true
+
+      - name: Deploy via SSH
+        if: steps.check-deploy.outputs.ssh == 'true'
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+          COMPOSE_FILE: ${{ steps.cfg.outputs.compose_file }}
+          IMAGE_TAG: ${{ github.event.inputs.tag }}
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          envs: GHCR_TOKEN,GHCR_USER,COMPOSE_FILE,IMAGE_TAG
+          script: |
+            cd ${{ secrets.DEPLOY_PATH }}
+            echo "$GHCR_TOKEN" | docker login ghcr.io --username "$GHCR_USER" --password-stdin
+            export IMAGE_TAG="$IMAGE_TAG"
+            docker compose -f "$COMPOSE_FILE" pull
+            docker compose -f "$COMPOSE_FILE" up -d --remove-orphans
+            docker image prune -f
